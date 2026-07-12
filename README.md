@@ -14,7 +14,9 @@ in economy with a job can actually do.
 
 - **Completely free.** No subscription, no ads, no locked features, no account.
 - **Automatic.** Import flights straight from your calendar (works with events created by
-  Flighty, TripIt, and airline confirmations) or type them in under a minute.
+  Flighty, TripIt, and airline confirmations), search by flight number (in builds with a
+  schedule key), or type them in under a minute — with arrival times pre-estimated from
+  the route.
 - **Practical, not idealized.** The engine never schedules sleep during boarding, meal
   service, descent, or your daughter's wedding. It caps in-flight sleep at what *you* said
   is realistic, and if you can't sleep on planes at all, it plans quiet rest instead of
@@ -22,6 +24,9 @@ in economy with a job can actually do.
 - **You control the head start.** Choose exactly when the transition begins — on travel
   day, or 1–4 days before departure — per trip, with a sensible automatic default from
   your profile. Your explicit choice always wins over plan-intensity presets.
+- **Transit-aware.** Tell Reclock how long home-to-terminal takes and it times your
+  leave-by reminder (immune to quiet hours) and keeps sleep clear of the airport run —
+  for the outbound and the return.
 - **Adaptive.** Report a delay, a missed light window, or an accidental nap, and the rest
   of the plan is rebuilt from where your body clock actually is — with a plain-English
   explanation of what moved.

@@ -8,10 +8,15 @@ struct AddTripFlow: View {
 
     enum Route: Hashable {
         case calendarImport
+        case flightLookup
         case manualEntry
     }
 
     @State private var path: [Route] = []
+
+    private var lookupAvailable: Bool {
+        model.deps.scheduleProvider.isConfigured && !model.state.settings.localOnlyMode
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -27,6 +32,18 @@ struct AddTripFlow: View {
                             subtitle: "Finds flights that Flighty, TripIt, or airline emails put in your calendar. Scanning happens on this device only."
                         )
                     }
+                    if lookupAvailable {
+                        Button {
+                            model.deps.analytics.track(.importMethodSelected(method: "flight_number"))
+                            path.append(.flightLookup)
+                        } label: {
+                            ImportOptionRow(
+                                icon: "number.square",
+                                title: "Search by flight number",
+                                subtitle: "Type “AY 16” and a date — airports and times fill themselves in."
+                            )
+                        }
+                    }
                     Button {
                         model.deps.analytics.track(.importMethodSelected(method: "manual"))
                         path.append(.manualEntry)
@@ -34,7 +51,7 @@ struct AddTripFlow: View {
                         ImportOptionRow(
                             icon: "keyboard",
                             title: "Enter it myself",
-                            subtitle: "Airports and times — under a minute per flight."
+                            subtitle: "Airports and times — arrival is pre-estimated from the route."
                         )
                     }
                 } footer: {
@@ -52,6 +69,8 @@ struct AddTripFlow: View {
                 switch route {
                 case .calendarImport:
                     CalendarImportView(onFinished: { dismiss() })
+                case .flightLookup:
+                    FlightLookupView(onFinished: { dismiss() })
                 case .manualEntry:
                     ManualTripEntryView(onFinished: { dismiss() })
                 }
@@ -252,39 +271,16 @@ struct CalendarImportView: View {
         let segments = flights
             .filter { selectedIDs.contains($0.id) }
             .compactMap { parser.makeSegment(from: $0) }
-            .sorted { $0.departure < $1.departure }
-        guard let first = segments.first, let last = segments.last else { return }
-
         let homeZone = model.profile?.homeZone ?? ZoneID(TimeZone.current.identifier)
-        let destination = model.deps.airports.airport(iata: outboundDestination(segments))?.city
-            ?? outboundDestination(segments)
-        let trip = Trip(
-            name: destination,
-            origin: first.departureAirport,
-            destination: destination,
-            homeZone: homeZone,
-            destinationZone: model.deps.airports.zone(forIATA: outboundDestination(segments))
-                ?? last.arrivalZone,
+        guard let trip = TripAssembler.makeTrip(
             segments: segments,
+            homeZone: homeZone,
+            airports: model.deps.airports,
             importSource: .calendar
-        )
+        ) else { return }
         if await model.addTrip(trip) {
             onFinished()
         }
-    }
-
-    /// The stay airport: arrival of the last outbound segment (before the longest gap).
-    private func outboundDestination(_ segments: [FlightSegment]) -> String {
-        var bestGap: TimeInterval = 0
-        var stayArrival = segments.last!.arrivalAirport
-        for i in 1..<max(segments.count, 1) where segments.count > 1 {
-            let gap = segments[i].departure.timeIntervalSince(segments[i - 1].arrival)
-            if gap > bestGap && gap >= 48 * 3600 {
-                bestGap = gap
-                stayArrival = segments[i - 1].arrivalAirport
-            }
-        }
-        return stayArrival
     }
 }
 

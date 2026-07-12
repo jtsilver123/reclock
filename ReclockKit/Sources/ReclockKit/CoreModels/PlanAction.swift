@@ -82,6 +82,7 @@ public enum ActionType: String, Codable, CaseIterable, Sendable {
     case moveBody
     case windDown
     case switchToDestinationTime
+    case leaveForAirport
     case checkIn
     case recalculate
 
@@ -108,6 +109,7 @@ public enum ActionType: String, Codable, CaseIterable, Sendable {
         case .moveBody: "figure.walk"
         case .windDown: "moon.stars.fill"
         case .switchToDestinationTime: "clock.arrow.2.circlepath"
+        case .leaveForAirport: "car.fill"
         case .checkIn: "checkmark.circle.fill"
         case .recalculate: "arrow.triangle.2.circlepath"
         }

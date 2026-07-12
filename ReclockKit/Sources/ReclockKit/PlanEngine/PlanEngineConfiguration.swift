@@ -69,6 +69,15 @@ public struct PlanEngineConfiguration: Sendable {
     /// How many days after arrival to keep scheduling avoid-light guidance.
     public var avoidLightDaysAfterArrival: Int = 3
 
+    // MARK: Airport logistics
+
+    /// Time to be at the airport before departure (check-in, security, walk to gate).
+    public var airportArrivalLeadHours: Double = 2.0
+    /// Door-to-terminal transfer when the trip doesn't specify one.
+    public var defaultTransferMinutes: Int = 60
+    /// Packing/shoes-on buffer added before the transfer for the leave-by reminder.
+    public var transferPrepBufferMinutes: Double = 15
+
     // MARK: Sleep constraints
 
     /// No planned sleep within this window after departure (boarding, taxi, climb, service start).

@@ -19,6 +19,10 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
     /// `nil` = derive from profile willingness ∩ intensity. When set, the user's choice
     /// wins outright — intensity presets never cap an explicit decision.
     public var preTripDaysOverride: Int?
+    /// Door-to-terminal transit time in minutes (home → airport, hotel → airport for the
+    /// return). Drives the leave-by reminder and extends the pre-departure no-sleep block.
+    /// `nil` = the configured default (60).
+    public var airportTransferMinutes: Int?
     public var status: TripStatus
     public var importSource: ImportSource
     public var createdAt: Date
@@ -37,6 +41,7 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
         intensity: PlanIntensity = .balanced,
         adaptationStrategy: AdaptationStrategy = .automatic,
         preTripDaysOverride: Int? = nil,
+        airportTransferMinutes: Int? = nil,
         status: TripStatus = .upcoming,
         importSource: ImportSource = .manual,
         createdAt: Date = Date(timeIntervalSince1970: 0),
@@ -54,6 +59,7 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
         self.intensity = intensity
         self.adaptationStrategy = adaptationStrategy
         self.preTripDaysOverride = preTripDaysOverride
+        self.airportTransferMinutes = airportTransferMinutes
         self.status = status
         self.importSource = importSource
         self.createdAt = createdAt

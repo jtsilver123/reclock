@@ -13,6 +13,8 @@ struct Dependencies {
     let sleepProvider: SleepDataProvider
     let analytics: AnalyticsClient
     let airports: AirportDirectory
+    /// Flight-number schedule lookup. Unconfigured (and invisible in UI) without a key.
+    let scheduleProvider: FlightScheduleProvider
     /// Injected clock so UI tests and previews can pin "now".
     let now: @Sendable () -> Date
 
@@ -42,8 +44,34 @@ struct Dependencies {
             sleepProvider: sleepProvider,
             analytics: NoOpAnalyticsClient(),
             airports: .bundled,
+            scheduleProvider: ProcessInfo.isUITest ? mockScheduleProvider() : liveScheduleProvider(),
             now: { Date() }
         )
+    }
+
+    /// Reads `ReclockAeroDataBoxKey` from Info.plist (owner-configured; never committed).
+    private static func liveScheduleProvider() -> FlightScheduleProvider {
+        if let key = Bundle.main.object(forInfoDictionaryKey: "ReclockAeroDataBoxKey") as? String,
+           !key.isEmpty {
+            return AeroDataBoxScheduleProvider(apiKey: key)
+        }
+        return UnconfiguredFlightScheduleProvider()
+    }
+
+    private static func mockScheduleProvider() -> FlightScheduleProvider {
+        let departure = Date().addingTimeInterval(4 * 86_400)
+        return MockFlightScheduleProvider(results: [
+            ScheduledFlight(
+                airline: "AY",
+                flightNumber: "AY16",
+                departureAirport: "JFK",
+                arrivalAirport: "HEL",
+                departure: departure,
+                arrival: departure.addingTimeInterval(8.33 * 3600),
+                departureZone: ZoneID("America/New_York"),
+                arrivalZone: ZoneID("Europe/Helsinki")
+            )
+        ])
     }
 
     /// Fully in-memory-ish dependencies for previews.
@@ -60,6 +88,7 @@ struct Dependencies {
             sleepProvider: UnavailableSleepDataProvider(),
             analytics: NoOpAnalyticsClient(),
             airports: .bundled,
+            scheduleProvider: mockScheduleProvider(),
             now: { Date() }
         )
     }

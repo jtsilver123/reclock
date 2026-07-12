@@ -131,6 +131,29 @@ product brief left open — or where I deliberately diverged from it — are cal
 34. **Deferred with intent**: widgets/Live Activities (needs a second target — next
     release), Siri shortcuts, iPad layout, calendar-write export (see #33).
 
+## Flight search & transit pass
+
+35. **Flight-number search is real but key-gated.** `FlightScheduleProvider` +
+    `AeroDataBoxScheduleProvider` (defensive response mapping, injectable transport,
+    unit-tested against a canned payload). No key ships; the Add-trip option only
+    appears when configured AND Local-only mode is off. Requests carry the flight number
+    and date, nothing else (PRIVACY.md).
+36. **Keyless arrival auto-estimate.** Manual entry pre-fills arrival from great-circle
+    distance with direction-aware speeds (jet stream asymmetry), labeled "estimated —
+    check your ticket," and stops the moment the user edits arrival by hand. Airport
+    coordinates were added (2-decimal, ~±1 km) and are used *only* for this estimate —
+    calibrated against published block times in tests (JFK↔LHR, LAX→HND, JFK→HNL).
+37. **Transit awareness without location permission.** Per-trip "Getting to the airport"
+    minutes (default 60) extends the pre-departure no-sleep block
+    (prep + transfer + 2h at-airport lead) and emits a leave-by action + notification for
+    every stint departure — outbound and return. Leave-by is exempt from quiet hours (a
+    5 AM airport run must ring at 5 AM). A CoreLocation/MapKit auto-estimate was
+    considered and rejected for v1: it would break the "no location" privacy posture for
+    marginal precision; the seam (a minutes value on Trip) accepts any future estimator.
+38. **TripAssembler** consolidated destination inference (stay airport before the longest
+    ≥48h gap) — previously duplicated in two views, now one tested implementation used by
+    calendar import, manual entry, and flight lookup.
+
 ## Known limitations (candid)
 
 - Engine day labels ("Landing day · Sun, Sep 20") are English strings from the kit.

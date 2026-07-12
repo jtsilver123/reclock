@@ -30,6 +30,7 @@ the promises cheap to keep: **there is no server, no account, and no third-party
 | Calendar event content | RAM during scan only | Seconds | Never |
 | HealthKit sleep samples | RAM during suggestion only | Seconds | Never |
 | Anonymous analytics events (opt-in only) | PostHog (if a key is configured) | Provider default | Yes — event name + coarse properties only |
+| Flight-number lookups (only in builds with a schedule key, only when the user searches) | Schedule provider (AeroDataBox) | Not stored by app | Yes — flight number + date only; never identity, device data, or other trips. Disabled by Local-only mode. Default builds have no key and send nothing. |
 
 Deleting a trip removes its plan, state, and notifications. **Settings → Delete all
 data** wipes the store, quarantine files, and every scheduled notification.

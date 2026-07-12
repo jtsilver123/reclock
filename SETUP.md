@@ -39,6 +39,24 @@ The first open resolves the local `ReclockKit` package automatically (no network
    `<your-id>.uitests`).
 3. Automatic signing handles the rest. No special entitlements are required for v1.
 
+## Flight-number lookup (optional, key-gated)
+
+"Search by flight number" activates only when a schedule API key is present — the app is
+complete without it (manual entry pre-estimates arrival times from the route).
+
+1. Get an AeroDataBox key via RapidAPI (free tier is fine for testing).
+2. Create `Secrets.xcconfig` (already gitignored) next to the project:
+   `RECLOCK_AERODATABOX_KEY = your-key-here`
+3. Set it as the project's configuration file (Project → Info → Configurations), and add
+   a build setting on the Reclock target:
+   `INFOPLIST_KEY_ReclockAeroDataBoxKey = $(RECLOCK_AERODATABOX_KEY)`
+4. Rebuild. The "Search by flight number" option appears in Add a trip.
+
+Privacy: requests contain only the flight number and date (see PRIVACY.md). The response
+mapping is defensive — schema drift degrades to "not found" with manual entry one tap
+away; verify against the live API once when enabling (mapping lives in
+`AeroDataBoxScheduleProvider.parse`, unit-tested against a canned response).
+
 ## Feature flags (`ReclockKit/Sources/ReclockKit/FlightImport/ItineraryParsingProvider.swift`)
 
 | Flag | Default | Meaning |

@@ -142,6 +142,7 @@ extension PlanEngine {
                 dayStart: lightDayStart,
                 arrival: arrivalInfo,
                 direction: direction,
+                sleepWindows: fit.pieces.map(\.window),
                 nextID: nextID,
                 context: context
             )
@@ -396,10 +397,17 @@ extension PlanEngine {
             candidates = candidates.flatMap { $0.subtracting(blocked) }
         }
 
-        for segment in context.trip.segments where segment.window.overlaps(nightWindow) || TimeWindow(start: segment.departure.adding(hours: -2.5), end: segment.arrival.adding(hours: 1)).overlaps(nightWindow) {
-            // Airport time before departure: security, boarding — no planned sleep.
+        // Pre-departure block: airport lead time, plus door-to-terminal transfer for the
+        // first segment of each stint (connections only need the airport lead).
+        let transferSeconds = Double(context.trip.airportTransferMinutes ?? cfg.defaultTransferMinutes) * 60
+        let stintStartIDs = Set(context.stints.compactMap { $0.segments.first?.id })
+
+        for segment in context.trip.segments where segment.window.overlaps(nightWindow) || TimeWindow(start: segment.departure.adding(hours: -6), end: segment.arrival.adding(hours: 1)).overlaps(nightWindow) {
+            let preDeparture = TimeInterval.hours(cfg.airportArrivalLeadHours)
+                + (stintStartIDs.contains(segment.id) ? transferSeconds + .minutes(cfg.transferPrepBufferMinutes) : .hours(0.5))
+            // Transfer, security, boarding — no planned sleep.
             block(TimeWindow(
-                start: segment.departure.adding(hours: -2.5),
+                start: segment.departure.addingTimeInterval(-preDeparture),
                 end: segment.departure.adding(minutes: cfg.minutesAfterTakeoffBeforeSleep)
             ))
             // Descent, landing, deplaning, immigration.
@@ -597,6 +605,7 @@ extension PlanEngine {
         dayStart: Date,
         arrival: Date?,
         direction: ShiftDirection,
+        sleepWindows: [TimeWindow],
         nextID: (String) -> UUID,
         context: PlanContext
     ) -> DayBuild {
@@ -604,7 +613,13 @@ extension PlanEngine {
         let cfg = context.configuration
         guard direction != .none else { return build }
         let regions = CircadianMath.lightRegions(cbtMin: night.cbtMin, configuration: cfg)
-        let waking = TimeWindow(start: dayStart, end: night.bed)
+        // The evening ends when tonight's sleep *actually* starts — the fitted window may
+        // begin earlier than the nominal bed (e.g. widened before a dawn airport run).
+        let actualBed = sleepWindows
+            .map(\.start)
+            .filter { abs($0.timeIntervalSince(night.bed)) < .hours(3) }
+            .min() ?? night.bed
+        let waking = TimeWindow(start: dayStart, end: min(night.bed, actualBed))
         let earliestToday = dayStart
         let isArrivalWindow = daysSinceLastArrival(night: night, context: context) <= 2
 
@@ -654,8 +669,8 @@ extension PlanEngine {
                 }
             }
         case .delay:
-            // Seek evening light before (shifting) bedtime.
-            let seek = TimeWindow(start: night.bed.adding(hours: -3), end: night.bed.adding(hours: -0.5))
+            // Seek evening light before the actual (fitted) sleep start.
+            let seek = TimeWindow(start: actualBed.adding(hours: -3), end: actualBed.adding(hours: -0.5))
             let seekResult = placeLightWindow(
                 ideal: seek,
                 waking: waking,
@@ -835,8 +850,33 @@ extension PlanEngine {
     ) -> [PlanAction] {
         var actions: [PlanAction] = []
         let dayWindow = TimeWindow(start: night.wake, end: night.nextWake)
+        let cfg = context.configuration
+        let transferMinutes = Double(context.trip.airportTransferMinutes ?? cfg.defaultTransferMinutes)
 
         for (stintIndex, stint) in context.stints.enumerated() {
+            // Leave-by anchor: prep + transfer + at-airport lead, back-computed from departure.
+            if dayWindow.contains(stint.departure) {
+                let leave = stint.departure
+                    .adding(hours: -cfg.airportArrivalLeadHours)
+                    .adding(minutes: -transferMinutes)
+                let prepStart = leave.adding(minutes: -cfg.transferPrepBufferMinutes)
+                actions.append(PlanAction(
+                    id: nextID("leave"),
+                    type: .leaveForAirport,
+                    window: TimeWindow(start: prepStart, end: leave),
+                    displayZone: stint.segments.first!.departureZone,
+                    priority: .helpful,
+                    impactScore: 72,
+                    title: "Leave for the airport",
+                    instruction: "About \(Int(transferMinutes)) minutes door to terminal, plus \(Int(cfg.airportArrivalLeadHours * 60)) minutes for check-in and security. Head out by the end of this window.",
+                    explanation: "A calm departure protects the plan: no sprinting, no cortisol spike, and no temptation to nap at the gate at the wrong time. Adjust the transfer time in trip settings if your ride is longer.",
+                    notificationEnabled: true,
+                    dayIndex: dayIndex,
+                    phase: .beforeDeparture,
+                    confidence: .estimate,
+                    ruleReference: "v1/leave-for-airport"
+                ))
+            }
             // Switch-to-destination-time at the first departure of each stint.
             if dayWindow.contains(stint.departure), context.strategy != .anchorToHome,
                abs(context.outboundShift.shiftHours) >= 3 {

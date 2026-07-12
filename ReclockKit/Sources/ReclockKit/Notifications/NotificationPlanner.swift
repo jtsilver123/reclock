@@ -137,6 +137,10 @@ public struct NotificationPlanner: Sendable {
                          title: "Switch to destination time",
                          body: "Change your watch and start living on arrival time.",
                          category: NotificationCategory.planInfo)]
+        case .leaveForAirport:
+            return [make(.start, at: action.window.start,
+                         title: "Time to get moving",
+                         body: "Pack up and head for the airport — this window covers your ride plus check-in and security.")]
         case .caffeineOK, .shiftMeals, .hydrate, .moveBody, .checkIn, .recalculate:
             return []
         }
@@ -153,7 +157,9 @@ public struct NotificationPlanner: Sendable {
         profile: UserProfile,
         zoneTimeline: ZoneTimeline
     ) -> PlannedNotification? {
-        let exemptTypes: Set<ActionType> = [.sleep, .windDown, .nap, .melatoninOptional]
+        // Sleep-adjacent notifications belong near bedtime; leave-by is time-critical
+        // logistics (a 5 AM airport run must ring at 5 AM). Neither defers to quiet hours.
+        let exemptTypes: Set<ActionType> = [.sleep, .windDown, .nap, .melatoninOptional, .leaveForAirport]
         if exemptTypes.contains(action.type) { return notification }
 
         let zone = zoneTimeline.zone(at: notification.fireDate).resolved

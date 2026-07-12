@@ -4,7 +4,7 @@
 
 | Layer | Tooling | Where it runs | Count |
 | --- | --- | --- | --- |
-| Engine/unit (all business logic) | Swift Testing (`swift test`) | Linux CI + macOS CI + local | 67 |
+| Engine/unit (all business logic) | Swift Testing (`swift test`) | Linux CI + macOS CI + local | 81 |
 | UI critical path | XCUITest | macOS CI simulator | 6 |
 | Manual device pass | APP_REVIEW_CHECKLIST.md | Before each submission | — |
 
@@ -63,6 +63,15 @@ v0→v1 migration, wipe (incl. quarantine), export validity, ISO-8601 coding sta
 
 **Trip validation** — arrival-before-departure blocks with friendly text; implausible
 block times; overlapping segments; unknown airport advisory-only; unknown zone blocking.
+
+**Flight search & transit** — duration estimator calibrated against published block
+times (JFK↔LHR both directions incl. jet-stream asymmetry, LAX→HND, JFK→HNL, LGA→BOS),
+nil for coordinate-less custom airports, full-coverage coordinate check; AeroDataBox
+response mapping (canned payload → correct zones/instants, malformed/backwards data
+degrades to typed errors, transport injection, header/URL assertions, unconfigured
+fallback); leave-by anchors on outbound AND return, transfer scaling (120 vs 20 min),
+no sleep in prep+transfer+lead window, leave-by notifications exempt from quiet hours;
+TripAssembler stay-airport inference (return + multi-leg).
 
 ## UI tests (XCUITest, launch args `-reclock-uitest` / `-reclock-seed-demo`)
 

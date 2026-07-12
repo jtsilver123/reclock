@@ -6,19 +6,35 @@ public struct Airport: Codable, Hashable, Sendable, Identifiable {
     public var city: String
     public var country: String
     public var zone: ZoneID
+    /// Approximate coordinates (~±1 km). Used only for flight-duration estimation —
+    /// never navigation. nil for user-entered custom airports.
+    public var latitude: Double?
+    public var longitude: Double?
 
     public var id: String { iata }
 
-    public init(iata: String, name: String, city: String, country: String, zone: ZoneID) {
+    public init(
+        iata: String,
+        name: String,
+        city: String,
+        country: String,
+        zone: ZoneID,
+        latitude: Double? = nil,
+        longitude: Double? = nil
+    ) {
         self.iata = iata
         self.name = name
         self.city = city
         self.country = country
         self.zone = zone
+        self.latitude = latitude
+        self.longitude = longitude
     }
 
     enum CodingKeys: String, CodingKey {
         case iata, name, city, country, zone
+        case latitude = "lat"
+        case longitude = "lon"
     }
 
     public init(from decoder: Decoder) throws {
@@ -28,6 +44,8 @@ public struct Airport: Codable, Hashable, Sendable, Identifiable {
         city = try container.decode(String.self, forKey: .city)
         country = try container.decode(String.self, forKey: .country)
         zone = ZoneID(try container.decode(String.self, forKey: .zone))
+        latitude = try container.decodeIfPresent(Double.self, forKey: .latitude)
+        longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -37,6 +55,8 @@ public struct Airport: Codable, Hashable, Sendable, Identifiable {
         try container.encode(city, forKey: .city)
         try container.encode(country, forKey: .country)
         try container.encode(zone.identifier, forKey: .zone)
+        try container.encodeIfPresent(latitude, forKey: .latitude)
+        try container.encodeIfPresent(longitude, forKey: .longitude)
     }
 }
 

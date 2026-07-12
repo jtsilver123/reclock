@@ -108,6 +108,15 @@ struct TripDetailView: View {
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
 
+                Picker("Getting to the airport", selection: transferBinding) {
+                    ForEach([20, 30, 45, 60, 90, 120], id: \.self) { minutes in
+                        Text("\(minutes) min").tag(minutes)
+                    }
+                }
+                Text("Door to terminal. Sets the leave-by reminder and keeps sleep clear of the airport run — for departure and return.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+
                 if currentTrip.destinationNights.map({ $0 <= 3 }) == true {
                     Picker("Adaptation", selection: strategyBinding) {
                         Text("Automatic").tag(AdaptationStrategy.automatic)
@@ -212,6 +221,17 @@ struct TripDetailView: View {
             set: { newValue in
                 var updated = currentTrip
                 updated.adaptationStrategy = newValue
+                Task { await model.updateTrip(updated) }
+            }
+        )
+    }
+
+    private var transferBinding: Binding<Int> {
+        Binding(
+            get: { currentTrip.airportTransferMinutes ?? 60 },
+            set: { newValue in
+                var updated = currentTrip
+                updated.airportTransferMinutes = newValue
                 Task { await model.updateTrip(updated) }
             }
         )

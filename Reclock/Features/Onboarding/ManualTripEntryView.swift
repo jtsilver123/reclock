@@ -14,6 +14,10 @@ struct ManualTripEntryView: View {
         var arrivalAirport: Airport?
         var departureDate = Date().addingTimeInterval(3 * 86_400)
         var arrivalDate = Date().addingTimeInterval(3 * 86_400 + 8 * 3600)
+        /// The last arrival value this app set automatically; a user edit diverges from it
+        /// and permanently stops auto-estimation for this leg.
+        var lastAutoArrival: Date?
+        var arrivalEdited = false
     }
 
     @State private var segments: [SegmentDraft] = [SegmentDraft()]
@@ -22,6 +26,7 @@ struct ManualTripEntryView: View {
     @State private var intensity: PlanIntensity = .balanced
     /// -1 = automatic (profile preference), 0–4 = explicit days before departure.
     @State private var preTripChoice: Int = -1
+    @State private var transferMinutes = 60
     @State private var validationMessages: [String] = []
     @State private var isCreating = false
 
@@ -77,6 +82,14 @@ struct ManualTripEntryView: View {
                     Text("4 days before").tag(4)
                 }
                 Text("When your bedtime starts moving. Automatic follows your profile preference; picking a value makes it exact for this trip.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                Picker("Getting to the airport", selection: $transferMinutes) {
+                    ForEach([20, 30, 45, 60, 90, 120], id: \.self) { minutes in
+                        Text("\(minutes) min").tag(minutes)
+                    }
+                }
+                Text("Door to terminal. Sets your leave-by reminder and keeps sleep clear of the airport run.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -162,39 +175,19 @@ struct ManualTripEntryView: View {
         guard !issues.contains(where: \.isBlocking) else { return }
 
         guard let first = built.first else { return }
-        let stayAirport = outboundDestination(built)
-        let destinationAirport = model.deps.airports.airport(iata: stayAirport)
         let homeZone = model.profile?.homeZone ?? first.departureZone
-        let trip = Trip(
-            name: destinationAirport?.city ?? stayAirport,
-            origin: first.departureAirport,
-            destination: destinationAirport?.city ?? stayAirport,
-            homeZone: homeZone,
-            destinationZone: destinationAirport?.zone
-                ?? model.deps.airports.zone(forIATA: stayAirport)
-                ?? built.last!.arrivalZone,
+        guard let trip = TripAssembler.makeTrip(
             segments: built,
+            homeZone: homeZone,
+            airports: model.deps.airports,
             intensity: intensity,
             preTripDaysOverride: preTripChoice < 0 ? nil : preTripChoice,
+            airportTransferMinutes: transferMinutes,
             importSource: .manual
-        )
+        ) else { return }
         if await model.addTrip(trip) {
             onFinished()
         }
-    }
-
-    private func outboundDestination(_ segments: [FlightSegment]) -> String {
-        guard segments.count > 1 else { return segments.first?.arrivalAirport ?? "" }
-        var bestGap: TimeInterval = 0
-        var stay = segments.last!.arrivalAirport
-        for i in 1..<segments.count {
-            let gap = segments[i].departure.timeIntervalSince(segments[i - 1].arrival)
-            if gap > bestGap && gap >= 48 * 3600 {
-                bestGap = gap
-                stay = segments[i - 1].arrivalAirport
-            }
-        }
-        return stay
     }
 }
 
@@ -211,11 +204,46 @@ private struct SegmentEditor: View {
         AirportField(label: "To", selection: $draft.arrivalAirport)
         DatePicker("Departs", selection: $draft.departureDate, displayedComponents: [.date, .hourAndMinute])
         DatePicker("Arrives", selection: $draft.arrivalDate, displayedComponents: [.date, .hourAndMinute])
+            .onChange(of: draft.arrivalDate) { _, newValue in
+                // Our programmatic writes always match lastAutoArrival; anything else is
+                // the user's hand, which permanently takes over this leg's arrival.
+                if newValue != draft.lastAutoArrival {
+                    draft.arrivalEdited = true
+                }
+            }
+            .onChange(of: draft.departureDate) { _, _ in autoEstimate() }
+            .onChange(of: draft.departureAirport) { _, _ in autoEstimate() }
+            .onChange(of: draft.arrivalAirport) { _, _ in autoEstimate() }
+            .onAppear { autoEstimate() }
+        if draft.lastAutoArrival != nil && !draft.arrivalEdited {
+            Label("Arrival estimated from the route — check it against your ticket.", systemImage: "wand.and.stars")
+                .font(.caption2)
+                .foregroundStyle(Theme.textSecondary)
+        }
         if let dep = draft.departureAirport, let arr = draft.arrivalAirport {
             Text("Times read as local: \(dep.iata) departs \(dep.zone.identifier), \(arr.iata) arrives \(arr.zone.identifier).")
                 .font(.caption2)
                 .foregroundStyle(Theme.textSecondary)
         }
+    }
+
+    /// Fills the arrival from route geometry until the user edits it by hand.
+    private func autoEstimate() {
+        guard !draft.arrivalEdited else { return }
+        guard
+            let dep = draft.departureAirport,
+            let arr = draft.arrivalAirport,
+            let estimate = FlightDurationEstimator.estimate(from: dep, to: arr)
+        else { return }
+        let departureInstant = TimeFormat.reinterpret(draft.departureDate, into: dep.zone.resolved)
+        let arrivalInstant = departureInstant.addingTimeInterval(estimate)
+        let pickerValue = TimeFormat.pickerDate(for: arrivalInstant, in: arr.zone.resolved)
+        guard pickerValue != draft.arrivalDate else {
+            if draft.lastAutoArrival == nil { draft.lastAutoArrival = pickerValue }
+            return
+        }
+        draft.lastAutoArrival = pickerValue
+        draft.arrivalDate = pickerValue
     }
 }
 

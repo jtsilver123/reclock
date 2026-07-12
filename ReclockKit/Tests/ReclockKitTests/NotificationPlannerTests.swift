@@ -85,7 +85,7 @@ struct NotificationPlannerTests {
             plan: plan, trip: trip, profile: profile, after: TestSupport.reference
         )
         let timeline = ZoneTimeline(trip: trip)
-        let exemptTypes: Set<ActionType> = [.sleep, .windDown, .nap, .melatoninOptional]
+        let exemptTypes: Set<ActionType> = [.sleep, .windDown, .nap, .melatoninOptional, .leaveForAirport]
         let actionsByID = Dictionary(uniqueKeysWithValues: plan.actions.map { ($0.id, $0) })
         for n in notifications {
             guard let action = actionsByID[n.actionID], !exemptTypes.contains(action.type) else { continue }
