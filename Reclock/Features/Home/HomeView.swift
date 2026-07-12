@@ -1,0 +1,357 @@
+import SwiftUI
+import ReclockKit
+
+struct HomeView: View {
+    @Environment(AppModel.self) private var model
+    @State private var showAddTrip = false
+
+    var body: some View {
+        @Bindable var model = model
+        NavigationStack {
+            Group {
+                if let trip = model.activeTrip, model.plan(for: trip) != nil {
+                    TripHomeContent(trip: trip)
+                } else {
+                    EmptyHome(showAddTrip: $showAddTrip)
+                }
+            }
+            .background(Theme.background)
+            .navigationTitle("Reclock")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showAddTrip = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .accessibilityLabel("Add trip")
+                    }
+                }
+            }
+            .sheet(isPresented: $showAddTrip) {
+                AddTripFlow()
+            }
+        }
+    }
+}
+
+// MARK: - Empty state
+
+private struct EmptyHome: View {
+    @Environment(AppModel.self) private var model
+    @Binding var showAddTrip: Bool
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: Theme.Space.l) {
+                Spacer(minLength: 40)
+                Image(systemName: "sun.and.horizon.fill")
+                    .font(.system(size: 56))
+                    .foregroundStyle(Theme.tint(for: .seekLight))
+                    .accessibilityHidden(true)
+                Text("Feel local when you land")
+                    .font(.largeTitle.weight(.bold))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Theme.textPrimary)
+                Text("Add your next trip and Reclock builds a practical plan for sleep, light, and caffeine — free, private, and it works offline.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal)
+                Button("Add my trip") { showAddTrip = true }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.horizontal, Theme.Space.xl)
+                Button("See an example") {
+                    Task { await model.seedDemoData() }
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .padding(.horizontal, Theme.Space.xl)
+                Spacer()
+            }
+            .padding(Theme.Space.m)
+        }
+    }
+}
+
+// MARK: - Active trip home
+
+private struct TripHomeContent: View {
+    @Environment(AppModel.self) private var model
+    let trip: Trip
+    @State private var notificationsPending = false
+
+    var body: some View {
+        SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
+            let now = timeline.date
+            let context = model.nowContext(trip: trip)
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    HomeHeader(trip: trip, context: context, now: now)
+
+                    if !model.lastChangeMessages.isEmpty {
+                        ChangeBanner(messages: model.lastChangeMessages)
+                    }
+
+                    if notificationsPending {
+                        NotificationNudge(onEnabled: { notificationsPending = false })
+                    }
+
+                    if let current = context.current.first {
+                        NowCard(action: current, trip: trip, now: now)
+                    } else {
+                        QuietNowCard(next: context.next.first, now: now)
+                    }
+
+                    if context.current.count > 1 {
+                        ForEach(context.current.dropFirst()) { action in
+                            NavigationLink(value: action) {
+                                ActionRow(action: action)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    if !context.next.isEmpty {
+                        SectionHeader(title: "Next")
+                        ForEach(context.next) { action in
+                            NavigationLink(value: action) {
+                                ActionRow(action: action)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    TonightCard(context: context)
+
+                    NavigationLink {
+                        TripDetailView(trip: trip)
+                    } label: {
+                        TripSummaryRow(trip: trip, plan: model.plan(for: trip))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(Theme.Space.m)
+            }
+            .navigationDestination(for: PlanAction.self) { action in
+                ActionDetailView(action: action, trip: trip)
+            }
+        }
+        .task {
+            if let profile = model.profile, profile.notifications.enabled {
+                notificationsPending = !(await model.deps.notifications.permissionGranted())
+            }
+        }
+    }
+}
+
+// MARK: - Notification nudge
+
+private struct NotificationNudge: View {
+    @Environment(AppModel.self) private var model
+    var onEnabled: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Label("Get nudged at the right moments", systemImage: "bell.badge.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text("Your plan is ready. Reminders fire exactly when a window opens — even in airplane mode.")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
+            Button("Turn on reminders") {
+                Task {
+                    if await model.requestNotificationPermission() {
+                        onEnabled()
+                    }
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Theme.accent)
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+}
+
+// MARK: - Header
+
+private struct HomeHeader: View {
+    let trip: Trip
+    let context: AppModel.NowContext
+    let now: Date
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(context.dayLabel.isEmpty ? trip.name : context.dayLabel)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(Theme.textPrimary)
+            HStack(spacing: Theme.Space.s) {
+                ClockChip(
+                    title: "Home",
+                    zone: trip.homeZone.resolved,
+                    now: now
+                )
+                ClockChip(
+                    title: TimeFormat.zoneCity(trip.destinationZone.resolved),
+                    zone: trip.destinationZone.resolved,
+                    now: now
+                )
+                Spacer()
+                ProgressRing(progress: context.progress, label: "Adjusted")
+            }
+        }
+    }
+}
+
+// MARK: - Change banner
+
+private struct ChangeBanner: View {
+    @Environment(AppModel.self) private var model
+    let messages: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            ForEach(messages, id: \.self) { message in
+                Label(message, systemImage: "arrow.triangle.2.circlepath")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textPrimary)
+            }
+            Button("Got it") {
+                model.lastChangeMessages = []
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.accent)
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+    }
+}
+
+// MARK: - Quiet state
+
+private struct QuietNowCard: View {
+    let next: PlanAction?
+    let now: Date
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Label("Nothing to do right now", systemImage: "checkmark.seal.fill")
+                .font(.headline)
+                .foregroundStyle(Theme.textPrimary)
+            if let next {
+                Text("Next up: \(next.title.lowercased()) in \(TimeFormat.countdown(to: next.window.start, from: now)).")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            } else {
+                Text("You're through the plan. Keep regular hours and enjoy the trip.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .padding(Theme.Space.l)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+}
+
+// MARK: - Tonight
+
+private struct TonightCard: View {
+    let context: AppModel.NowContext
+
+    var body: some View {
+        if context.tonightSleep != nil || context.tonightCutoff != nil {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                SectionHeader(title: "Tonight")
+                if let cutoff = context.tonightCutoff {
+                    TonightRow(
+                        icon: "cup.and.saucer",
+                        tint: Theme.tint(for: .caffeineCutoff),
+                        title: "Last caffeine",
+                        value: TimeFormat.time(cutoff.window.start, zone: cutoff.displayZone.resolved)
+                    )
+                }
+                if let sleep = context.tonightSleep {
+                    TonightRow(
+                        icon: "bed.double.fill",
+                        tint: Theme.tint(for: .sleep),
+                        title: "Sleep window",
+                        value: TimeFormat.range(sleep.window, zone: sleep.displayZone.resolved)
+                    )
+                }
+                if let optional = context.tonightOptional {
+                    TonightRow(
+                        icon: "pills.fill",
+                        tint: Theme.tint(for: .melatoninOptional),
+                        title: "Optional melatonin",
+                        value: TimeFormat.time(optional.window.start, zone: optional.displayZone.resolved)
+                    )
+                }
+            }
+            .padding(Theme.Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+        }
+    }
+}
+
+private struct TonightRow: View {
+    let icon: String
+    let tint: Color
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+                .frame(width: 28)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(Theme.textPrimary)
+            Spacer()
+            Text(value)
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Trip summary row
+
+private struct TripSummaryRow: View {
+    let trip: Trip
+    let plan: JetLagPlan?
+
+    var body: some View {
+        HStack(spacing: Theme.Space.m) {
+            Image(systemName: "airplane.circle.fill")
+                .font(.title2)
+                .foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(trip.origin) → \(trip.destination)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                if let plan {
+                    Text(plan.strategySummary)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(2)
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.textSecondary)
+                .accessibilityHidden(true)
+        }
+        .padding(Theme.Space.m)
+        .card()
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}

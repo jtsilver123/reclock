@@ -1,0 +1,358 @@
+import SwiftUI
+import ReclockKit
+
+struct SettingsView: View {
+    @Environment(AppModel.self) private var model
+
+    @State private var showDeleteAllConfirm = false
+    @State private var exportedData: ExportPayload?
+    @State private var notificationStatusGranted: Bool?
+
+    struct ExportPayload: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                profileSection
+                notificationSection
+                planningSection
+                Section("Understand the plan") {
+                    NavigationLink {
+                        WhyItWorksView()
+                    } label: {
+                        Label("Why light, sleep & caffeine timing work", systemImage: "questionmark.circle")
+                    }
+                }
+                privacySection
+                aboutSection
+                #if DEBUG
+                Section("Developer") {
+                    NavigationLink {
+                        DevMenuView()
+                    } label: {
+                        Label("Demo trips & fixtures", systemImage: "wrench.and.screwdriver")
+                    }
+                }
+                #endif
+            }
+            .navigationTitle("Settings")
+            .task {
+                notificationStatusGranted = await model.deps.notifications.permissionGranted()
+            }
+            .confirmationDialog(
+                "Delete all Reclock data?",
+                isPresented: $showDeleteAllConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete everything", role: .destructive) {
+                    Task { await model.deleteAllData() }
+                }
+            } message: {
+                Text("Removes your profile, trips, plans, reminders and survey answers from this device. There is no server copy — this is permanent.")
+            }
+            .sheet(item: $exportedData) { payload in
+                ShareSheet(url: payload.url)
+            }
+        }
+    }
+
+    // MARK: Profile
+
+    @ViewBuilder
+    private var profileSection: some View {
+        if let profile = model.profile {
+            Section("Your sleep profile") {
+                NavigationLink {
+                    ProfileEditorView(profile: profile)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sleep \(profile.typicalBedtime.description) – \(profile.typicalWakeTime.description) · \(profile.chronotype.displayName)")
+                            .font(.subheadline)
+                        Text("Plane sleep: \(profile.planeSleepAbility.displayName) · Pre-trip: \(profile.preTripAdjustment.displayName)")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Notifications
+
+    private var notificationSection: some View {
+        Section("Notifications") {
+            if let granted = notificationStatusGranted, !granted {
+                Button {
+                    Task {
+                        notificationStatusGranted = await model.requestNotificationPermission()
+                    }
+                } label: {
+                    Label("Enable reminders", systemImage: "bell.badge")
+                }
+                Text("Without alerts, the Today tab still shows everything as an in-app checklist. You can also enable alerts later in iOS Settings → Notifications → Reclock.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+            } else {
+                Toggle(
+                    "Plan reminders",
+                    isOn: profileBinding(\.notifications.enabled)
+                )
+                Toggle(
+                    "Include optional actions",
+                    isOn: profileBinding(\.notifications.includeOptionalActions)
+                )
+                QuietHoursEditor()
+            }
+        }
+    }
+
+    // MARK: Planning
+
+    private var planningSection: some View {
+        Section("Planning") {
+            Toggle("Caffeine guidance", isOn: Binding(
+                get: { model.profile?.caffeine == .include },
+                set: { newValue in
+                    Task {
+                        guard var profile = model.profile else { return }
+                        profile.caffeine = newValue ? .include : .exclude
+                        await model.updateProfile(profile)
+                    }
+                }
+            ))
+            Toggle("Optional melatonin reminders", isOn: Binding(
+                get: { model.profile?.melatonin.remindersEnabled ?? false },
+                set: { newValue in
+                    Task {
+                        guard var profile = model.profile else { return }
+                        profile.melatonin = newValue ? .includeOptionalReminders : .exclude
+                        await model.updateProfile(profile)
+                    }
+                }
+            ))
+        }
+    }
+
+    // MARK: Privacy
+
+    private var privacySection: some View {
+        Section {
+            Label("Everything stays on this device", systemImage: "iphone.and.arrow.forward")
+                .font(.subheadline)
+            Text("No account. No server. Calendar scanning is on-device; plans and reminders work in airplane mode. Anonymous usage analytics are OFF unless you turn them on.")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
+            Toggle("Share anonymous usage analytics", isOn: Binding(
+                get: { model.state.settings.analyticsEnabled },
+                set: { newValue in
+                    var settings = model.state.settings
+                    settings.analyticsEnabled = newValue
+                    Task { await model.updateSettings(settings) }
+                }
+            ))
+            Button {
+                Task {
+                    if let data = await model.exportData() {
+                        let url = FileManager.default.temporaryDirectory
+                            .appendingPathComponent("reclock-export.json")
+                        try? data.write(to: url)
+                        exportedData = ExportPayload(url: url)
+                    }
+                }
+            } label: {
+                Label("Export my data (JSON)", systemImage: "square.and.arrow.up")
+            }
+            Button(role: .destructive) {
+                showDeleteAllConfirm = true
+            } label: {
+                Label("Delete all data", systemImage: "trash")
+            }
+        } header: {
+            Text("Privacy")
+        }
+    }
+
+    // MARK: About
+
+    private var aboutSection: some View {
+        Section("About") {
+            LabeledContent("Version", value: appVersion)
+            LabeledContent("Plan protocol", value: "v\(ProtocolVersion.current.description)")
+            Link(destination: URL(string: "https://reclock.app/privacy")!) {
+                Label("Privacy policy", systemImage: "hand.raised")
+            }
+            Link(destination: URL(string: "https://reclock.app/support")!) {
+                Label("Support", systemImage: "lifepreserver")
+            }
+            Text("Reclock offers general wellness guidance for travel, not medical advice. If you have a sleep disorder or health condition, talk to a clinician.")
+                .font(.caption2)
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
+    }
+
+    private func profileBinding(_ keyPath: WritableKeyPath<UserProfile, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { model.profile?[keyPath: keyPath] ?? false },
+            set: { newValue in
+                Task {
+                    guard var profile = model.profile else { return }
+                    profile[keyPath: keyPath] = newValue
+                    await model.updateProfile(profile)
+                }
+            }
+        )
+    }
+}
+
+// MARK: - Quiet hours
+
+private struct QuietHoursEditor: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let profile = model.profile {
+            HStack {
+                Text("Quiet hours")
+                Spacer()
+                Text("\(profile.notifications.quietHours.start.description) – \(profile.notifications.quietHours.end.description)")
+                    .foregroundStyle(Theme.textSecondary)
+                    .font(.callout.monospacedDigit())
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+// MARK: - Profile editor
+
+struct ProfileEditorView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State var profile: UserProfile
+
+    @State private var bedtime = Date()
+    @State private var wakeTime = Date()
+
+    var body: some View {
+        Form {
+            Section("Normal sleep") {
+                DatePicker("Bedtime", selection: $bedtime, displayedComponents: .hourAndMinute)
+                DatePicker("Wake time", selection: $wakeTime, displayedComponents: .hourAndMinute)
+                Picker("Chronotype", selection: $profile.chronotype) {
+                    ForEach(Chronotype.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+            }
+            Section("On planes") {
+                Picker("Sleep on planes", selection: $profile.planeSleepAbility) {
+                    ForEach(PlaneSleepAbility.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                if profile.planeSleepAbility != .never {
+                    Stepper(
+                        "Max in-flight sleep: \(Int(profile.maxInFlightSleep / 3600))h",
+                        value: Binding(
+                            get: { profile.maxInFlightSleep / 3600 },
+                            set: { profile.maxInFlightSleep = $0 * 3600 }
+                        ),
+                        in: 1...9,
+                        step: 1
+                    )
+                    Toggle("Skip meals to sleep", isOn: $profile.prioritizesSleepOverMeals)
+                }
+            }
+            Section("Before a trip") {
+                Picker("Pre-trip adjustment", selection: $profile.preTripAdjustment) {
+                    ForEach(PreTripAdjustmentWillingness.allCases, id: \.self) {
+                        Text($0.displayName).tag($0)
+                    }
+                }
+            }
+            Section {
+                Button("Save changes") {
+                    Task {
+                        var updated = profile
+                        let bedComps = Calendar.current.dateComponents([.hour, .minute], from: bedtime)
+                        let wakeComps = Calendar.current.dateComponents([.hour, .minute], from: wakeTime)
+                        updated.typicalBedtime = LocalClockTime(hour: bedComps.hour ?? 23, minute: bedComps.minute ?? 0)
+                        updated.typicalWakeTime = LocalClockTime(hour: wakeComps.hour ?? 7, minute: wakeComps.minute ?? 0)
+                        await model.updateProfile(updated)
+                        dismiss()
+                    }
+                }
+            } footer: {
+                Text("Changing your profile rebuilds the plan for upcoming trips.")
+            }
+        }
+        .navigationTitle("Sleep profile")
+        .onAppear {
+            bedtime = Calendar.current.date(
+                bySettingHour: profile.typicalBedtime.hour,
+                minute: profile.typicalBedtime.minute, second: 0, of: Date()
+            ) ?? Date()
+            wakeTime = Calendar.current.date(
+                bySettingHour: profile.typicalWakeTime.hour,
+                minute: profile.typicalWakeTime.minute, second: 0, of: Date()
+            ) ?? Date()
+        }
+    }
+}
+
+// MARK: - Share sheet
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Dev menu (DEBUG only)
+
+#if DEBUG
+struct DevMenuView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        List {
+            Section("Load fixture (replaces nothing, adds trip)") {
+                fixtureButton("NYC → Helsinki (+7 east, return)") { DemoTrips.newYorkToHelsinki(reference: $0) }
+                fixtureButton("LA → Tokyo (date line, −8)") { DemoTrips.losAngelesToTokyo(reference: $0) }
+                fixtureButton("London → NYC (−5 west)") { DemoTrips.londonToNewYork(reference: $0) }
+                fixtureButton("NYC → Honolulu (−6 west)") { DemoTrips.newYorkToHonolulu(reference: $0) }
+                fixtureButton("Sydney → SF (date line east)") { DemoTrips.sydneyToSanFrancisco(reference: $0) }
+                fixtureButton("NYC → Singapore via FRA (+12)") { DemoTrips.newYorkToSingaporeViaFrankfurt(reference: $0) }
+                fixtureButton("48h London (anchor mode)") { DemoTrips.shortLondonBusinessTrip(reference: $0) }
+                fixtureButton("Wedding in London (max mode)") { DemoTrips.weddingTrip(reference: $0) }
+                fixtureButton("Delayed overnight EWR → LHR") { DemoTrips.delayedOvernight(reference: $0) }
+            }
+            Section("Reference date") {
+                Text("Fixtures are generated relative to now − 5 days, so the flagship trip sits on landing day.")
+                    .font(.caption)
+            }
+        }
+        .navigationTitle("Dev fixtures")
+    }
+
+    private func fixtureButton(_ title: String, _ make: @escaping (Date) -> Trip) -> some View {
+        Button(title) {
+            Task {
+                let reference = model.deps.now().addingTimeInterval(-5 * 86_400)
+                let trip = make(reference)
+                let profile = model.profile ?? DemoTrips.defaultProfile(homeZone: TimeZone.current.identifier)
+                await model.loadFixture((trip, profile), reference: reference)
+            }
+        }
+    }
+}
+#endif
