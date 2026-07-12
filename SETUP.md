@@ -89,7 +89,7 @@ dashboard (takes seconds, the old key dies instantly).
 - **Engine plan dump:** `RECLOCK_DUMP=1 swift test --filter PlanDumpDebug` prints two full
   human-readable plans for eyeballing.
 
-## TestFlight
+## TestFlight (from your Mac)
 
 1. Set your team + bundle ID (above); bump `MARKETING_VERSION` if needed.
 2. Product → Archive (scheme Reclock, Any iOS Device).
@@ -98,6 +98,29 @@ dashboard (takes seconds, the old key dies instantly).
 4. In App Store Connect: add the TestFlight description from `APP_STORE_METADATA.md`
    (§TestFlight) and invite testers.
 5. Before submission proper, walk `APP_REVIEW_CHECKLIST.md` top to bottom on a device.
+
+## TestFlight from CI (no Mac needed, one-time setup)
+
+The **TestFlight** workflow (Actions tab → TestFlight → Run workflow) archives, signs via
+Apple's cloud-managed certificates, and uploads — entirely on GitHub's macOS runners.
+
+One-time setup:
+
+1. **App record:** App Store Connect → Apps → “+” → New App, with your bundle ID
+   (default `app.reclock.ios`, or set repo variable `RECLOCK_BUNDLE_ID`).
+2. **API key:** App Store Connect → Users and Access → Integrations →
+   App Store Connect API → Team Keys → “+”. Role: **App Manager**. Download the `.p8`
+   (only downloadable once).
+3. **Repo secrets** (Settings → Secrets and variables → Actions):
+   - `ASC_KEY_ID` — the key's ID (e.g. `2X9R4HXF34`)
+   - `ASC_ISSUER_ID` — the issuer UUID shown above the key list
+   - `ASC_API_KEY_P8` — the full contents of the `.p8` file
+   - `APPLE_TEAM_ID` — your 10-character team ID (Membership page)
+4. Run the workflow. Build number defaults to the run number; the upload appears in
+   TestFlight after Apple's ~5–15 min processing.
+
+Signing uses `-allowProvisioningUpdates` with the API key (cloud-managed distribution
+certificate + auto-registered App ID) — no certificates or profiles to export from a Mac.
 
 ## Credentials still required (account owner)
 

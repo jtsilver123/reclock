@@ -5,13 +5,17 @@ on:
     branches: ["**"]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   engine-tests-linux:
     name: Engine tests (Linux, Swift 6)
     runs-on: ubuntu-24.04
     container: swift:6.1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run ReclockKit tests
         working-directory: ReclockKit
         run: swift test --parallel
@@ -20,26 +24,38 @@ jobs:
     name: iOS build + tests (macOS)
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app || sudo xcode-select -s /Applications/Xcode.app
-      - name: Show destinations
-        run: xcodebuild -showsdks | grep -i iphonesimulator
+      - uses: actions/checkout@v5
+      - name: Toolchain info
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available | sed -n '1,20p'
+      - name: Pick a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available | awk -F'[()]' '/iPhone/ {gsub(/ /, "", $2); print $2; exit}')
+          if [ -z "$UDID" ]; then
+            echo "No available iPhone simulator on this runner image"
+            exit 1
+          fi
+          echo "Using simulator $UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
       - name: Build app
         run: |
           set -o pipefail
-          xcodebuild build \
-            -project Reclock.xcodeproj \
-            -scheme Reclock \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
-            CODE_SIGNING_ALLOWED=NO \
-            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES | xcbeautify --renderer github-actions || \
-          xcodebuild build \
-            -project Reclock.xcodeproj \
-            -scheme Reclock \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
-            CODE_SIGNING_ALLOWED=NO
-      - name: Unit tests (kit, on macOS toolchain)
+          if command -v xcbeautify >/dev/null; then
+            xcodebuild build \
+              -project Reclock.xcodeproj \
+              -scheme Reclock \
+              -destination "id=${{ steps.sim.outputs.udid }}" \
+              CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
+          else
+            xcodebuild build \
+              -project Reclock.xcodeproj \
+              -scheme Reclock \
+              -destination "id=${{ steps.sim.outputs.udid }}" \
+              CODE_SIGNING_ALLOWED=NO
+          fi
+      - name: Kit tests (macOS toolchain)
         working-directory: ReclockKit
         run: swift test --parallel
       - name: UI tests
@@ -48,6 +64,6 @@ jobs:
           xcodebuild test \
             -project Reclock.xcodeproj \
             -scheme Reclock \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
             -only-testing:ReclockUITests \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO | tee uitest.log | tail -80
