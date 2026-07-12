@@ -4,7 +4,7 @@
 
 | Layer | Tooling | Where it runs | Count |
 | --- | --- | --- | --- |
-| Engine/unit (all business logic) | Swift Testing (`swift test`) | Linux CI + macOS CI + local | 63 |
+| Engine/unit (all business logic) | Swift Testing (`swift test`) | Linux CI + macOS CI + local | 67 |
 | UI critical path | XCUITest | macOS CI simulator | 6 |
 | Manual device pass | APP_REVIEW_CHECKLIST.md | Before each submission | — |
 

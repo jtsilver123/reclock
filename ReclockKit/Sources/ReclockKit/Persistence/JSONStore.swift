@@ -51,15 +51,19 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var analyticsEnabled: Bool
     /// Display timeline in destination time, home time, or both.
     public var timeDisplay: TimeDisplayMode
+    /// Trip the user explicitly focused (Today/Timeline follow it). nil = automatic.
+    public var selectedTripID: UUID?
 
     public init(
         localOnlyMode: Bool = false,
         analyticsEnabled: Bool = false,
-        timeDisplay: TimeDisplayMode = .destination
+        timeDisplay: TimeDisplayMode = .destination,
+        selectedTripID: UUID? = nil
     ) {
         self.localOnlyMode = localOnlyMode
         self.analyticsEnabled = analyticsEnabled
         self.timeDisplay = timeDisplay
+        self.selectedTripID = selectedTripID
     }
 }
 

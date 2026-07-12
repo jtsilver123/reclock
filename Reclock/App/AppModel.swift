@@ -55,10 +55,23 @@ final class AppModel {
     var profile: UserProfile? { state.profile }
 
     var activeTrip: Trip? {
-        let now = deps.now()
-        // Prefer a trip whose window (including pre-trip shift days and recovery) contains now,
-        // else the next upcoming, else the most recent.
         let candidates = state.trips.filter { $0.status != .archived }
+        // An explicit user selection wins as long as the trip still exists.
+        if let selected = state.settings.selectedTripID,
+           let trip = candidates.first(where: { $0.id == selected }) {
+            return trip
+        }
+        return Self.automaticTrip(from: candidates, now: deps.now())
+    }
+
+    /// The trip Today/Timeline would follow with no explicit selection.
+    var automaticTrip: Trip? {
+        Self.automaticTrip(from: state.trips.filter { $0.status != .archived }, now: deps.now())
+    }
+
+    /// Heuristic: a trip whose window (including pre-trip shift days and recovery)
+    /// contains now, else the next upcoming, else the most recent.
+    private static func automaticTrip(from candidates: [Trip], now: Date) -> Trip? {
         let current = candidates.first { trip in
             guard let dep = trip.firstDeparture, let arr = trip.finalArrival else { return false }
             return dep.addingTimeInterval(-4 * 86_400) <= now && now <= arr.addingTimeInterval(8 * 86_400)
@@ -68,6 +81,19 @@ final class AppModel {
             .filter { ($0.firstDeparture ?? .distantPast) > now }
             .min { ($0.firstDeparture ?? .distantFuture) < ($1.firstDeparture ?? .distantFuture) }
             ?? candidates.max { ($0.firstDeparture ?? .distantPast) < ($1.firstDeparture ?? .distantPast) }
+    }
+
+    func selectTrip(_ id: UUID?) async {
+        state.settings.selectedTripID = id
+        await persist()
+    }
+
+    func hasSurvey(for trip: Trip) -> Bool {
+        state.surveys.contains { $0.tripID == trip.id }
+    }
+
+    func shareText(for trip: Trip) -> String? {
+        plan(for: trip).map { PlanShareFormatter.text(trip: trip, plan: $0) }
     }
 
     func plan(for trip: Trip) -> JetLagPlan? {
@@ -193,8 +219,50 @@ final class AppModel {
         state.trips.removeAll { $0.id == trip.id }
         state.plans.removeAll { $0.tripID == trip.id }
         state.setTravelerState(nil, forTrip: trip.id)
+        if state.settings.selectedTripID == trip.id {
+            state.settings.selectedTripID = nil
+        }
         await persist()
         await deps.notifications.cancelAll(forTrip: trip.id)
+    }
+
+    // MARK: - Commitments
+
+    func addCommitment(_ commitment: FixedCommitment, to trip: Trip) async {
+        var updated = trip
+        updated.commitments.append(commitment)
+        updated.commitments.sort { $0.start < $1.start }
+        await updateTrip(updated)
+    }
+
+    func updateCommitment(_ commitment: FixedCommitment, in trip: Trip) async {
+        var updated = trip
+        guard let index = updated.commitments.firstIndex(where: { $0.id == commitment.id }) else { return }
+        updated.commitments[index] = commitment
+        updated.commitments.sort { $0.start < $1.start }
+        await updateTrip(updated)
+    }
+
+    func removeCommitment(id: UUID, from trip: Trip) async {
+        var updated = trip
+        updated.commitments.removeAll { $0.id == id }
+        await updateTrip(updated)
+    }
+
+    // MARK: - Segment edits
+
+    /// Corrects a segment's times (typo fixes, schedule changes known in advance).
+    /// Unlike `reportDelay`, this does not mark the flight as delayed.
+    func editSegmentTimes(trip: Trip, segmentID: UUID, newDeparture: Date, newArrival: Date) async {
+        var updated = trip
+        updated.segments = trip.segments.map { segment in
+            guard segment.id == segmentID else { return segment }
+            var s = segment
+            s.departure = newDeparture
+            s.arrival = newArrival
+            return s
+        }.sorted { $0.departure < $1.departure }
+        await updateTrip(updated)
     }
 
     func updateTrip(_ trip: Trip, regenerate: Bool = true) async {

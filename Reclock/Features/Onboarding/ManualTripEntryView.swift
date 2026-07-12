@@ -219,8 +219,8 @@ private struct SegmentEditor: View {
     }
 }
 
-/// Airport autocomplete backed by the bundled directory; falls back to a plain code +
-/// manual zone if the airport is unknown.
+/// Airport autocomplete backed by the bundled directory, with a custom-airport fallback
+/// (code + time zone) so smaller airports are never a dead end.
 struct AirportField: View {
     @Environment(AppModel.self) private var model
     let label: String
@@ -228,6 +228,7 @@ struct AirportField: View {
 
     @State private var query = ""
     @State private var isSearching = false
+    @State private var showCustomEntry = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -258,34 +259,122 @@ struct AirportField: View {
             }
             if isSearching && selection == nil && !query.isEmpty {
                 let hits = model.deps.airports.search(query, limit: 5)
-                if hits.isEmpty {
-                    Text("Unknown airport — try the city name or a nearby major airport.")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                } else {
-                    ForEach(hits) { airport in
-                        Button {
-                            selection = airport
-                            isSearching = false
-                        } label: {
-                            HStack {
-                                Text(airport.iata)
-                                    .font(.subheadline.weight(.bold).monospaced())
-                                    .foregroundStyle(Theme.accent)
-                                VStack(alignment: .leading) {
-                                    Text(airport.city)
-                                        .font(.subheadline)
-                                        .foregroundStyle(Theme.textPrimary)
-                                    Text(airport.name)
-                                        .font(.caption2)
-                                        .foregroundStyle(Theme.textSecondary)
-                                }
-                                Spacer()
+                ForEach(hits) { airport in
+                    Button {
+                        selection = airport
+                        isSearching = false
+                    } label: {
+                        HStack {
+                            Text(airport.iata)
+                                .font(.subheadline.weight(.bold).monospaced())
+                                .foregroundStyle(Theme.accent)
+                            VStack(alignment: .leading) {
+                                Text(airport.city)
+                                    .font(.subheadline)
+                                    .foregroundStyle(Theme.textPrimary)
+                                Text(airport.name)
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.textSecondary)
                             }
-                            .padding(.vertical, 2)
+                            Spacer()
                         }
+                        .padding(.vertical, 2)
                     }
                 }
+                if hits.isEmpty {
+                    Button {
+                        showCustomEntry = true
+                    } label: {
+                        Label("Not listed? Add “\(query.uppercased().prefix(3))” with its time zone", systemImage: "plus.circle")
+                            .font(.caption)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showCustomEntry) {
+            CustomAirportSheet(initialCode: String(query.uppercased().prefix(3))) { airport in
+                selection = airport
+                isSearching = false
+            }
+        }
+    }
+}
+
+/// Fallback entry for airports outside the bundled directory: a code plus the airport's
+/// time zone — everything the planner actually needs.
+private struct CustomAirportSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let initialCode: String
+    let onSave: (Airport) -> Void
+
+    @State private var code: String = ""
+    @State private var zoneQuery = ""
+    @State private var selectedZone: String?
+
+    private var zoneMatches: [String] {
+        guard zoneQuery.count >= 2 else { return [] }
+        let q = zoneQuery.replacingOccurrences(of: " ", with: "_").lowercased()
+        return TimeZone.knownTimeZoneIdentifiers
+            .filter { $0.lowercased().contains(q) }
+            .prefix(6)
+            .map { $0 }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Airport code") {
+                    TextField("e.g. BGO", text: $code)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                }
+                Section {
+                    if let zone = selectedZone {
+                        HStack {
+                            Text(zone)
+                            Spacer()
+                            Button("Change") { selectedZone = nil }
+                                .font(.footnote)
+                        }
+                    } else {
+                        TextField("Search a city, e.g. Oslo", text: $zoneQuery)
+                            .autocorrectionDisabled()
+                        ForEach(zoneMatches, id: \.self) { zone in
+                            Button(zone.replacingOccurrences(of: "_", with: " ")) {
+                                selectedZone = zone
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Airport time zone")
+                } footer: {
+                    Text("Pick the city that shares the airport's clock — that's all the planner needs to get every time right.")
+                }
+            }
+            .navigationTitle("Custom airport")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Use airport") {
+                        guard let zoneID = selectedZone else { return }
+                        let cleaned = code.trimmingCharacters(in: .whitespaces).uppercased()
+                        onSave(Airport(
+                            iata: cleaned,
+                            name: "Custom airport",
+                            city: cleaned,
+                            country: "",
+                            zone: ZoneID(zoneID)
+                        ))
+                        dismiss()
+                    }
+                    .disabled(code.trimmingCharacters(in: .whitespaces).count != 3 || selectedZone == nil)
+                }
+            }
+            .onAppear {
+                if code.isEmpty { code = initialCode }
             }
         }
     }

@@ -188,11 +188,21 @@ struct ActionDetailView: View {
                     .buttonStyle(SecondaryButtonStyle())
                 } else {
                     Label(
-                        action.completion == .done ? "Completed" : "Marked as \(action.completion.rawValue)",
+                        action.completion == .done ? "Completed" : "Marked as \(completionText)",
                         systemImage: action.completion == .done ? "checkmark.circle.fill" : "slash.circle"
                     )
                     .font(.headline)
                     .foregroundStyle(action.completion == .done ? .green : Theme.textSecondary)
+
+                    if action.completion != .expired {
+                        Button("Undo — mark as not done yet") {
+                            Task {
+                                await model.setCompletion(.pending, for: action, in: trip)
+                                dismiss()
+                            }
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                    }
                 }
             }
             .padding(Theme.Space.m)
@@ -200,5 +210,15 @@ struct ActionDetailView: View {
         .background(Theme.background)
         .navigationTitle("Plan step")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var completionText: String {
+        switch action.completion {
+        case .notPossible: "couldn't do it"
+        case .skipped: "skipped"
+        case .sleptInstead: "slept instead"
+        case .expired: "missed"
+        default: action.completion.rawValue
+        }
     }
 }

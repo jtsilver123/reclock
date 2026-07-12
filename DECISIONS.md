@@ -107,6 +107,30 @@ product brief left open — or where I deliberately diverged from it — are cal
     future string-catalog pass mechanical. Day labels from the engine are English; they
     move into the app's localization layer when localization lands.
 
+## Post-audit feature pass (v1 polish)
+
+27. **Commitments got first-class UI** (Trip → add/edit/swipe-delete, with "needs me
+    sharp" and "unmissable" toggles): the engine always honored them; now users can
+    actually enter them. Times are entered in destination local time and reinterpreted
+    to instants — never device-zone guesses.
+28. **Trips list & focus switcher**: tap to pin Today/Timeline to any trip; picking the
+    automatic choice clears the pin (`AppSettings.selectedTripID`). The toolbar entry
+    only appears once a second trip exists — zero added chrome for the common case.
+29. **Quiet hours are editable** (two wheel pickers), with copy explaining the
+    sleep-adjacent exemption.
+30. **Tap a flight to correct its times** — separate from the delay flow: corrections
+    don't mark the flight delayed; disruptions still do.
+31. **Custom airports**: unknown code → enter the 3-letter code + pick its time zone
+    from the IANA list. The 137-airport directory is a convenience, not a wall.
+32. **Post-trip check-in prompt** appears on Home when a trip completes without a
+    survey; undo exists for mis-tapped Done/Couldn't.
+33. **Share plan as text** (`PlanShareFormatter`, kit-tested): essentials only, local
+    times with city labels — no permissions, no attachments. Calendar *write* export was
+    deliberately rejected: PRIVACY.md promises read-only calendar access, and that
+    promise is worth more than the feature.
+34. **Deferred with intent**: widgets/Live Activities (needs a second target — next
+    release), Siri shortcuts, iPad layout, calendar-write export (see #33).
+
 ## Known limitations (candid)
 
 - Engine day labels ("Landing day · Sun, Sep 20") are English strings from the kit.

@@ -9,6 +9,9 @@ struct TripDetailView: View {
     @State private var showDelaySheet = false
     @State private var showDeleteConfirm = false
     @State private var showSurvey = false
+    @State private var editingSegment: FlightSegment?
+    @State private var showAddCommitment = false
+    @State private var editingCommitment: FixedCommitment?
 
     private var currentTrip: Trip {
         model.state.trips.first { $0.id == trip.id } ?? trip
@@ -39,25 +42,48 @@ struct TripDetailView: View {
                     .foregroundStyle(Theme.textSecondary)
             }
 
-            Section("Flights") {
+            Section {
                 ForEach(currentTrip.segments) { segment in
-                    SegmentRow(segment: segment)
+                    Button {
+                        editingSegment = segment
+                    } label: {
+                        SegmentRow(segment: segment)
+                    }
+                    .buttonStyle(.plain)
                 }
+            } header: {
+                Text("Flights")
+            } footer: {
+                Text("Tap a flight to correct its times.")
             }
 
-            if !currentTrip.commitments.isEmpty {
-                Section("Commitments the plan works around") {
-                    ForEach(currentTrip.commitments) { commitment in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(commitment.title)
-                                .font(.subheadline.weight(.medium))
-                            Text(TimeFormat.range(commitment.window, zone: commitment.zone.resolved)
-                                 + " · " + TimeFormat.dayDate(commitment.start, zone: commitment.zone.resolved))
-                                .font(.caption)
-                                .foregroundStyle(Theme.textSecondary)
+            Section {
+                ForEach(currentTrip.commitments) { commitment in
+                    Button {
+                        editingCommitment = commitment
+                    } label: {
+                        CommitmentRow(commitment: commitment)
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            Task { await model.removeCommitment(id: commitment.id, from: currentTrip) }
+                        } label: {
+                            Label("Remove", systemImage: "trash")
                         }
                     }
                 }
+                Button {
+                    showAddCommitment = true
+                } label: {
+                    Label("Add a commitment", systemImage: "plus.circle")
+                }
+            } header: {
+                Text("Commitments the plan works around")
+            } footer: {
+                Text(currentTrip.commitments.isEmpty
+                     ? "Work, a dinner, a wedding — add anything the plan must not schedule sleep or light windows over."
+                     : "Sleep, naps, and light windows always route around these.")
             }
 
             Section("Plan style") {
@@ -109,6 +135,11 @@ struct TripDetailView: View {
                         Label("How did it go? (post-trip check-in)", systemImage: "checklist")
                     }
                 }
+                if let shareText = model.shareText(for: currentTrip) {
+                    ShareLink(item: shareText) {
+                        Label("Share my plan", systemImage: "square.and.arrow.up")
+                    }
+                }
             }
 
             Section {
@@ -128,6 +159,15 @@ struct TripDetailView: View {
         }
         .sheet(isPresented: $showSurvey) {
             PostTripSurveyView(trip: currentTrip)
+        }
+        .sheet(item: $editingSegment) { segment in
+            SegmentEditSheet(trip: currentTrip, segment: segment)
+        }
+        .sheet(isPresented: $showAddCommitment) {
+            CommitmentFormView(trip: currentTrip, existing: nil)
+        }
+        .sheet(item: $editingCommitment) { commitment in
+            CommitmentFormView(trip: currentTrip, existing: commitment)
         }
         .confirmationDialog(
             "Delete this trip?",
@@ -198,6 +238,36 @@ struct TripDetailView: View {
             }
         }
         return "Automatic uses your profile's pre-trip preference (Settings → Sleep profile), capped by plan intensity. Pick a value to decide exactly when the shift begins for this trip."
+    }
+}
+
+private struct CommitmentRow: View {
+    let commitment: FixedCommitment
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            Image(systemName: commitment.requiresAlertness ? "bolt.circle.fill" : "calendar.circle.fill")
+                .font(.title3)
+                .foregroundStyle(commitment.importance == .critical ? Theme.priorityColor(.mustDo) : Theme.accent)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(commitment.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(TimeFormat.range(commitment.window, zone: commitment.zone.resolved)
+                     + " · " + TimeFormat.dayDate(commitment.start, zone: commitment.zone.resolved))
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                if commitment.requiresAlertness {
+                    Text("Needs you sharp")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+            Spacer()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 

@@ -155,6 +155,29 @@ enum TimeFormat {
             $0.replacingOccurrences(of: "_", with: " ")
         } ?? zone.identifier
     }
+
+    /// Reinterprets the wall-clock reading of `date` (in the device zone) as the same
+    /// wall-clock time in `zone`. DatePickers hand back device-zone instants; tickets
+    /// and destination events mean their *local* time.
+    static func reinterpret(_ date: Date, into zone: TimeZone) -> Date {
+        var deviceCal = Calendar(identifier: .gregorian)
+        deviceCal.timeZone = .current
+        let comps = deviceCal.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        var targetCal = Calendar(identifier: .gregorian)
+        targetCal.timeZone = zone
+        return targetCal.date(from: comps) ?? date
+    }
+
+    /// Inverse of `reinterpret`: shows an instant's wall-clock in `zone` as a device-zone
+    /// Date suitable for seeding a DatePicker.
+    static func pickerDate(for instant: Date, in zone: TimeZone) -> Date {
+        var zoneCal = Calendar(identifier: .gregorian)
+        zoneCal.timeZone = zone
+        let comps = zoneCal.dateComponents([.year, .month, .day, .hour, .minute], from: instant)
+        var deviceCal = Calendar(identifier: .gregorian)
+        deviceCal.timeZone = .current
+        return deviceCal.date(from: comps) ?? instant
+    }
 }
 
 // MARK: - Haptics

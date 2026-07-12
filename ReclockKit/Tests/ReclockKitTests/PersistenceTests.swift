@@ -111,6 +111,33 @@ struct PersistenceTests {
         #expect(object?["profile"] != nil)
     }
 
+    @Test("Share text is compact, essentials-only, and readable")
+    func shareFormatter() throws {
+        let trip = DemoTrips.newYorkToHelsinki(reference: TestSupport.reference)
+        let profile = DemoTrips.defaultProfile()
+        let plan = try TestSupport.engine.generatePlan(trip: trip, profile: profile, currentState: nil)
+        let text = PlanShareFormatter.text(trip: trip, plan: plan)
+
+        #expect(text.contains("JFK → Helsinki"))
+        #expect(text.contains("Sleep") || text.contains("sleep"))
+        // Optional-priority actions (melatonin is always optional) never appear in shares.
+        #expect(!text.contains("melatonin"))
+        #expect(!text.contains("Optional:"))
+        // Fits on a screen-ish: essentials only.
+        #expect(text.split(separator: "\n").count < 80)
+    }
+
+    @Test("Settings round-trip preserves the selected trip")
+    func selectedTripPersists() async throws {
+        let url = tempStoreURL()
+        let store = JSONStore(fileURL: url)
+        var state = try sampleState()
+        state.settings.selectedTripID = state.trips[0].id
+        try await store.save(state)
+        let reloaded = try await JSONStore(fileURL: url).load()
+        #expect(reloaded.settings.selectedTripID == state.trips[0].id)
+    }
+
     @Test("Model coding is stable across encode/decode")
     func modelCoding() throws {
         let state = try sampleState()

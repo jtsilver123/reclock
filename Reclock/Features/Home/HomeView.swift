@@ -4,6 +4,7 @@ import ReclockKit
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var showAddTrip = false
+    @State private var showTrips = false
 
     var body: some View {
         @Bindable var model = model
@@ -18,6 +19,16 @@ struct HomeView: View {
             .background(Theme.background)
             .navigationTitle("Reclock")
             .toolbar {
+                if model.state.trips.count > 1 || model.state.settings.selectedTripID != nil {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showTrips = true
+                        } label: {
+                            Image(systemName: "list.bullet.circle")
+                                .accessibilityLabel("My trips")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showAddTrip = true
@@ -29,6 +40,9 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showAddTrip) {
                 AddTripFlow()
+            }
+            .sheet(isPresented: $showTrips) {
+                TripsListView()
             }
         }
     }
@@ -83,9 +97,15 @@ private struct TripHomeContent: View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
             let now = timeline.date
             let context = model.nowContext(trip: trip)
+            let plan = model.plan(for: trip)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    HomeHeader(trip: trip, context: context, now: now)
+                    HomeHeader(
+                        trip: trip,
+                        context: context,
+                        now: now,
+                        requiredShiftHours: plan?.requiredShiftHours ?? 0
+                    )
 
                     if !model.lastChangeMessages.isEmpty {
                         ChangeBanner(messages: model.lastChangeMessages)
@@ -93,6 +113,10 @@ private struct TripHomeContent: View {
 
                     if notificationsPending {
                         NotificationNudge(onEnabled: { notificationsPending = false })
+                    }
+
+                    if trip.status == .completed && !model.hasSurvey(for: trip) {
+                        SurveyPromptCard(trip: trip)
                     }
 
                     if let current = context.current.first {
@@ -179,6 +203,7 @@ private struct HomeHeader: View {
     let trip: Trip
     let context: AppModel.NowContext
     let now: Date
+    let requiredShiftHours: Double
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -197,8 +222,45 @@ private struct HomeHeader: View {
                     now: now
                 )
                 Spacer()
-                ProgressRing(progress: context.progress, label: "Adjusted")
+                ProgressRing(progress: context.progress, label: shiftLabel)
             }
+        }
+    }
+
+    private var shiftLabel: String {
+        let total = abs(requiredShiftHours)
+        guard total > 0.5 else { return "Adjusted" }
+        let done = min(total, context.progress * total)
+        let doneText = done == done.rounded()
+            ? String(Int(done)) : String(format: "%.1f", done)
+        return "\(doneText) of \(Int(total.rounded()))h shifted"
+    }
+}
+
+// MARK: - Post-trip check-in prompt
+
+private struct SurveyPromptCard: View {
+    @Environment(AppModel.self) private var model
+    let trip: Trip
+    @State private var showSurvey = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Label("Back from \(trip.destination)?", systemImage: "checklist")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text("90 seconds: how rough was jet lag, and what was unrealistic? Your answers tune future plans.")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
+            Button("Quick check-in") { showSurvey = true }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+        .sheet(isPresented: $showSurvey) {
+            PostTripSurveyView(trip: trip)
         }
     }
 }

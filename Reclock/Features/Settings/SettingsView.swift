@@ -219,16 +219,43 @@ private struct QuietHoursEditor: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        if let profile = model.profile {
-            HStack {
-                Text("Quiet hours")
-                Spacer()
-                Text("\(profile.notifications.quietHours.start.description) – \(profile.notifications.quietHours.end.description)")
-                    .foregroundStyle(Theme.textSecondary)
-                    .font(.callout.monospacedDigit())
-            }
-            .accessibilityElement(children: .combine)
+        if model.profile != nil {
+            DatePicker(
+                "Quiet from",
+                selection: clockBinding(\.start),
+                displayedComponents: .hourAndMinute
+            )
+            DatePicker(
+                "until",
+                selection: clockBinding(\.end),
+                displayedComponents: .hourAndMinute
+            )
+            Text("Only sleep-related reminders (wind-down, sleep windows) may arrive during quiet hours; everything else waits or is skipped.")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
         }
+    }
+
+    private func clockBinding(_ keyPath: WritableKeyPath<ClockRange, LocalClockTime>) -> Binding<Date> {
+        Binding(
+            get: {
+                let clock = model.profile?.notifications.quietHours[keyPath: keyPath]
+                    ?? LocalClockTime(hour: 22)
+                return Calendar.current.date(
+                    bySettingHour: clock.hour, minute: clock.minute, second: 0, of: Date()
+                ) ?? Date()
+            },
+            set: { newValue in
+                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                Task {
+                    guard var profile = model.profile else { return }
+                    profile.notifications.quietHours[keyPath: keyPath] = LocalClockTime(
+                        hour: comps.hour ?? 22, minute: comps.minute ?? 0
+                    )
+                    await model.updateProfile(profile)
+                }
+            }
+        )
     }
 }
 

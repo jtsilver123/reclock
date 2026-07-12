@@ -25,8 +25,12 @@ in economy with a job can actually do.
 - **Adaptive.** Report a delay, a missed light window, or an accidental nap, and the rest
   of the plan is rebuilt from where your body clock actually is — with a plain-English
   explanation of what moved.
+- **Built around your commitments.** Add work, dinners, a wedding — the plan never
+  schedules sleep or light windows over them, and moves what it can around them.
 - **Simple in the moment.** The home screen shows only **Now / Next / Tonight**. The full
-  timeline is one tab away.
+  timeline is one tab away. Multiple trips? A one-tap switcher keeps Today focused on
+  the one you care about, and you can share your sleep windows as plain text with
+  whoever's meeting you.
 - **Private by default.** Everything lives on-device. Calendar parsing is local. Analytics
   are opt-in and anonymous. There is no server.
 - **Useful offline.** Plans and notifications are computed and scheduled locally, so
