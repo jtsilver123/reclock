@@ -132,7 +132,7 @@ moment did you stop following it, and why? (4) How long until you felt normal?
 A clock rising like the sun over a dusk horizon — stars above, warm glow below; ivory
 ring, 10:09 hands. Communicates "reset your clock at landing" without airplane clichés.
 Source: `Reclock/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`
-(generator script in repo history).
+(regenerate with `python3 tools/make_icon.py`, requires Pillow).
 
 ## Claims hygiene
 

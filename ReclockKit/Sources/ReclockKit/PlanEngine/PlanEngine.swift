@@ -523,7 +523,14 @@ public struct PlanEngine: JetLagPlanGenerating, Sendable {
         switch phase {
         case .beforeDeparture:
             if let dep = context.trip.firstDeparture {
-                let days = Int((dep.timeIntervalSince(midday) / 86_400).rounded(.up))
+                // Calendar-date difference in the local zone, not interval math — an
+                // evening two dates before departure must read "2 days", not "3".
+                let cal = Calendar.gregorian(in: zone)
+                let days = cal.dateComponents(
+                    [.day],
+                    from: cal.startOfDay(for: midday),
+                    to: cal.startOfDay(for: dep)
+                ).day ?? 0
                 if days == 1 { return "Day before departure · \(dateText)" }
                 if days > 1 { return "\(days) days before departure · \(dateText)" }
             }

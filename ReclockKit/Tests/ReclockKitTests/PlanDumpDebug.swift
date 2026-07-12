@@ -36,4 +36,27 @@ struct PlanDumpDebug {
             }
         }
     }
+
+    @Test("Dump others", .enabled(if: ProcessInfo.processInfo.environment["RECLOCK_DUMP2"] == "1"))
+    func dumpOthers() throws {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE HH:mm"
+        for (trip, profile) in [
+            (DemoTrips.losAngelesToTokyo(reference: TestSupport.reference), DemoTrips.defaultProfile(homeZone: "America/Los_Angeles")),
+            (DemoTrips.shortLondonBusinessTrip(reference: TestSupport.reference), DemoTrips.defaultProfile()),
+            (DemoTrips.weddingTrip(reference: TestSupport.reference), DemoTrips.defaultProfile(homeZone: "America/Los_Angeles")),
+        ] {
+            let plan = try TestSupport.engine.generatePlan(trip: trip, profile: profile, currentState: nil)
+            print("\n=== \(trip.name): \(plan.strategySummary)")
+            for day in plan.days.prefix(6) {
+                print("— D\(day.index) \(day.label) shift=\(String(format: "%.1f", day.cumulativeShiftHours))")
+                for a in plan.actions(onDay: day.index) {
+                    let z = a.displayZone.resolved
+                    formatter.timeZone = z
+                    print("   [\(a.priority.rawValue)] \(a.type.rawValue) \(formatter.string(from: a.window.start))–\(formatter.string(from: a.window.end)) \(z.identifier.split(separator: "/").last ?? "")")
+                }
+            }
+        }
+    }
 }
