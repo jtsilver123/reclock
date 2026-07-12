@@ -90,7 +90,7 @@ TripAssembler stay-airport inference (return + multi-leg).
   (`SleepPatternAnalyzer`); the HK query path needs a capability-enabled device pass.
 - Localization is v1 English; pseudo-localization pass scheduled with the string
   catalog work.
-- Performance: plans are O(days×actions), instant in practice (63 tests in ~0.2 s
+- Performance: plans are O(days×actions), instant in practice (81 tests in ~0.2 s
   including full plan generations); no dedicated perf suite yet.
 
 ## How to run

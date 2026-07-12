@@ -61,9 +61,9 @@ ReclockKit/               SwiftPM package: ALL business logic, zero UIKit/SwiftU
     Persistence/          Atomic JSON store with migration & corruption recovery
     Analytics/            AnalyticsClient protocol, NoOp + thin PostHog client
     HealthIntegration/    SleepDataProvider protocol + pattern analyzer
-    Airports/             Bundled 137-airport directory with IANA zones
+    Airports/             Bundled 138-airport directory with IANA zones + coords
     TestingSupport/       Demo trips & profiles
-  Tests/ReclockKitTests/  63 Swift Testing tests — run on Linux and macOS
+  Tests/ReclockKitTests/  81 Swift Testing tests — run on Linux and macOS
 ReclockUITests/           XCUITest critical path
 docs → *.md               Product, science, privacy, store & test documentation
 ```
@@ -101,7 +101,7 @@ melatonin timing. Full rules, sources, and limitations: **SCIENCE_SPEC.md**.
 
 | Area | State |
 | --- | --- |
-| Plan engine + validators | ✅ implemented, 63 tests green |
+| Plan engine + validators | ✅ implemented, 81 tests green |
 | Manual entry + calendar import | ✅ implemented |
 | Now/Next/Tonight, timeline, adaptation | ✅ implemented |
 | Local notifications w/ actions | ✅ implemented |
