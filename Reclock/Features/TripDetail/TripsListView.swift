@@ -110,13 +110,16 @@ private struct TripListRow: View {
                     .foregroundStyle(Theme.textSecondary)
             }
             Spacer()
+            Text(statusText)
+                .font(.caption2.weight(.semibold))
+                .padding(.horizontal, Theme.Space.s)
+                .padding(.vertical, 3)
+                .background(Theme.surfaceSecondary, in: Capsule())
+                .foregroundStyle(Theme.textSecondary)
             if isFocused {
-                Text(statusText)
-                    .font(.caption2.weight(.semibold))
-                    .padding(.horizontal, Theme.Space.s)
-                    .padding(.vertical, 3)
-                    .background(Theme.accent.opacity(0.14), in: Capsule())
+                Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.accent)
+                    .accessibilityLabel("Currently shown on Today")
             }
         }
         .padding(.vertical, 2)

@@ -17,7 +17,7 @@ final class ReclockUITests: XCTestCase {
 
     // MARK: Onboarding path
 
-    func testOnboardingToEmptyHome() throws {
+    func testOnboardingLeadsStraightIntoAddTrip() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-reclock-uitest"]
         app.launch()
@@ -35,7 +35,11 @@ final class ReclockUITests: XCTestCase {
         XCTAssertTrue(finish.waitForExistence(timeout: 5))
         finish.tap()
 
-        // Main app appears with the empty-home hero.
+        // "Add my trip" does what it says: the add-trip sheet opens immediately.
+        XCTAssertTrue(app.navigationBars["Add a trip"].waitForExistence(timeout: 10))
+        app.buttons["Cancel"].firstMatch.tap()
+
+        // Dismissing lands on the empty-home hero with tabs alive.
         XCTAssertTrue(app.staticTexts["Feel local when you land"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.tabBars.buttons["Settings"].exists)
     }

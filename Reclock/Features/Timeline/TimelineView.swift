@@ -18,37 +18,46 @@ struct PlanTimelineView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: Theme.Space.m, pinnedViews: [.sectionHeaders]) {
-                Text(plan.strategySummary)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.textSecondary)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: Theme.Space.m, pinnedViews: [.sectionHeaders]) {
+                    Text(plan.strategySummary)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.textSecondary)
+                        .padding(.horizontal, Theme.Space.m)
+
+                    Picker("Filter", selection: $priorityFilter) {
+                        ForEach(PriorityFilter.allCases) { filter in
+                            Text(filter.rawValue).tag(filter)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                     .padding(.horizontal, Theme.Space.m)
 
-                Picker("Filter", selection: $priorityFilter) {
-                    ForEach(PriorityFilter.allCases) { filter in
-                        Text(filter.rawValue).tag(filter)
+                    ForEach(groupedPhases) { group in
+                        Section {
+                            ForEach(group.days) { entry in
+                                DayBlock(
+                                    day: entry.day,
+                                    actions: entry.actions,
+                                    displayMode: displayMode,
+                                    trip: trip
+                                )
+                                .id(entry.day.id)
+                            }
+                        } header: {
+                            PhaseHeader(phase: group.phase)
+                        }
                     }
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, Theme.Space.m)
-
-                ForEach(groupedPhases) { group in
-                    Section {
-                        ForEach(group.days) { entry in
-                            DayBlock(
-                                day: entry.day,
-                                actions: entry.actions,
-                                displayMode: displayMode,
-                                trip: trip
-                            )
-                        }
-                    } header: {
-                        PhaseHeader(phase: group.phase)
-                    }
+                .padding(.bottom, Theme.Space.xl)
+            }
+            .onAppear {
+                // Mid-trip, the reader's day is what matters — not day 0 last week.
+                if let today = currentDayID {
+                    proxy.scrollTo(today, anchor: .top)
                 }
             }
-            .padding(.bottom, Theme.Space.xl)
         }
         .background(Theme.background)
         .navigationTitle("Timeline")
@@ -90,6 +99,16 @@ struct PlanTimelineView: View {
         var phase: TripPhase
         var days: [DayEntry]
         var id: String { "\(phase.rawValue)-\(days.first?.day.index ?? 0)" }
+    }
+
+    /// The plan day containing "now" (else the first future day), for initial scroll.
+    private var currentDayID: UUID? {
+        let now = model.deps.now()
+        let days = groupedPhases.flatMap(\.days).map(\.day)
+        let current = days.last { $0.dayStart <= now && now < $0.dayStart.addingTimeInterval(36 * 3600) }
+        let target = current ?? days.first { $0.dayStart > now }
+        // Only jump when the target isn't already the first visible day.
+        return target?.id == days.first?.id ? nil : target?.id
     }
 
     private var groupedPhases: [PhaseGroup] {

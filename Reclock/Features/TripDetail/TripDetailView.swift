@@ -371,14 +371,14 @@ struct ReportDelayView: View {
                 }
 
                 if let segment = selectedSegment {
-                    Section("New times (\(TimeFormat.zoneCity(segment.departureZone.resolved)) departure)") {
+                    Section("New times, airport-local") {
                         DatePicker(
-                            "New departure",
+                            "Departs (\(TimeFormat.zoneCity(segment.departureZone.resolved)) time)",
                             selection: $newDeparture,
                             displayedComponents: [.date, .hourAndMinute]
                         )
                         DatePicker(
-                            "New arrival",
+                            "Arrives (\(TimeFormat.zoneCity(segment.arrivalZone.resolved)) time)",
                             selection: $newArrival,
                             displayedComponents: [.date, .hourAndMinute]
                         )
@@ -388,7 +388,7 @@ struct ReportDelayView: View {
                     } header: {
                         Text("Common delays")
                     } footer: {
-                        Text("We'll rebuild the rest of your plan around the new times and update your reminders.")
+                        Text("Times as they appear on the departure boards. We'll rebuild the rest of your plan and update your reminders.")
                     }
                 }
             }
@@ -400,18 +400,18 @@ struct ReportDelayView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Update plan") {
-                        guard let id = selectedSegmentID else { return }
+                        guard let segment = selectedSegment else { return }
                         Task {
                             await model.reportDelay(
                                 trip: trip,
-                                segmentID: id,
-                                newDeparture: newDeparture,
-                                newArrival: newArrival
+                                segmentID: segment.id,
+                                newDeparture: TimeFormat.reinterpret(newDeparture, into: segment.departureZone.resolved),
+                                newArrival: TimeFormat.reinterpret(newArrival, into: segment.arrivalZone.resolved)
                             )
                             dismiss()
                         }
                     }
-                    .disabled(selectedSegmentID == nil || newArrival <= newDeparture)
+                    .disabled(!timesAreValid)
                 }
             }
             .onAppear {
@@ -429,11 +429,20 @@ struct ReportDelayView: View {
         trip.segments.first { $0.id == selectedSegmentID }
     }
 
+    private var timesAreValid: Bool {
+        guard let segment = selectedSegment else { return false }
+        let dep = TimeFormat.reinterpret(newDeparture, into: segment.departureZone.resolved)
+        let arr = TimeFormat.reinterpret(newArrival, into: segment.arrivalZone.resolved)
+        return arr > dep
+    }
+
+    /// Pickers hold the wall-clock reading in each airport's zone (like every other
+    /// time entry in the app); instants are reconstructed on save.
     private func selectSegment(_ segment: FlightSegment?) {
         guard let segment else { return }
         selectedSegmentID = segment.id
-        newDeparture = segment.departure
-        newArrival = segment.arrival
+        newDeparture = TimeFormat.pickerDate(for: segment.departure, in: segment.departureZone.resolved)
+        newArrival = TimeFormat.pickerDate(for: segment.arrival, in: segment.arrivalZone.resolved)
     }
 
     @ViewBuilder
@@ -441,8 +450,11 @@ struct ReportDelayView: View {
         HStack {
             ForEach([1.0, 2.0, 4.0], id: \.self) { hours in
                 Button("+\(Int(hours))h") {
-                    newDeparture = segment.departure.addingTimeInterval(hours * 3600)
-                    newArrival = segment.arrival.addingTimeInterval(hours * 3600)
+                    // Shifting the wall-clock reading by N hours shifts the instant by N.
+                    newDeparture = TimeFormat.pickerDate(for: segment.departure, in: segment.departureZone.resolved)
+                        .addingTimeInterval(hours * 3600)
+                    newArrival = TimeFormat.pickerDate(for: segment.arrival, in: segment.arrivalZone.resolved)
+                        .addingTimeInterval(hours * 3600)
                 }
                 .buttonStyle(.bordered)
             }

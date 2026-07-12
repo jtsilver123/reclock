@@ -44,6 +44,15 @@ struct HomeView: View {
             .sheet(isPresented: $showTrips) {
                 TripsListView()
             }
+            .onAppear {
+                // "Add my trip" at the end of onboarding should do what it says.
+                if model.shouldPresentAddTrip {
+                    model.shouldPresentAddTrip = false
+                    if model.state.trips.isEmpty {
+                        showAddTrip = true
+                    }
+                }
+            }
         }
     }
 }
@@ -100,6 +109,10 @@ private struct TripHomeContent: View {
             let plan = model.plan(for: trip)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    if model.isExploringSample {
+                        SampleModeBanner()
+                    }
+
                     HomeHeader(
                         trip: trip,
                         context: context,
@@ -167,29 +180,73 @@ private struct TripHomeContent: View {
     }
 }
 
+// MARK: - Sample mode banner
+
+private struct SampleModeBanner: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        HStack(spacing: Theme.Space.s) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
+            Text("This is a sample trip")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Spacer()
+            Button("Set up my own") {
+                Task { await model.exitSampleMode() }
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.accent)
+        }
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, Theme.Space.s)
+        .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+    }
+}
+
 // MARK: - Notification nudge
 
 private struct NotificationNudge: View {
     @Environment(AppModel.self) private var model
     var onEnabled: () -> Void
+    @State private var wasDenied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Label("Get nudged at the right moments", systemImage: "bell.badge.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.textPrimary)
-            Text("Your plan is ready. Reminders fire exactly when a window opens — even in airplane mode.")
+            Label(
+                wasDenied ? "Reminders are off" : "Get nudged at the right moments",
+                systemImage: "bell.badge.fill"
+            )
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Theme.textPrimary)
+            Text(wasDenied
+                 ? "The Today tab works as your checklist. To get alerts at the right moments, allow notifications in iOS Settings."
+                 : "Your plan is ready. Reminders fire exactly when a window opens — even in airplane mode.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
-            Button("Turn on reminders") {
-                Task {
-                    if await model.requestNotificationPermission() {
-                        onEnabled()
+            if wasDenied {
+                Button("Open iOS Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
                     }
                 }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+            } else {
+                Button("Turn on reminders") {
+                    Task {
+                        if await model.requestNotificationPermission() {
+                            onEnabled()
+                        } else {
+                            wasDenied = true
+                        }
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.accent)
             }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Theme.accent)
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)

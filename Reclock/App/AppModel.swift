@@ -17,6 +17,9 @@ final class AppModel {
     var activeAlert: AppAlert?
     /// Messages describing the latest replan ("Your flight moved by 2 hours…").
     var lastChangeMessages: [String] = []
+    /// Set when onboarding finishes via "Add my trip" so Home opens the add-trip flow
+    /// immediately — the button the user tapped should do what it says.
+    var shouldPresentAddTrip = false
 
     init(dependencies: Dependencies) {
         self.deps = dependencies
@@ -157,9 +160,37 @@ final class AppModel {
     func completeOnboarding(profile: UserProfile) async {
         state.profile = profile
         state.onboardingComplete = true
+        shouldPresentAddTrip = true
         deps.analytics.track(.onboardingCompleted)
         await persist()
     }
+
+    /// True while the user is exploring the seeded sample trip without ever having
+    /// answered the onboarding questions themselves.
+    var isExploringSample: Bool {
+        activeTrip?.importSource == .demo
+    }
+
+    /// Leaves sample mode: removes demo trips. If the profile itself is the seeded
+    /// placeholder (the user never answered onboarding), returns to onboarding; a real
+    /// profile from real onboarding is left untouched.
+    func exitSampleMode() async {
+        for trip in state.trips where trip.importSource == .demo {
+            state.plans.removeAll { $0.tripID == trip.id }
+            state.setTravelerState(nil, forTrip: trip.id)
+        }
+        state.trips.removeAll { $0.importSource == .demo }
+        state.settings.selectedTripID = nil
+        if state.profile?.id == Self.demoProfileID {
+            state.profile = nil
+            state.onboardingComplete = false
+        }
+        await persist()
+        await rescheduleAllNotifications()
+    }
+
+    /// The fixed ID DemoTrips.defaultProfile uses — marks a profile as seeded, not answered.
+    private static let demoProfileID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 
     func updateProfile(_ profile: UserProfile) async {
         state.profile = profile
@@ -223,7 +254,8 @@ final class AppModel {
             state.settings.selectedTripID = nil
         }
         await persist()
-        await deps.notifications.cancelAll(forTrip: trip.id)
+        // Rebuild the whole schedule so other trips' reminders survive the deletion.
+        await rescheduleAllNotifications()
     }
 
     // MARK: - Commitments
@@ -395,14 +427,18 @@ final class AppModel {
     func requestNotificationPermission() async -> Bool {
         let granted = await deps.notifications.requestPermission()
         deps.analytics.track(.notificationPermission(granted: granted))
-        if granted, let trip = activeTrip, let plan = plan(for: trip) {
-            await rescheduleNotifications(trip: trip, plan: plan)
+        if granted {
+            await rescheduleAllNotifications()
         }
         return granted
     }
 
     private func rescheduleNotifications(trip: Trip, plan: JetLagPlan, cancellingRevision: Int? = nil) async {
-        guard let profile = state.profile, profile.notifications.enabled else { return }
+        guard let profile = state.profile, profile.notifications.enabled else {
+            // Reminders were turned off: pending notifications must die with the setting.
+            await deps.notifications.cancelEverything()
+            return
+        }
         if let old = cancellingRevision {
             await deps.notifications.cancel(notificationIDsPrefixed: "r\(old)/")
         }
@@ -411,6 +447,23 @@ final class AppModel {
             plan: plan, trip: trip, profile: profile, after: deps.now()
         )
         await deps.notifications.schedule(planned)
+    }
+
+    /// Clears every Reclock notification and rebuilds the schedule for all live trips.
+    /// The blunt-but-correct tool for cross-trip changes (deletion, sample exit,
+    /// reminders re-enabled): per-trip cancellation can't distinguish trips, and a
+    /// missing reminder is worse than a rebuilt one.
+    private func rescheduleAllNotifications() async {
+        await deps.notifications.cancelEverything()
+        guard let profile = state.profile, profile.notifications.enabled else { return }
+        let planner = NotificationPlanner(configuration: PlanEngineConfiguration())
+        for trip in state.trips where trip.status == .upcoming || trip.status == .active {
+            guard let plan = plan(for: trip) else { continue }
+            let planned = planner.plannedNotifications(
+                plan: plan, trip: trip, profile: profile, after: deps.now()
+            )
+            await deps.notifications.schedule(planned)
+        }
     }
 
     // MARK: - Survey & data
@@ -449,14 +502,21 @@ final class AppModel {
     func seedDemoData() async {
         // Landing-day snapshot of the flagship demo trip, so the home screen is alive.
         let reference = deps.now().addingTimeInterval(-5 * 86_400)
-        var profile = DemoTrips.defaultProfile(homeZone: TimeZone.current.identifier)
-        profile.melatonin = .includeOptionalReminders
-        state.profile = profile
+        // Never clobber a real profile: only seed the placeholder when none exists.
+        if state.profile == nil {
+            var demoProfile = DemoTrips.defaultProfile(homeZone: TimeZone.current.identifier)
+            demoProfile.melatonin = .includeOptionalReminders
+            state.profile = demoProfile
+        }
         state.onboardingComplete = true
+        let profile = state.profile!
         let trip = DemoTrips.newYorkToHelsinki(reference: reference)
         if let plan = try? deps.engine.generatePlan(trip: trip, profile: profile, currentState: nil) {
-            state.trips = [trip]
-            state.plans = [plan]
+            state.trips.removeAll { $0.id == trip.id }
+            state.plans.removeAll { $0.tripID == trip.id }
+            state.trips.append(trip)
+            state.plans.append(plan)
+            state.settings.selectedTripID = trip.id
         }
         await persist()
     }
