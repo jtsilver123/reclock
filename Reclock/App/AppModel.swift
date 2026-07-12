@@ -308,8 +308,7 @@ final class AppModel {
 
     private func regeneratePlan(for trip: Trip, trigger: String) async {
         guard let profile = state.profile else { return }
-        if let previous = plan(for: trip) {
-            _ = previous
+        if plan(for: trip) != nil {
             await recalculate(trip: trip, trigger: trigger)
         } else if let plan = try? deps.engine.generatePlan(trip: trip, profile: profile, currentState: nil) {
             replacePlan(plan)

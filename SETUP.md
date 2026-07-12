@@ -1,0 +1,89 @@
+# SETUP
+
+## Requirements
+
+- **Engine (ReclockKit):** Swift 6.0+ on macOS or Linux. No other dependencies.
+- **App:** macOS 14+, Xcode 16.x (project uses filesystem-synchronized groups,
+  `objectVersion 77`). iOS 17.0 deployment target, iPhone.
+
+## Build & test
+
+```bash
+# Engine only — fast, works everywhere
+cd ReclockKit
+swift build
+swift test --parallel
+
+# Full app
+open Reclock.xcodeproj
+# Scheme: Reclock → ⌘B build, ⌘R run, ⌘U runs ReclockKitTests + ReclockUITests
+```
+
+CLI equivalents:
+
+```bash
+xcodebuild build -project Reclock.xcodeproj -scheme Reclock \
+  -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO
+
+xcodebuild test -project Reclock.xcodeproj -scheme Reclock \
+  -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO
+```
+
+The first open resolves the local `ReclockKit` package automatically (no network needed).
+
+## Signing
+
+1. Select the **Reclock** target → Signing & Capabilities.
+2. Choose your team; bundle ID defaults to `app.reclock.ios` — change it to one your
+   account owns (also update `PRODUCT_BUNDLE_IDENTIFIER` for the UITests target:
+   `<your-id>.uitests`).
+3. Automatic signing handles the rest. No special entitlements are required for v1.
+
+## Feature flags (`ReclockKit/Sources/ReclockKit/FlightImport/ItineraryParsingProvider.swift`)
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `FeatureFlags.healthKitEnabled` | `true` | Compiles the HealthKit provider. It activates only if the capability is added AND the user opts in. Without the capability the provider reports "unsupported" and the UI hides itself. |
+| `FeatureFlags.emailForwardingEnabled` | `false` | AwardWallet email-parsing scaffold. Requires a commercial agreement + server proxy. Leave off. |
+| `FeatureFlags.cloudSyncEnabled` | `false` | Interface exists; no backend in v1. |
+
+### Enabling HealthKit fully (optional)
+
+1. Target → Signing & Capabilities → **+ Capability → HealthKit** (no background delivery).
+2. That's it — `NSHealthShareUsageDescription` is already set via build settings, the
+   provider is already wired behind `SleepDataProvider`, and the app functions identically
+   if the user declines.
+
+## Dev conveniences
+
+- **Hidden dev menu:** Settings → Developer (DEBUG builds only) loads any of the 10 demo
+  trips positioned so "today" is landing day.
+- **UI-test launch args:** `-reclock-uitest` (isolated temp store, mock calendar, no-op
+  notifications) and `-reclock-seed-demo` (preloads the Helsinki landing-day trip).
+- **Engine plan dump:** `RECLOCK_DUMP=1 swift test --filter PlanDumpDebug` prints two full
+  human-readable plans for eyeballing.
+
+## TestFlight
+
+1. Set your team + bundle ID (above); bump `MARKETING_VERSION` if needed.
+2. Product → Archive (scheme Reclock, Any iOS Device).
+3. Distribute → App Store Connect → Upload. `ITSAppUsesNonExemptEncryption` is already
+   `NO`, so no export-compliance questionnaire blocks the build.
+4. In App Store Connect: add the TestFlight description from `APP_STORE_METADATA.md`
+   (§TestFlight) and invite testers.
+5. Before submission proper, walk `APP_REVIEW_CHECKLIST.md` top to bottom on a device.
+
+## Credentials still required (account owner)
+
+- Apple Developer team for signing (nothing else — there is no backend).
+- Optional, later: PostHog project key **only** if you decide to ship opt-in analytics
+  as ON-by-consent; the code defaults to `NoOpAnalyticsClient` and no key is present in
+  the repository.
+- Optional, phase 2: AwardWallet commercial API access + a proxy host for email import.
+
+## CI
+
+`.github/workflows/ci.yml` runs:
+1. **Linux:** `swift test` for ReclockKit (the whole brain of the app) in a Swift 6 container.
+2. **macOS:** `xcodebuild build` (warnings as errors) + kit tests + UI tests on an
+   iPhone 16 simulator.
