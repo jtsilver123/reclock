@@ -93,18 +93,28 @@ final class ReclockUITests: XCTestCase {
         scrollTo(tripCard, in: app)
         tripCard.tap()
 
+        // Trip detail is a List: rows below the fold do not exist in the hierarchy
+        // until scrolled to — scroll FIRST, then assert. (Asserting existence before
+        // scrolling is exactly how these tests failed on CI.)
         let delayButton = app.buttons["My flight changed / was delayed"]
-        XCTAssertTrue(delayButton.waitForExistence(timeout: 8))
         scrollTo(delayButton, in: app)
+        XCTAssertTrue(delayButton.waitForExistence(timeout: 8))
         delayButton.tap()
 
+        // "Flight changed" sheet: pick a common delay, apply it.
+        XCTAssertTrue(app.navigationBars["Flight changed"].waitForExistence(timeout: 8))
         let plusTwo = app.buttons["+2h"]
-        XCTAssertTrue(plusTwo.waitForExistence(timeout: 8))
         scrollTo(plusTwo, in: app)
+        XCTAssertTrue(plusTwo.waitForExistence(timeout: 8))
         plusTwo.tap()
-        app.buttons["Update plan"].tap()
+        let update = app.buttons["Update plan"]
+        XCTAssertTrue(update.waitForExistence(timeout: 5))
+        update.tap()
 
-        // Back on trip detail; the plan was rebuilt (revision bump is internal — verify UI alive).
+        // The sheet dismisses once the plan is rebuilt.
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: update)
+        waitForExpectations(timeout: 10)
+        // Back on trip detail (scroll position preserved, so the row is still there).
         XCTAssertTrue(delayButton.waitForExistence(timeout: 10))
     }
 
@@ -116,9 +126,10 @@ final class ReclockUITests: XCTestCase {
         scrollTo(tripCard, in: app)
         tripCard.tap()
 
+        // "Delete trip" is the last List section — scroll first (see testReportDelayFlow).
         let deleteButton = app.buttons["Delete trip"]
-        XCTAssertTrue(deleteButton.waitForExistence(timeout: 8))
         scrollTo(deleteButton, in: app)
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 8))
         deleteButton.tap()
 
         let confirm = app.buttons["Delete trip and plan"]

@@ -67,3 +67,19 @@ jobs:
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -only-testing:ReclockUITests \
             CODE_SIGNING_ALLOWED=NO | tee uitest.log | tail -80
+      - name: UI test failure details
+        if: failure()
+        run: |
+          echo "::group::Failing assertions"
+          grep -n "error:" uitest.log | head -60 || true
+          echo "::endgroup::"
+          echo "::group::Per-test results"
+          grep -n "Test Case .* \(passed\|failed\)" uitest.log || true
+          echo "::endgroup::"
+      - name: Upload full UI test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uitest-log
+          path: uitest.log
+          retention-days: 7
