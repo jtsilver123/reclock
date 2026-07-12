@@ -36,11 +36,14 @@ struct TransferTimeRow: View {
                     Button("\(preset) min") {
                         minutes = preset
                         note = nil
+                        Haptics.selection()
                     }
                 }
             } label: {
                 Text("\(minutes) min")
                     .font(.body.monospacedDigit())
+                    .contentTransition(.numericText())
+                    .animation(Theme.Anim.gentle, value: minutes)
             }
             .accessibilityLabel("Transfer time: \(minutes) minutes")
         }
@@ -69,6 +72,8 @@ struct TransferTimeRow: View {
             Label(note.text, systemImage: note.isWarning ? "exclamationmark.triangle" : "checkmark.circle")
                 .font(.caption)
                 .foregroundStyle(note.isWarning ? AnyShapeStyle(.orange) : AnyShapeStyle(Theme.textSecondary))
+                .transition(.opacity)
+                .animation(Theme.Anim.gentle, value: note)
         }
     }
 
@@ -81,6 +86,7 @@ struct TransferTimeRow: View {
         switch await model.deps.transitEstimator.estimateMinutes(toLatitude: latitude, longitude: longitude) {
         case .minutes(let total, let drive):
             minutes = total
+            Haptics.soft()
             note = Note(
                 text: "≈ \(drive) min drive to \(airport.iata) from where you are now, plus parking and walking. Your location isn't stored.",
                 isWarning: false

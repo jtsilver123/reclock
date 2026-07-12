@@ -21,6 +21,8 @@ struct NowCard: View {
                     Text("\(TimeFormat.countdown(to: action.window.end, from: now)) left")
                         .font(.caption.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.textSecondary)
+                        .contentTransition(.numericText(countsDown: true))
+                        .animation(Theme.Anim.gentle, value: TimeFormat.countdown(to: action.window.end, from: now))
                 }
             }
 
@@ -72,9 +74,11 @@ struct NowCard: View {
 
                 Menu {
                     Button("Couldn't do it") {
+                        Haptics.soft()
                         Task { await model.setCompletion(.notPossible, for: action, in: trip) }
                     }
                     Button("Remind me in 30 min") {
+                        Haptics.soft()
                         Task { await model.snooze(action: action, in: trip) }
                     }
                     if action.type == .stayAwake || action.type == .seekLight {

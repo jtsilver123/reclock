@@ -180,6 +180,7 @@ struct FlightLookupView: View {
             importSource: .flightNumber
         ) else { return }
         if await model.addTrip(trip) {
+            Haptics.success()
             onFinished()
         }
     }

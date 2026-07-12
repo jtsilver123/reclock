@@ -90,6 +90,7 @@ struct ActionRow: View {
             if action.completion == .done {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
+                    .symbolEffect(.bounce, value: action.completion)
                     .accessibilityLabel("Done")
             } else if action.completion == .notPossible || action.completion == .skipped {
                 Image(systemName: "slash.circle")
@@ -100,6 +101,7 @@ struct ActionRow: View {
         .padding(Theme.Space.m)
         .card()
         .opacity(action.completion == .pending ? 1 : 0.72)
+        .animation(Theme.Anim.gentle, value: action.completion)
         .accessibilityElement(children: .combine)
     }
 
@@ -128,14 +130,19 @@ struct ProgressRing: View {
                     .trim(from: 0, to: max(0.02, progress))
                     .stroke(Theme.accent, style: StrokeStyle(lineWidth: 7, lineCap: .round))
                     .rotationEffect(.degrees(-90))
+                    .animation(Theme.Anim.spring, value: progress)
                 Text("\(Int((progress * 100).rounded()))%")
                     .font(.caption.weight(.bold).monospacedDigit())
                     .foregroundStyle(Theme.textPrimary)
+                    .contentTransition(.numericText())
+                    .animation(Theme.Anim.gentle, value: progress)
             }
             .frame(width: 54, height: 54)
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(Theme.textSecondary)
+                .contentTransition(.numericText())
+                .animation(Theme.Anim.gentle, value: label)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label): \(Int((progress * 100).rounded())) percent")
@@ -157,6 +164,8 @@ struct ClockChip: View {
             Text(TimeFormat.time(now, zone: zone))
                 .font(.callout.weight(.semibold).monospacedDigit())
                 .foregroundStyle(Theme.textPrimary)
+                .contentTransition(.numericText())
+                .animation(Theme.Anim.gentle, value: TimeFormat.time(now, zone: zone))
         }
         .padding(.horizontal, Theme.Space.m)
         .padding(.vertical, Theme.Space.s)
@@ -175,8 +184,9 @@ struct PrimaryButtonStyle: ButtonStyle {
             .padding(.vertical, 14)
             .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .foregroundStyle(Color.white)
-            .opacity(configuration.isPressed ? 0.85 : 1)
-            .scaleEffect(configuration.isPressed ? 0.99 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .scaleEffect(configuration.isPressed ? 0.965 : 1)
+            .animation(Theme.Anim.springQuick, value: configuration.isPressed)
     }
 }
 
@@ -189,6 +199,31 @@ struct SecondaryButtonStyle: ButtonStyle {
             .background(Theme.surfaceSecondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .foregroundStyle(Theme.textPrimary)
             .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .animation(Theme.Anim.springQuick, value: configuration.isPressed)
+    }
+}
+
+/// A symbol that gently breathes — the app's welcome heartbeat. Respects Reduce Motion.
+struct BreathingSymbol: View {
+    let systemName: String
+    var size: CGFloat = 56
+    var tint: Color = Theme.tint(for: .seekLight)
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var inhale = false
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: size))
+            .foregroundStyle(tint)
+            .scaleEffect(reduceMotion ? 1 : (inhale ? 1.05 : 1))
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 2.6).repeatForever(autoreverses: true),
+                value: inhale
+            )
+            .onAppear { inhale = true }
+            .accessibilityHidden(true)
     }
 }
 

@@ -279,6 +279,7 @@ struct CalendarImportView: View {
             importSource: .calendar
         ) else { return }
         if await model.addTrip(trip) {
+            Haptics.success()
             onFinished()
         }
     }

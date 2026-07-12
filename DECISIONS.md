@@ -161,6 +161,21 @@ product brief left open — or where I deliberately diverged from it — are cal
     ≥48h gap) — previously duplicated in two views, now one tested implementation used by
     calendar import, manual entry, and flight lookup.
 
+## Motion & delight philosophy
+
+39. **Calm delight, one personality of movement.** All motion flows through three Theme
+    tokens (signature spring, quick spring, gentle ease). Numbers never jump — countdowns,
+    clocks, ring percentages and transfer minutes roll via numeric text transitions. The
+    hero Now card lifts away when completed and the next state settles in on the spring.
+    Haptics form a language: success = plan built / step done; selection ticks for choices;
+    soft taps for secondary actions (snooze, couldn't, estimate landed).
+40. **One earned celebration, no confetti.** Completing a step shows a two-second pill
+    whose copy knows why the step mattered ("You made it to bedtime. That was the hard
+    one."). Deterministic per action type — a coach's nod, not a slot machine. Explicitly
+    honoring the brief's "no gamification that makes it feel unserious."
+41. **Every loop respects Reduce Motion**: breathing welcome sun, sparkle shimmer on
+    adjusted days, toast slide, and hero transitions all degrade to opacity fades.
+
 ## Known limitations (candid)
 
 - Engine day labels ("Landing day · Sun, Sep 20") are English strings from the kit.

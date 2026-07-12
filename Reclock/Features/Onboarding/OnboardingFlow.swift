@@ -66,10 +66,7 @@ struct OnboardingFlow: View {
             }
         ) {
             Spacer()
-            Image(systemName: "sun.and.horizon.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(Theme.tint(for: .seekLight))
-                .accessibilityHidden(true)
+            BreathingSymbol(systemName: "sun.and.horizon.fill", size: 64)
             Text("Feel local when you land")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
                 .multilineTextAlignment(.center)
@@ -251,6 +248,7 @@ struct OnboardingFlow: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 56))
                 .foregroundStyle(.green)
+                .symbolEffect(.bounce, value: step)
                 .accessibilityHidden(true)
             Text("You're set")
                 .font(.largeTitle.weight(.bold))
@@ -363,12 +361,13 @@ private struct WillingnessOption: View {
     var body: some View {
         Button {
             selected = value
-            Haptics.tap()
+            Haptics.selection()
         } label: {
             HStack(alignment: .top, spacing: Theme.Space.m) {
                 Image(systemName: selected == value ? "largecircle.fill.circle" : "circle")
                     .font(.title3)
                     .foregroundStyle(selected == value ? Theme.accent : Theme.textSecondary)
+                    .symbolEffect(.bounce, value: selected == value)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -381,7 +380,16 @@ private struct WillingnessOption: View {
                 Spacer()
             }
             .padding(Theme.Space.m)
-            .card()
+            .card(emphasized: selected == value)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                    .strokeBorder(
+                        selected == value ? Theme.accent.opacity(0.5) : Color.clear,
+                        lineWidth: 1.5
+                    )
+            )
+            .scaleEffect(selected == value ? 1.0 : 0.985)
+            .animation(Theme.Anim.springQuick, value: selected == value)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected == value ? [.isSelected] : [])

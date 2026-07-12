@@ -3,6 +3,7 @@ import ReclockKit
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showAddTrip = false
     @State private var showTrips = false
 
@@ -15,6 +16,19 @@ struct HomeView: View {
                 } else {
                     EmptyHome(showAddTrip: $showAddTrip)
                 }
+            }
+            .overlay(alignment: .top) {
+                if let celebration = model.celebration {
+                    CelebrationToast(event: celebration)
+                        .transition(CelebrationToast.transition(reduceMotion: reduceMotion))
+                        .padding(.top, Theme.Space.xs)
+                }
+            }
+            .animation(Theme.Anim.spring, value: model.celebration)
+            .task(id: model.celebration?.id) {
+                guard model.celebration != nil else { return }
+                try? await Task.sleep(nanoseconds: 2_200_000_000)
+                model.celebration = nil
             }
             .background(Theme.background)
             .navigationTitle("Reclock")
@@ -67,10 +81,7 @@ private struct EmptyHome: View {
         ScrollView {
             VStack(spacing: Theme.Space.l) {
                 Spacer(minLength: 40)
-                Image(systemName: "sun.and.horizon.fill")
-                    .font(.system(size: 56))
-                    .foregroundStyle(Theme.tint(for: .seekLight))
-                    .accessibilityHidden(true)
+                BreathingSymbol(systemName: "sun.and.horizon.fill", size: 56)
                 Text("Feel local when you land")
                     .font(.largeTitle.weight(.bold))
                     .multilineTextAlignment(.center)
@@ -99,8 +110,18 @@ private struct EmptyHome: View {
 
 private struct TripHomeContent: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let trip: Trip
     @State private var notificationsPending = false
+
+    private var heroTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .asymmetric(
+                insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .top)),
+                removal: .opacity.combined(with: .move(edge: .top))
+            )
+    }
 
     var body: some View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
@@ -132,11 +153,19 @@ private struct TripHomeContent: View {
                         SurveyPromptCard(trip: trip)
                     }
 
-                    if let current = context.current.first {
-                        NowCard(action: current, trip: trip, now: now)
-                    } else {
-                        QuietNowCard(next: context.next.first, now: now)
+                    // The hero card swaps with a spring: completed cards lift away,
+                    // the next state settles in.
+                    Group {
+                        if let current = context.current.first {
+                            NowCard(action: current, trip: trip, now: now)
+                                .id(current.id)
+                                .transition(heroTransition)
+                        } else {
+                            QuietNowCard(next: context.next.first, now: now)
+                                .transition(heroTransition)
+                        }
                     }
+                    .animation(Theme.Anim.spring, value: context.current.first?.id)
 
                     if context.current.count > 1 {
                         ForEach(context.current.dropFirst()) { action in
@@ -362,6 +391,8 @@ private struct QuietNowCard: View {
                 Text("Next up: \(next.title.lowercased()) in \(TimeFormat.countdown(to: next.window.start, from: now)).")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(Theme.Anim.gentle, value: TimeFormat.countdown(to: next.window.start, from: now))
             } else {
                 Text("You're through the plan. Keep regular hours and enjoy the trip.")
                     .font(.subheadline)

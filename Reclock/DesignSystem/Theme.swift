@@ -24,6 +24,12 @@ enum Theme {
     enum Anim {
         static let quick: Double = 0.18
         static let standard: Double = 0.3
+        /// The app's signature movement: snappy but soft-landing.
+        static let spring = Animation.spring(response: 0.38, dampingFraction: 0.82)
+        /// For button presses and small state flips.
+        static let springQuick = Animation.spring(response: 0.24, dampingFraction: 0.72)
+        /// For text/number changes.
+        static let gentle = Animation.easeInOut(duration: 0.22)
     }
 
     // MARK: Colors (semantic, adaptive light/dark)
@@ -189,5 +195,15 @@ enum Haptics {
 
     @MainActor static func tap() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    /// For picking among options (presets, chips, radio cards).
+    @MainActor static func selection() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    /// Whisper-weight confirmation for secondary actions (snooze, skip, estimate done).
+    @MainActor static func soft() {
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.7)
     }
 }

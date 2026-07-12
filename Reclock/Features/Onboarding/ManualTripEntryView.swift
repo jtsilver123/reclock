@@ -185,6 +185,7 @@ struct ManualTripEntryView: View {
             importSource: .manual
         ) else { return }
         if await model.addTrip(trip) {
+            Haptics.success()
             onFinished()
         }
     }

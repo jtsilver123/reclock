@@ -20,6 +20,8 @@ final class AppModel {
     /// Set when onboarding finishes via "Add my trip" so Home opens the add-trip flow
     /// immediately — the button the user tapped should do what it says.
     var shouldPresentAddTrip = false
+    /// Transient acknowledgment after completing a step; Home shows it for ~2s.
+    var celebration: CelebrationEvent?
 
     init(dependencies: Dependencies) {
         self.deps = dependencies
@@ -336,6 +338,7 @@ final class AppModel {
 
         switch completion {
         case .done:
+            celebration = CelebrationEvent(type: action.type)
             deps.analytics.track(.actionCompleted(type: action.type.rawValue, priority: action.priority.rawValue))
             await deps.notifications.cancel(notificationIDsPrefixed: "r\(plan.revision)/\(action.id.uuidString)")
         case .notPossible, .skipped, .sleptInstead:

@@ -132,6 +132,28 @@ struct PlanTimelineView: View {
     }
 }
 
+/// The reward state: a day with nothing to do because the work is done.
+private struct AdjustedDayRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: Theme.Space.s) {
+            if reduceMotion {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Theme.tint(for: .seekLight))
+            } else {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Theme.tint(for: .seekLight))
+                    .symbolEffect(.variableColor.iterative.reversing)
+            }
+            Text("Fully adjusted — nothing scheduled. Enjoy the day.")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private struct PhaseHeader: View {
     let phase: TripPhase
 
@@ -172,9 +194,7 @@ private struct DayBlock: View {
             .padding(.horizontal, Theme.Space.m)
 
             if actions.isEmpty {
-                Label("Fully adjusted — nothing scheduled. Enjoy the day.", systemImage: "sparkles")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.textSecondary)
+                AdjustedDayRow()
                     .padding(.horizontal, Theme.Space.m)
             }
 
@@ -222,6 +242,7 @@ private struct TimelineActionRow: View {
             if action.completion != .pending {
                 Image(systemName: action.completion == .done ? "checkmark.circle.fill" : "slash.circle")
                     .foregroundStyle(action.completion == .done ? .green : Theme.textSecondary)
+                    .symbolEffect(.bounce, value: action.completion)
                     .accessibilityLabel(action.completion == .done ? "Done" : "Skipped")
             }
         }
