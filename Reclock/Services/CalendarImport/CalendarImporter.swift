@@ -1,5 +1,6 @@
 import Foundation
-import EventKit
+// EventKit predates Sendable annotations; EKEventStore is documented thread-safe.
+@preconcurrency import EventKit
 import ReclockKit
 
 /// Calendar import happens in three explicit steps the user can see:

@@ -119,7 +119,7 @@ struct SegmentEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(segment.displayName) {
+                Section {
                     DatePicker(
                         "Departs (\(TimeFormat.zoneCity(segment.departureZone.resolved)) time)",
                         selection: $departure,
@@ -130,6 +130,8 @@ struct SegmentEditSheet: View {
                         selection: $arrival,
                         displayedComponents: [.date, .hourAndMinute]
                     )
+                } header: {
+                    Text(segment.displayName)
                 } footer: {
                     Text("Times are the airport-local times on your ticket. Saving rebuilds the plan.")
                 }
