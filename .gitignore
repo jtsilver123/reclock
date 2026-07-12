@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+# Secrets / local config
+*.env
+.env
+!.env.example
+Secrets.xcconfig
+
+# CI artifacts
+*.xcresult
+test-output/
