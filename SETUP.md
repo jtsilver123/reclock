@@ -52,10 +52,18 @@ complete without it (manual entry pre-estimates arrival times from the route).
    `INFOPLIST_KEY_ReclockAeroDataBoxKey = $(RECLOCK_AERODATABOX_KEY)`
 4. Rebuild. The "Search by flight number" option appears in Add a trip.
 
-Privacy: requests contain only the flight number and date (see PRIVACY.md). The response
-mapping is defensive — schema drift degrades to "not found" with manual entry one tap
-away; verify against the live API once when enabling (mapping lives in
-`AeroDataBoxScheduleProvider.parse`, unit-tested against a canned response).
+Privacy: requests contain only the flight number and date (see PRIVACY.md).
+
+**Validated against the live API (2026-07):** the response mapping in
+`AeroDataBoxScheduleProvider.parse` is unit-tested against a verbatim captured payload
+(AY16 JFK→HEL), including terminal extraction and tolerance of extra fields. Costs on
+the free Basic plan: **one flight-number lookup = 2 API units → ~300 lookups/month
+free** (the balance endpoint is free and shows remaining units). Mapping is defensive —
+any future schema drift degrades to "not found" with manual entry one tap away.
+
+⚠️ Key hygiene: never commit the key. `Secrets.xcconfig` is gitignored for exactly this;
+if a key is ever pasted into a chat, issue tracker, or log, rotate it in the RapidAPI
+dashboard (takes seconds, the old key dies instantly).
 
 ## Feature flags (`ReclockKit/Sources/ReclockKit/FlightImport/ItineraryParsingProvider.swift`)
 

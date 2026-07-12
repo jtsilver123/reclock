@@ -50,24 +50,48 @@ struct DurationEstimatorTests {
 @Suite("Flight schedule lookup")
 struct FlightScheduleProviderTests {
 
+    /// Captured verbatim from a live AeroDataBox lookup (AY16, 2026-07-13) — public
+    /// schedule data. Guards the mapping against the real schema, including the extra
+    /// fields the decoder must tolerate (distances, revised/predicted times, aircraft).
     static let sampleResponse = """
     [
       {
-        "number": "AY 16",
-        "airline": { "name": "Finnair", "iata": "AY" },
+        "greatCircleDistance": { "meter": 6625521.41, "km": 6625.52, "mile": 4116.91, "nm": 3577.5, "feet": 21737274.95 },
         "departure": {
-          "airport": { "iata": "JFK", "timeZone": "America/New_York" },
-          "scheduledTime": { "utc": "2026-09-19 22:30Z", "local": "2026-09-19 18:30-04:00" }
+          "airport": {
+            "icao": "KJFK", "iata": "JFK", "name": "New York John F Kennedy",
+            "shortName": "John F Kennedy", "municipalityName": "New York",
+            "location": { "lat": 40.6398, "lon": -73.7789 },
+            "countryCode": "US", "timeZone": "America/New_York"
+          },
+          "scheduledTime": { "utc": "2026-07-14 02:50Z", "local": "2026-07-13 22:50-04:00" },
+          "terminal": "8",
+          "quality": ["Basic"]
         },
         "arrival": {
-          "airport": { "iata": "HEL", "timeZone": "Europe/Helsinki" },
-          "scheduledTime": { "utc": "2026-09-20 06:50Z", "local": "2026-09-20 09:50+03:00" }
-        }
+          "airport": {
+            "icao": "EFHK", "iata": "HEL", "name": "Helsinki Vantaa",
+            "shortName": "Vantaa", "municipalityName": "Helsinki",
+            "location": { "lat": 60.3172, "lon": 24.9633 },
+            "countryCode": "FI", "timeZone": "Europe/Helsinki"
+          },
+          "scheduledTime": { "utc": "2026-07-14 11:00Z", "local": "2026-07-14 14:00+03:00" },
+          "revisedTime": { "utc": "2026-07-14 11:00Z", "local": "2026-07-14 14:00+03:00" },
+          "predictedTime": { "utc": "2026-07-14 10:29Z", "local": "2026-07-14 13:29+03:00" },
+          "quality": ["Basic", "Live"]
+        },
+        "lastUpdatedUtc": "2026-07-02 07:52Z",
+        "number": "AY 16",
+        "status": "Expected",
+        "codeshareStatus": "IsOperator",
+        "isCargo": false,
+        "aircraft": { "model": "Airbus A330-300" },
+        "airline": { "name": "Finnair", "iata": "AY", "icao": "FIN" }
       }
     ]
     """
 
-    @Test("Parses a canned AeroDataBox response into a correct segment")
+    @Test("Parses a live-captured AeroDataBox response into a correct segment")
     func parsesResponse() throws {
         let flights = try AeroDataBoxScheduleProvider.parse(
             data: Data(Self.sampleResponse.utf8),
@@ -81,11 +105,15 @@ struct FlightScheduleProviderTests {
         #expect(flight.flightNumber == "AY16")
         #expect(flight.departureZone.identifier == "America/New_York")
         #expect(flight.arrivalZone.identifier == "Europe/Helsinki")
-        #expect(abs(flight.arrival.timeIntervalSince(flight.departure) - .hours(8.33)) < .minutes(5))
+        #expect(flight.departureTerminal == "8")
+        // 02:50Z → 11:00Z = 8h10m block.
+        #expect(abs(flight.arrival.timeIntervalSince(flight.departure) - .hours(8.17)) < .minutes(5))
 
         let segment = flight.segment()
         #expect(segment.importSource == .flightNumber)
-        #expect(TestSupport.localHour(segment.departure, "America/New_York") == 18)
+        #expect(segment.departureTerminal == "8")
+        #expect(TestSupport.localHour(segment.departure, "America/New_York") == 22)
+        #expect(TestSupport.localHour(segment.arrival, "Europe/Helsinki") == 14)
     }
 
     @Test("Malformed or empty responses degrade to clear errors, never bad data")
@@ -102,7 +130,7 @@ struct FlightScheduleProviderTests {
         }
         // A flight with an arrival before departure is dropped.
         let backwards = Self.sampleResponse
-            .replacingOccurrences(of: "2026-09-20 06:50Z", with: "2026-09-19 20:00Z")
+            .replacingOccurrences(of: "2026-07-14 11:00Z", with: "2026-07-14 01:00Z")
         #expect(throws: FlightScheduleError.self) {
             try AeroDataBoxScheduleProvider.parse(
                 data: Data(backwards.utf8), fallbackNumber: "AY16", airports: .bundled

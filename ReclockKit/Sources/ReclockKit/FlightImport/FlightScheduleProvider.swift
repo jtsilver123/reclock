@@ -14,6 +14,8 @@ public struct ScheduledFlight: Sendable, Hashable, Identifiable {
     public var arrival: Date
     public var departureZone: ZoneID
     public var arrivalZone: ZoneID
+    public var departureTerminal: String?
+    public var arrivalTerminal: String?
 
     public init(
         airline: String?,
@@ -23,7 +25,9 @@ public struct ScheduledFlight: Sendable, Hashable, Identifiable {
         departure: Date,
         arrival: Date,
         departureZone: ZoneID,
-        arrivalZone: ZoneID
+        arrivalZone: ZoneID,
+        departureTerminal: String? = nil,
+        arrivalTerminal: String? = nil
     ) {
         self.airline = airline
         self.flightNumber = flightNumber
@@ -33,6 +37,8 @@ public struct ScheduledFlight: Sendable, Hashable, Identifiable {
         self.arrival = arrival
         self.departureZone = departureZone
         self.arrivalZone = arrivalZone
+        self.departureTerminal = departureTerminal
+        self.arrivalTerminal = arrivalTerminal
     }
 
     public func segment(importSource: ImportSource = .flightNumber) -> FlightSegment {
@@ -45,6 +51,8 @@ public struct ScheduledFlight: Sendable, Hashable, Identifiable {
             arrival: arrival,
             departureZone: departureZone,
             arrivalZone: arrivalZone,
+            departureTerminal: departureTerminal,
+            arrivalTerminal: arrivalTerminal,
             importSource: importSource,
             externalIdentifier: flightNumber
         )
@@ -152,6 +160,9 @@ public struct AeroDataBoxScheduleProvider: FlightScheduleProvider {
 
     // MARK: Response mapping (isolated for testability)
 
+    // Field names verified against a live AeroDataBox response (2026-07); extra payload
+    // fields (greatCircleDistance, revisedTime, aircraft, quality, …) decode-tolerantly
+    // fall away.
     struct RawFlight: Decodable {
         struct Endpoint: Decodable {
             struct RawAirport: Decodable {
@@ -164,6 +175,7 @@ public struct AeroDataBoxScheduleProvider: FlightScheduleProvider {
             }
             var airport: RawAirport?
             var scheduledTime: RawTime?
+            var terminal: String?
         }
         struct Airline: Decodable { var iata: String?; var name: String? }
         var number: String?
@@ -204,7 +216,9 @@ public struct AeroDataBoxScheduleProvider: FlightScheduleProvider {
                 departure: depTime,
                 arrival: arrTime,
                 departureZone: depZone,
-                arrivalZone: arrZone
+                arrivalZone: arrZone,
+                departureTerminal: flight.departure?.terminal,
+                arrivalTerminal: flight.arrival?.terminal
             )
         }
         guard !flights.isEmpty else { throw FlightScheduleError.notFound }
