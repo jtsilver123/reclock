@@ -108,11 +108,12 @@ struct TripDetailView: View {
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
 
-                Picker("Getting to the airport", selection: transferBinding) {
-                    ForEach([20, 30, 45, 60, 90, 120], id: \.self) { minutes in
-                        Text("\(minutes) min").tag(minutes)
+                TransferTimeRow(
+                    minutes: transferBinding,
+                    departureAirport: currentTrip.segments.first.flatMap {
+                        model.deps.airports.airport(iata: $0.departureAirport)
                     }
-                }
+                )
                 Text("Door to terminal. Sets the leave-by reminder and keeps sleep clear of the airport run — for departure and return.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)

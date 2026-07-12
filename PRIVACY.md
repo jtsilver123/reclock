@@ -42,8 +42,16 @@ data** wipes the store, quarantine files, and every scheduled notification.
 | Calendar (full access) | Only when the user taps "Import from Calendar," after an in-app explanation | Detect flight events on-device | Manual entry path, one tap away |
 | Notifications | Only after the first plan exists, from an in-app card | Deliver plan reminders at the right moments | Today tab acts as an in-app checklist; how-to-enable-later text shown |
 | HealthKit (read sleep) | Only from onboarding's optional pre-fill, if capability enabled | Suggest typical bed/wake | Manual time pickers (default anyway) |
+| Location (when-in-use) | Only when the user taps "Estimate from my location" on the airport-transfer control | One-shot fix → driving ETA to the departure airport via Apple's Maps service; only the resulting minutes value is kept | Preset picker works exactly the same |
 
-No location, no microphone, no camera, no contacts, no photos, no tracking permission.
+**Location specifics:** Reclock never stores or transmits coordinates itself. The single
+fix is used in memory to ask Apple's MapKit for a route ETA (Apple's privacy policy
+governs that request, as with any Maps-based app). No background location, no
+significant-change monitoring, no geofencing. Local-only mode hides the feature.
+Under Apple's privacy-label definitions this is not "collection" (nothing leaves the
+device to the developer), so the label remains **Data Not Collected**.
+
+No microphone, no camera, no contacts, no photos, no tracking permission.
 
 ## App Store privacy label (accurate as shipped)
 
@@ -77,6 +85,10 @@ There are no third-party SDKs, so there is no third-party disclosure to aggregat
 > **Health** — if you choose the sleep pre-fill, Reclock reads recent sleep sessions on
 > your device to suggest your typical times. Health data is never uploaded and is not
 > used for anything else.
+>
+> **Location** — only if you tap "Estimate from my location" when setting your airport
+> transfer time. Your position is used once to ask Apple Maps for a drive-time estimate
+> and is never stored; only the minutes value you confirm is saved.
 >
 > **Analytics** — off unless you turn them on. If you do, we receive anonymous counts of
 > feature usage (e.g. "a plan was generated for a 7-hour eastward trip") under a random

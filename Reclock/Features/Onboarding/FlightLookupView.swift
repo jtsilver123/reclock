@@ -105,11 +105,12 @@ struct FlightLookupView: View {
 
     private var buildSection: some View {
         Section {
-            Picker("Getting to the airport", selection: $transferMinutes) {
-                ForEach([20, 30, 45, 60, 90, 120], id: \.self) { minutes in
-                    Text("\(minutes) min").tag(minutes)
+            TransferTimeRow(
+                minutes: $transferMinutes,
+                departureAirport: legs.first.flatMap {
+                    model.deps.airports.airport(iata: $0.flight.departureAirport)
                 }
-            }
+            )
             Button {
                 Task { await buildTrip() }
             } label: {

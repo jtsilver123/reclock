@@ -15,6 +15,9 @@ Walk top to bottom on a physical device before every submission. ☐ = verify ea
   actions Done / Snooze 30 min / Couldn't do it all work from a delivered notification.
 - ☐ Notifications denied: Today tab functions as checklist; Settings shows enable-later
   guidance; no repeated system prompts.
+- ☐ Location: "Estimate from my location" prompts only on tap; sets a sensible minutes
+  value; denied ⇒ friendly note + presets still work; button hidden in Local-only mode;
+  no location prompt anywhere else in the app.
 - ☐ Delay report (+2h) rebuilds future plan, shows change banner, reschedules reminders
   (verify in Settings → Notifications → Reclock pending list via device console or by
   waiting for next fire).

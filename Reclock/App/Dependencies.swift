@@ -15,6 +15,8 @@ struct Dependencies {
     let airports: AirportDirectory
     /// Flight-number schedule lookup. Unconfigured (and invisible in UI) without a key.
     let scheduleProvider: FlightScheduleProvider
+    /// One-shot drive-time-to-airport estimation (MapKit). Mocked in tests/previews.
+    let transitEstimator: TransitEstimating
     /// Injected clock so UI tests and previews can pin "now".
     let now: @Sendable () -> Date
 
@@ -45,6 +47,7 @@ struct Dependencies {
             analytics: NoOpAnalyticsClient(),
             airports: .bundled,
             scheduleProvider: ProcessInfo.isUITest ? mockScheduleProvider() : liveScheduleProvider(),
+            transitEstimator: ProcessInfo.isUITest ? MockTransitEstimator() : MapKitTransitEstimator(),
             now: { Date() }
         )
     }
@@ -89,6 +92,7 @@ struct Dependencies {
             analytics: NoOpAnalyticsClient(),
             airports: .bundled,
             scheduleProvider: mockScheduleProvider(),
+            transitEstimator: MockTransitEstimator(),
             now: { Date() }
         )
     }

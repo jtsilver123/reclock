@@ -143,13 +143,20 @@ product brief left open — or where I deliberately diverged from it — are cal
     check your ticket," and stops the moment the user edits arrival by hand. Airport
     coordinates were added (2-decimal, ~±1 km) and are used *only* for this estimate —
     calibrated against published block times in tests (JFK↔LHR, LAX→HND, JFK→HNL).
-37. **Transit awareness without location permission.** Per-trip "Getting to the airport"
-    minutes (default 60) extends the pre-departure no-sleep block
-    (prep + transfer + 2h at-airport lead) and emits a leave-by action + notification for
-    every stint departure — outbound and return. Leave-by is exempt from quiet hours (a
-    5 AM airport run must ring at 5 AM). A CoreLocation/MapKit auto-estimate was
-    considered and rejected for v1: it would break the "no location" privacy posture for
-    marginal precision; the seam (a minutes value on Trip) accepts any future estimator.
+37. **Transit awareness, manual first.** Per-trip "Getting to the airport" minutes
+    (default 60) extends the pre-departure no-sleep block (prep + transfer + 2h
+    at-airport lead) and emits a leave-by action + notification for every stint
+    departure — outbound and return. Leave-by is exempt from quiet hours (a 5 AM airport
+    run must ring at 5 AM).
+37b. **MapKit drive-time estimate, shipped with strict guardrails** (owner opted in).
+    "Estimate from my location" on the transfer control: when-in-use permission requested
+    only at tap, one-shot fix at hundred-meter accuracy, MKDirections driving ETA + a
+    12-min parking/walk buffer rounded to 5 min, result shown transparently ("≈ 42 min
+    drive … your location isn't stored"). Coordinates never persist; only the confirmed
+    minutes value does. Hidden in Local-only mode and for coordinate-less custom
+    airports; denial degrades to the preset picker with a pointer to iOS Settings.
+    Privacy label stays Data Not Collected (nothing leaves the device to the developer;
+    the MapKit request is Apple's, disclosed in PRIVACY.md).
 38. **TripAssembler** consolidated destination inference (stay airport before the longest
     ≥48h gap) — previously duplicated in two views, now one tested implementation used by
     calendar import, manual entry, and flight lookup.

@@ -84,11 +84,10 @@ struct ManualTripEntryView: View {
                 Text("When your bedtime starts moving. Automatic follows your profile preference; picking a value makes it exact for this trip.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
-                Picker("Getting to the airport", selection: $transferMinutes) {
-                    ForEach([20, 30, 45, 60, 90, 120], id: \.self) { minutes in
-                        Text("\(minutes) min").tag(minutes)
-                    }
-                }
+                TransferTimeRow(
+                    minutes: $transferMinutes,
+                    departureAirport: segments.first?.departureAirport
+                )
                 Text("Door to terminal. Sets your leave-by reminder and keeps sleep clear of the airport run.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
