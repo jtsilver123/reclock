@@ -20,6 +20,8 @@ struct ManualTripEntryView: View {
     @State private var includeReturn = false
     @State private var returnSegment = SegmentDraft()
     @State private var intensity: PlanIntensity = .balanced
+    /// -1 = automatic (profile preference), 0–4 = explicit days before departure.
+    @State private var preTripChoice: Int = -1
     @State private var validationMessages: [String] = []
     @State private var isCreating = false
 
@@ -64,6 +66,17 @@ struct ManualTripEntryView: View {
                 }
                 .pickerStyle(.segmented)
                 Text(intensity.summary)
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                Picker("Start adjusting", selection: $preTripChoice) {
+                    Text("Automatic").tag(-1)
+                    Text("On travel day").tag(0)
+                    Text("1 day before").tag(1)
+                    Text("2 days before").tag(2)
+                    Text("3 days before").tag(3)
+                    Text("4 days before").tag(4)
+                }
+                Text("When your bedtime starts moving. Automatic follows your profile preference; picking a value makes it exact for this trip.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -162,6 +175,7 @@ struct ManualTripEntryView: View {
                 ?? built.last!.arrivalZone,
             segments: built,
             intensity: intensity,
+            preTripDaysOverride: preTripChoice < 0 ? nil : preTripChoice,
             importSource: .manual
         )
         if await model.addTrip(trip) {

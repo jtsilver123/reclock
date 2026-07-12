@@ -56,6 +56,19 @@ public struct PlanEngine: JetLagPlanGenerating, Sendable {
             )
         }
 
+        // How many days before a departure the shift starts. An explicit per-trip choice
+        // wins outright; otherwise intensity preset ∩ profile willingness.
+        let preTripDays: Int
+        if strategy == .anchorToHome {
+            preTripDays = 0
+        } else if let override = trip.preTripDaysOverride {
+            preTripDays = max(0, min(override, 4))
+        } else {
+            preTripDays = configuration.preTripDayCount(
+                intensity: trip.intensity, willingness: profile.preTripAdjustment
+            )
+        }
+
         let context = PlanContext(
             trip: trip,
             profile: profile,
@@ -65,6 +78,7 @@ public struct PlanEngine: JetLagPlanGenerating, Sendable {
             stints: stints,
             strategy: strategy,
             outboundShift: shiftPlan,
+            preTripDays: preTripDays,
             state: currentState
         )
 
@@ -250,9 +264,7 @@ public struct PlanEngine: JetLagPlanGenerating, Sendable {
         let homeCal = Calendar.gregorian(in: context.homeZone)
 
         // Planning span.
-        let preDays = context.strategy == .anchorToHome
-            ? 0
-            : cfg.preTripDayCount(intensity: trip.intensity, willingness: profile.preTripAdjustment)
+        let preDays = context.preTripDays
         let firstDeparture = trip.firstDeparture!
         let planStartDay = homeCal.startOfDay(
             for: firstDeparture.addingTimeInterval(-Double(preDays) * 86_400)
@@ -359,17 +371,13 @@ public struct PlanEngine: JetLagPlanGenerating, Sendable {
         homeBedInstant: Date,
         context: PlanContext
     ) -> (target: Double, zone: ZoneID, stepAllowed: Bool, isPreDeparture: Bool) {
-        let cfg = configuration
         if context.strategy == .anchorToHome {
             return (0, context.trip.homeZone, false, false)
         }
 
         // Find the stint governing this night: the last stint departed at/before tonight,
         // or — within the pre-shift window — the upcoming stint.
-        let preDays = cfg.preTripDayCount(
-            intensity: context.trip.intensity,
-            willingness: context.profile.preTripAdjustment
-        )
+        let preDays = context.preTripDays
         var governing: Stint? = nil
         var isPreShift = false
         for stint in context.stints {
@@ -661,5 +669,7 @@ struct PlanContext {
     let stints: [PlanEngine.Stint]
     let strategy: AdaptationStrategy
     let outboundShift: CircadianMath.ShiftPlan
+    /// Resolved once: explicit per-trip override, else intensity ∩ willingness (0 in anchor mode).
+    let preTripDays: Int
     let state: TravelerState?
 }

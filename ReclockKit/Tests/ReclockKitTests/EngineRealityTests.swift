@@ -189,6 +189,42 @@ struct EngineRealityTests {
         #expect(!sleepInFlight.isEmpty, "red-eye night lost all sleep")
     }
 
+    @Test("Explicit pre-trip start overrides intensity caps in both directions")
+    func preTripOverrideWins() throws {
+        let profile = DemoTrips.defaultProfile() // moderate willingness (2 days)
+
+        // Easy intensity normally allows 0 pre-trip days — but the user said 3.
+        var eager = DemoTrips.newYorkToHelsinki(reference: TestSupport.reference)
+        eager.intensity = .easy
+        eager.preTripDaysOverride = 3
+        let eagerPlan = try TestSupport.generateValidPlan(trip: eager, profile: profile)
+        let departure = eager.firstDeparture!
+        let eagerPreDays = eagerPlan.days.filter {
+            $0.estimatedBed < departure && $0.cumulativeShiftHours > 0.3
+        }
+        #expect(eagerPreDays.count >= 3, "user asked for 3 early days; easy mode must not cap it")
+
+        // Maximum intensity + maximum willingness normally shifts early — but the user said 0.
+        var lastMinute = DemoTrips.newYorkToHelsinki(reference: TestSupport.reference)
+        lastMinute.intensity = .maximum
+        lastMinute.preTripDaysOverride = 0
+        var eagerProfile = profile
+        eagerProfile.preTripAdjustment = .maximum
+        let lastMinutePlan = try TestSupport.generateValidPlan(trip: lastMinute, profile: eagerProfile)
+        let lastMinutePre = lastMinutePlan.days.filter {
+            $0.estimatedBed < departure && $0.cumulativeShiftHours > 0.3
+        }
+        #expect(lastMinutePre.isEmpty, "user asked for no early shifting; nothing may start before travel day")
+
+        // nil override keeps the derived behavior (balanced ∩ moderate = 2 days).
+        let derived = DemoTrips.newYorkToHelsinki(reference: TestSupport.reference)
+        let derivedPlan = try TestSupport.generateValidPlan(trip: derived, profile: profile)
+        let derivedPre = derivedPlan.days.filter {
+            $0.estimatedBed < departure && $0.cumulativeShiftHours > 0.3
+        }
+        #expect(derivedPre.count == 2)
+    }
+
     @Test("Intensity changes plan density")
     func intensityDensity() throws {
         var easy = DemoTrips.newYorkToHelsinki(reference: TestSupport.reference)

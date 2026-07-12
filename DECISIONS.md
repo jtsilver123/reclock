@@ -67,6 +67,12 @@ product brief left open — or where I deliberately diverged from it — are cal
 16. **Onboarding is 6 screens, not 7** — "import" moved to the moment you add a trip
     (where it has context), keeping first-run under a minute. All brief questions are
     asked; meal-skip preference lives with the plane-sleep questions.
+16b. **The user decides when the shift starts — per trip, and their choice wins.**
+    Onboarding sets a *default* head start (0–3 days); every trip has a "Start adjusting"
+    control (Automatic / on travel day / 1–4 days before) at creation and in Trip
+    settings. An explicit choice overrides intensity presets entirely: Easy + "3 days
+    before" shifts three days early; Maximum + "on travel day" does no pre-shifting.
+    Enforced by engine tests in both directions.
 17. **"See an example" seeds a real landing-day trip** (Helsinki demo) rather than a
     static mock — the fastest way to make the value obvious and the same path UI tests
     use.

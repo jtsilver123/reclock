@@ -177,8 +177,8 @@ struct OnboardingFlow: View {
 
     private var planStyle: some View {
         OnboardingScreen(
-            title: "How hard should we push?",
-            subtitle: "Following the plan imperfectly still helps — this just sets the dial.",
+            title: "When should trips start shifting you?",
+            subtitle: "Your default head start before any departure. You can set it exactly, per trip, when you add one.",
             primaryLabel: "Continue",
             primaryAction: { step = 4 }
         ) {

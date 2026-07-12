@@ -19,6 +19,9 @@ in economy with a job can actually do.
   service, descent, or your daughter's wedding. It caps in-flight sleep at what *you* said
   is realistic, and if you can't sleep on planes at all, it plans quiet rest instead of
   pretending.
+- **You control the head start.** Choose exactly when the transition begins — on travel
+  day, or 1–4 days before departure — per trip, with a sensible automatic default from
+  your profile. Your explicit choice always wins over plan-intensity presets.
 - **Adaptive.** Report a delay, a missed light window, or an accidental nap, and the rest
   of the plan is rebuilt from where your body clock actually is — with a plain-English
   explanation of what moved.

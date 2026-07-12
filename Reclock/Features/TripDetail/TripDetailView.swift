@@ -70,6 +70,18 @@ struct TripDetailView: View {
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
 
+                Picker("Start adjusting", selection: preTripBinding) {
+                    Text("Automatic").tag(-1)
+                    Text("On travel day").tag(0)
+                    Text("1 day before").tag(1)
+                    Text("2 days before").tag(2)
+                    Text("3 days before").tag(3)
+                    Text("4 days before").tag(4)
+                }
+                Text(preTripFootnote)
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+
                 if currentTrip.destinationNights.map({ $0 <= 3 }) == true {
                     Picker("Adaptation", selection: strategyBinding) {
                         Text("Automatic").tag(AdaptationStrategy.automatic)
@@ -163,6 +175,29 @@ struct TripDetailView: View {
                 Task { await model.updateTrip(updated) }
             }
         )
+    }
+
+    /// -1 = automatic (derived from your profile), 0–4 = explicit days before departure.
+    private var preTripBinding: Binding<Int> {
+        Binding(
+            get: { currentTrip.preTripDaysOverride ?? -1 },
+            set: { newValue in
+                var updated = currentTrip
+                updated.preTripDaysOverride = newValue < 0 ? nil : newValue
+                Task { await model.updateTrip(updated) }
+            }
+        )
+    }
+
+    private var preTripFootnote: String {
+        if let override = currentTrip.preTripDaysOverride {
+            switch override {
+            case 0: return "Your choice: no early shifting — the plan starts working on travel day."
+            case 1: return "Your choice: bedtime starts moving 1 day before departure."
+            default: return "Your choice: bedtime starts moving \(override) days before departure."
+            }
+        }
+        return "Automatic uses your profile's pre-trip preference (Settings → Sleep profile), capped by plan intensity. Pick a value to decide exactly when the shift begins for this trip."
     }
 }
 

@@ -15,6 +15,10 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
     /// How the plan should approach adaptation. `.automatic` lets the engine decide
     /// (including recommending home-time anchoring for very short trips).
     public var adaptationStrategy: AdaptationStrategy
+    /// Per-trip override for how many days before departure the shift starts (0–4).
+    /// `nil` = derive from profile willingness ∩ intensity. When set, the user's choice
+    /// wins outright — intensity presets never cap an explicit decision.
+    public var preTripDaysOverride: Int?
     public var status: TripStatus
     public var importSource: ImportSource
     public var createdAt: Date
@@ -32,6 +36,7 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
         commitments: [FixedCommitment] = [],
         intensity: PlanIntensity = .balanced,
         adaptationStrategy: AdaptationStrategy = .automatic,
+        preTripDaysOverride: Int? = nil,
         status: TripStatus = .upcoming,
         importSource: ImportSource = .manual,
         createdAt: Date = Date(timeIntervalSince1970: 0),
@@ -48,6 +53,7 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
         self.commitments = commitments
         self.intensity = intensity
         self.adaptationStrategy = adaptationStrategy
+        self.preTripDaysOverride = preTripDaysOverride
         self.status = status
         self.importSource = importSource
         self.createdAt = createdAt

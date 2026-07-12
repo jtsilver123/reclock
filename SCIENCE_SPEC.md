@@ -127,7 +127,7 @@ sign-off before stronger marketing claims):
 | maximumIntensityRateMultiplier | 1.25 | [REVIEW] |
 | preTripRatePerDay | 1.0h | [REVIEW] |
 | antidromicThresholdHours | 9h | [REVIEW] |
-| preTripDays (easy/balanced/max) | 0 / 2 / 3 ∩ user willingness | |
+| preTripDays (easy/balanced/max) | 0 / 2 / 3 ∩ user willingness | explicit per-trip user choice (0–4 days) overrides both |
 | anchorMaxNights / anchorMaxShiftHours | 2 / 5h | CDC-style short-trip rule |
 | lightBufferFromCBTmin / lightResponsiveHalfWindow | 0.5h / 6h | [REVIEW] |
 | seekLightDuration (min) | 2h (0.75h) | |
