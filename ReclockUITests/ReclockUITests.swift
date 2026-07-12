@@ -15,6 +15,16 @@ final class ReclockUITests: XCTestCase {
         return app
     }
 
+    /// Scrolls until the element is hittable — content below the fold exists in the
+    /// hierarchy but can't be tapped (and List rows may not materialize) until visible.
+    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 6) {
+        var swipes = 0
+        while (!element.exists || !element.isHittable) && swipes < maxSwipes {
+            app.swipeUp()
+            swipes += 1
+        }
+    }
+
     // MARK: Onboarding path
 
     func testOnboardingLeadsStraightIntoAddTrip() throws {
@@ -77,37 +87,42 @@ final class ReclockUITests: XCTestCase {
     func testReportDelayFlow() throws {
         let app = launchSeeded()
 
-        // Navigate: Today → trip summary row → Trip detail.
-        let tripRow = app.staticTexts.matching(NSPredicate(format: "label CONTAINS '→'")).firstMatch
-        XCTAssertTrue(tripRow.waitForExistence(timeout: 10))
-        tripRow.tap()
+        // Navigate: Today → trip card (below the fold on landing day) → Trip detail.
+        let tripCard = app.buttons["home.tripCard"]
+        XCTAssertTrue(tripCard.waitForExistence(timeout: 10))
+        scrollTo(tripCard, in: app)
+        tripCard.tap()
 
         let delayButton = app.buttons["My flight changed / was delayed"]
-        XCTAssertTrue(delayButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(delayButton.waitForExistence(timeout: 8))
+        scrollTo(delayButton, in: app)
         delayButton.tap()
 
         let plusTwo = app.buttons["+2h"]
-        XCTAssertTrue(plusTwo.waitForExistence(timeout: 5))
+        XCTAssertTrue(plusTwo.waitForExistence(timeout: 8))
+        scrollTo(plusTwo, in: app)
         plusTwo.tap()
         app.buttons["Update plan"].tap()
 
         // Back on trip detail; the plan was rebuilt (revision bump is internal — verify UI alive).
-        XCTAssertTrue(delayButton.waitForExistence(timeout: 8))
+        XCTAssertTrue(delayButton.waitForExistence(timeout: 10))
     }
 
     func testDeleteTrip() throws {
         let app = launchSeeded()
 
-        let tripRow = app.staticTexts.matching(NSPredicate(format: "label CONTAINS '→'")).firstMatch
-        XCTAssertTrue(tripRow.waitForExistence(timeout: 10))
-        tripRow.tap()
+        let tripCard = app.buttons["home.tripCard"]
+        XCTAssertTrue(tripCard.waitForExistence(timeout: 10))
+        scrollTo(tripCard, in: app)
+        tripCard.tap()
 
         let deleteButton = app.buttons["Delete trip"]
-        XCTAssertTrue(deleteButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 8))
+        scrollTo(deleteButton, in: app)
         deleteButton.tap()
 
         let confirm = app.buttons["Delete trip and plan"]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirm.waitForExistence(timeout: 8))
         confirm.tap()
 
         // Home returns to the empty hero.
@@ -119,7 +134,10 @@ final class ReclockUITests: XCTestCase {
         app.tabBars.buttons["Settings"].tap()
 
         XCTAssertTrue(app.staticTexts["Everything stays on this device"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.buttons["Export my data (JSON)"].exists)
+        // Privacy rows sit below the fold; List rows materialize on scroll.
+        let export = app.buttons["Export my data (JSON)"]
+        scrollTo(export, in: app)
+        XCTAssertTrue(export.waitForExistence(timeout: 4))
         XCTAssertTrue(app.buttons["Delete all data"].exists)
     }
 }

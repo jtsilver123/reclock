@@ -194,6 +194,7 @@ private struct TripHomeContent: View {
                         TripSummaryRow(trip: trip, plan: model.plan(for: trip))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("home.tripCard")
                 }
                 .padding(Theme.Space.m)
             }
