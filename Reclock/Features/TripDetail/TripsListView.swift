@@ -197,14 +197,20 @@ struct TripsListView: View {
             TripListRow(
                 trip: trip,
                 isOnPlanTab: model.activeTrip?.id == trip.id,
-                buddyCount: buddyCounts[trip.id],
-                onBuddies: {
-                    Haptics.selection()
-                    buddiesTrip = trip
-                }
+                buddyCount: buddyCounts[trip.id]
             )
         }
         .accessibilityIdentifier("trips.row")
+        .swipeActions(edge: .leading) {
+            if trip.status != .completed {
+                Button {
+                    buddiesTrip = trip
+                } label: {
+                    Label("Buddies", systemImage: "person.2.fill")
+                }
+                .tint(Theme.accentDeep)
+            }
+        }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 pendingDelete = trip
@@ -219,7 +225,6 @@ private struct TripListRow: View {
     let trip: Trip
     let isOnPlanTab: Bool
     let buddyCount: Int?
-    var onBuddies: () -> Void
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
@@ -239,9 +244,9 @@ private struct TripListRow: View {
             }
             Spacer(minLength: Theme.Space.s)
 
-            // Who's on this plan — or the door to inviting someone. A tap gesture,
-            // not a Button: a lone borderless button inside a NavigationLink row
-            // swallows taps meant for the whole row.
+            // Who's on this plan, at a glance. Display only — interactive views
+            // nested in a NavigationLink row hijack row taps (it broke navigation
+            // in two UI tests). Buddies open via leading swipe or inside the trip.
             if trip.status != .completed {
                 HStack(spacing: 3) {
                     Image(systemName: trip.sharedPlanCode == nil ? "person.badge.plus" : "person.2.fill")
@@ -255,11 +260,8 @@ private struct TripListRow: View {
                 .padding(.horizontal, Theme.Space.s)
                 .frame(height: 30)
                 .background(Theme.accent.opacity(0.14), in: Capsule())
-                .contentShape(Capsule())
-                .onTapGesture { onBuddies() }
-                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(trip.sharedPlanCode == nil
-                    ? "Invite a friend to this trip"
+                    ? "No travel buddies yet"
                     : "Travel buddies\(buddyCount.map { ": \($0) on this plan" } ?? "")")
             }
 
