@@ -182,8 +182,8 @@ extension AppModel {
 /// When a hosted invite page exists (web/invite), point `inviteBase` at it and the
 /// same message upgrades to a smart link automatically.
 enum AppLinks {
-    /// Future: "https://reclock.app/i/?c=" once the invite page is deployed.
-    static let inviteBase: String? = nil
+    /// The hosted smart page: tries the app, shows the code + instructions otherwise.
+    static let inviteBase: String? = "https://jtsilver123.github.io/reclock/invite/?c="
     static let scheme = "reclock"
 
     static func inviteLink(code: String) -> String {

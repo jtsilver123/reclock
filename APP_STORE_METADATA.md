@@ -12,6 +12,29 @@
 | Price | Free (no IAP) |
 | Age rating | 4+ (no objectionable content; wellness guidance with clear non-medical framing) |
 
+## App Review Information (paste into App Store Connect)
+
+- **Sign-in required:** NO. Every feature the listing describes works without an
+  account. Sign in with Apple/Google is optional and only adds encrypted backup and
+  shared-plan progress. Reviewers can exercise the whole app signed out.
+- **Demo account:** not applicable (no required login).
+- **Notes for the reviewer:**
+  "Reclock generates jet-lag plans fully on-device; no account is required. Optional
+  Sign in with Apple (Guideline 4.8-compliant; Apple listed first) enables an
+  encrypted backup and invite-code plan sharing among travel companions. In-app
+  account deletion is at Settings → Backup & sync → Delete account & backup
+  (5.1.1(v)). HealthKit use is optional, read-only (sleep sessions), on-device only,
+  and never synced to our server. Melatonin mentions are reminders framed as
+  optional with a non-medical disclaimer (Settings → About). Shared-plan 'kudos' are
+  a fixed emoji among explicitly invited companions — no free-form user content."
+- **URLs:** Support https://jtsilver123.github.io/reclock/ · Privacy Policy
+  https://jtsilver123.github.io/reclock/privacy/
+- **Age rating questionnaire:** all "No"; 4+.
+- **Privacy labels (match PrivacyInfo.xcprivacy):** Contact Info → Email Address
+  (app functionality, linked, no tracking) · Identifiers → User ID (same) · User
+  Content → Other (same; the backup snapshot + shared-plan progress). All three
+  apply ONLY when the user signs in; collection is optional.
+
 ## Screenshots & icon (generated, ready to upload)
 
 `python3 tools/make_store_assets.py` regenerates everything:

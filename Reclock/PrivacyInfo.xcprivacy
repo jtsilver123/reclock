@@ -47,7 +47,19 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Required-reason APIs actually used. UserDefaults holds sync markers and
+	     kudos read-cursors — app-scoped state only (CA92.1). Nothing else on
+	     Apple's required-reason list is referenced (verified by source scan). -->
 	<key>NSPrivacyAccessedAPITypes</key>
-	<array/>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

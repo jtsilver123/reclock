@@ -62,3 +62,22 @@ Walk top to bottom on a physical device before every submission. ☐ = verify ea
 - ☐ Export compliance: uses only exempt HTTPS (ITSAppUsesNonExemptEncryption=NO already
   in Info).
 - ☐ TestFlight external group notes updated.
+
+
+## Addendum — auth, sharing, and manifest compliance (2026-07)
+
+- [ ] App ID `app.reclock.ios` has **Sign In with Apple** capability ticked
+      (developer.apple.com → Identifiers). Without it the archive export fails.
+- [ ] Supabase → Authentication → Apple enabled with Client ID `app.reclock.ios`
+      (done 2026-07-13); Google enabled + iOS client ID whenever Google ships.
+- [ ] Sign in on device, back up, delete account in-app — confirm the snapshot row
+      disappears (5.1.1(v)).
+- [ ] Privacy labels in App Store Connect exactly match `PrivacyInfo.xcprivacy`
+      (email, user ID, other user content — all optional, app-functionality, no
+      tracking; required-reason API: UserDefaults CA92.1).
+- [ ] Support + privacy URLs live before submission (Pages deploys from `web/`):
+      https://jtsilver123.github.io/reclock/ and …/reclock/privacy/.
+- [ ] Invite flow end-to-end on two devices: share → open link → join → checkmarks
+      mirror → kudos lands as a Home banner.
+- [ ] TestFlight beta notes mention optional sign-in so beta reviewers don't hunt
+      for credentials.

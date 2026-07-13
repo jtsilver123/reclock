@@ -121,10 +121,10 @@ There are no third-party SDKs, so there is no third-party disclosure to aggregat
 >
 > Contact: privacy@reclock.app
 
-## URLs (working placeholders to publish before submission)
+## URLs (live — served from GitHub Pages via .github/workflows/pages.yml)
 
-- Privacy policy: `https://reclock.app/privacy`
-- Support: `https://reclock.app/support`
+- Privacy policy: `https://jtsilver123.github.io/reclock/privacy/`
+- Support: `https://jtsilver123.github.io/reclock/`
 - Terms: `https://reclock.app/terms`
 
 ## Account deletion

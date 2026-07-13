@@ -262,10 +262,10 @@ struct SettingsView: View {
         Section("About") {
             LabeledContent("Version", value: appVersion)
             LabeledContent("Plan protocol", value: "v\(ProtocolVersion.current.description)")
-            Link(destination: URL(string: "https://reclock.app/privacy")!) {
+            Link(destination: URL(string: "https://jtsilver123.github.io/reclock/privacy/")!) {
                 Label("Privacy policy", systemImage: "hand.raised")
             }
-            Link(destination: URL(string: "https://reclock.app/support")!) {
+            Link(destination: URL(string: "https://jtsilver123.github.io/reclock/")!) {
                 Label("Support", systemImage: "lifepreserver")
             }
             Text("Reclock offers general wellness guidance for travel, not medical advice. If you have a sleep disorder or health condition, talk to a clinician.")
