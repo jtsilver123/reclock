@@ -10,6 +10,9 @@ import ReclockKit
 @Observable
 final class AppModel {
     let deps: Dependencies
+    /// Optional backup & sync identity. The app never requires it.
+    let auth = AuthManager()
+    let sync = SyncService()
 
     private(set) var state = AppState()
     private(set) var isLoaded = false
@@ -42,6 +45,10 @@ final class AppModel {
         isLoaded = true
         deps.analytics.track(.appOpened)
         await refreshTripStatuses()
+        // Fresh install with a backup waiting (new phone): restore silently.
+        if auth.isSignedIn && state.trips.isEmpty && !ProcessInfo.isUITest {
+            await restoreFromBackupIfEmpty()
+        }
     }
 
     private func persist() async {
@@ -53,6 +60,31 @@ final class AppModel {
                 message: "Your last change couldn't be written to storage. Free up space and try again."
             )
         }
+        sync.schedulePush(state: state, auth: auth)
+    }
+
+    // MARK: - Backup & sync
+
+    /// After sign-in: an empty device restores the backup; a device with trips becomes
+    /// the source of truth and pushes up immediately.
+    func handleSignedIn() async {
+        if state.trips.isEmpty {
+            await restoreFromBackupIfEmpty()
+        }
+        await sync.push(state: state, auth: auth)
+    }
+
+    func backUpNow() async {
+        await sync.push(state: state, auth: auth)
+    }
+
+    private func restoreFromBackupIfEmpty() async {
+        guard state.trips.isEmpty, let restored = await sync.fetchSnapshot(auth: auth) else { return }
+        state = restored
+        await persist()
+        await refreshTripStatuses()
+        await rescheduleAllNotifications()
+        lastChangeMessages = ["Restored your trips from backup."]
     }
 
     // MARK: - Derived state

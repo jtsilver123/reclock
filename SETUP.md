@@ -137,6 +137,22 @@ export step and fails the run if either entitlement is missing from the final IP
 Sign in with Apple). Add any future entitlement to `Reclock.entitlements` and to
 the verify list in `.github/workflows/testflight.yml`.
 
+## Backup & sync backend (Supabase)
+
+Auth + backup run against the Supabase project `Reclock` (`txqysnyfrlizxatbimpb`,
+us-east-1, free tier). The URL and publishable key are embedded in
+`Reclock/Services/Auth/SupabaseAuth.swift` — safe by design; row-level security is
+the guard. Schema and the `delete-account` edge function are managed as migrations
+in the Supabase project itself.
+
+One-time setup still needed from the account owner:
+
+1. **Apple provider:** Supabase dashboard → Authentication → Sign In with Apple →
+   enable, and add `app.reclock.ios` to **Client IDs** (native flow needs no secret).
+2. **App ID capability:** developer.apple.com → Identifiers → `app.reclock.ios` →
+   check **Sign In with Apple** → Save (profiles regenerate automatically on the
+   next CI build).
+
 ## Credentials still required (account owner)
 
 - Apple Developer team for signing (nothing else — there is no backend).

@@ -8,5 +8,10 @@
 	<!-- Read-only sleep samples, strictly opt-in (see PRIVACY.md). -->
 	<key>com.apple.developer.healthkit</key>
 	<true/>
+	<!-- Optional backup & sync identity; the app never requires sign-in. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

@@ -38,11 +38,12 @@ final class ReclockUITests: XCTestCase {
         // Sleep basics → plane sleep → plan style → preferences → finish.
         for _ in 0..<4 {
             let continueButton = app.buttons["Continue"].firstMatch
-            XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
+            // Generous: the first post-install run on a cold CI simulator can jank.
+            XCTAssertTrue(continueButton.waitForExistence(timeout: 12))
             continueButton.tap()
         }
         let finish = app.buttons["Add my trip"].firstMatch
-        XCTAssertTrue(finish.waitForExistence(timeout: 5))
+        XCTAssertTrue(finish.waitForExistence(timeout: 12))
         finish.tap()
 
         // "Add my trip" does what it says: the add-trip sheet opens immediately.
@@ -147,7 +148,8 @@ final class ReclockUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Everything stays on this device"].waitForExistence(timeout: 8))
         // Privacy rows sit below the fold; List rows materialize on scroll.
         let export = app.buttons["Export my data (JSON)"]
-        scrollTo(export, in: app)
+        // Backup & sync section sits above privacy now — allow a couple more swipes.
+        scrollTo(export, in: app, maxSwipes: 9)
         XCTAssertTrue(export.waitForExistence(timeout: 4))
         XCTAssertTrue(app.buttons["Delete all data"].exists)
     }

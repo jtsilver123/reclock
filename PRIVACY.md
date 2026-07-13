@@ -18,6 +18,22 @@ the promises cheap to keep: **there is no server, no account, and no third-party
 - No advertising, no tracking, no sale of data, no fingerprinting. `NSPrivacyTracking =
   false`, tracking domains: none.
 
+## Backup & sync (optional, off by default)
+
+Signing in with Apple is never required. When a user chooses to sign in
+(Settings → Backup & sync):
+
+- **What's stored server-side:** the user's Apple identifier, the email Apple
+  provides (which may be Apple's private relay address), and one JSON snapshot of
+  the app state (trips, plans, preferences) in a Supabase project with row-level
+  security — each user can only ever read or write their own row.
+- **What it's for:** restoring trips on a new phone. Nothing else. No analytics,
+  no tracking, no sharing.
+- **Deletion:** Settings → Delete account & backup removes the server-side account
+  and snapshot permanently (in-app, as App Review requires). Local data stays on
+  the device. Signing out keeps the backup but stops all syncing.
+- **Signed out (the default):** zero bytes leave the device, exactly as before.
+
 ## Data inventory & retention
 
 | Data | Where | Retention | Leaves device? |

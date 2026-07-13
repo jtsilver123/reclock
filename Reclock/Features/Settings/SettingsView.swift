@@ -1,10 +1,12 @@
 import SwiftUI
+import AuthenticationServices
 import ReclockKit
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
 
     @State private var showDeleteAllConfirm = false
+    @State private var showDeleteAccountConfirm = false
     @State private var exportedData: ExportPayload?
     @State private var notificationStatusGranted: Bool?
 
@@ -19,6 +21,7 @@ struct SettingsView: View {
                 profileSection
                 notificationSection
                 planningSection
+                backupSection
                 Section("Understand the plan") {
                     NavigationLink {
                         WhyItWorksView()
@@ -136,13 +139,79 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: Backup & sync
+
+    @ViewBuilder
+    private var backupSection: some View {
+        Section {
+            if model.auth.isSignedIn {
+                LabeledContent("Signed in", value: model.auth.email ?? "Apple ID")
+                Button {
+                    Task {
+                        await model.backUpNow()
+                    }
+                } label: {
+                    Label(
+                        model.sync.lastBackupDescription.map { "Back up now (last: \($0))" } ?? "Back up now",
+                        systemImage: "icloud.and.arrow.up"
+                    )
+                }
+                Button("Sign out") {
+                    Task { await model.auth.signOut() }
+                }
+                Button(role: .destructive) {
+                    showDeleteAccountConfirm = true
+                } label: {
+                    Label("Delete account & backup", systemImage: "person.crop.circle.badge.xmark")
+                }
+            } else {
+                SignInWithAppleButton(.signIn) { request in
+                    model.auth.prepare(request)
+                } onCompletion: { result in
+                    Task {
+                        if await model.auth.complete(result) {
+                            Haptics.success()
+                            await model.handleSignedIn()
+                        }
+                    }
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 44)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+                if let error = model.auth.lastError {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+            }
+        } header: {
+            Text("Backup & sync")
+        } footer: {
+            Text(model.auth.isSignedIn
+                 ? "Your trips back up automatically after every change. A new phone signed into the same Apple ID restores them."
+                 : "Optional. Everything works without it — signing in keeps an encrypted copy of your trips so a new phone can restore them.")
+        }
+        .confirmationDialog(
+            "Delete your account?",
+            isPresented: $showDeleteAccountConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete account & backup", role: .destructive) {
+                Task { _ = await model.auth.deleteAccount() }
+            }
+        } message: {
+            Text("Removes your server-side account and backup permanently. Everything on this phone stays.")
+        }
+    }
+
     // MARK: Privacy
 
     private var privacySection: some View {
         Section {
             Label("Everything stays on this device", systemImage: "iphone.and.arrow.forward")
                 .font(.subheadline)
-            Text("No account. No server. Calendar scanning is on-device; plans and reminders work in airplane mode. Anonymous usage analytics are OFF unless you turn them on.")
+            Text("No account required — plans, reminders, and calendar scanning all run on-device and work in airplane mode. Optional sign-in adds an encrypted backup of your trips, nothing else. Anonymous usage analytics are OFF unless you turn them on.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
             Toggle("Share anonymous usage analytics", isOn: Binding(

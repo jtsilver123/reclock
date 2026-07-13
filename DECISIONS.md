@@ -191,6 +191,17 @@ product brief left open — or where I deliberately diverged from it — are cal
 - "Why this helps" moved from an always-visible disclosure into the More menu and the
   action detail screen — the science stays one tap away, never in the way.
 
+## Backup & sync (Supabase, optional)
+
+- Auth is Sign in with Apple only, exchanged natively for a Supabase session
+  (id_token grant + nonce). No SDK: a ~200-line URLSession client covers the three
+  endpoints used (token, snapshot table, delete-account function).
+- Sync is a whole-state snapshot: one RLS-guarded row per user mirroring the local
+  JSON store. Push debounces after every save; restore happens only onto an empty
+  device. Last writer wins — trip planning is single-author by nature.
+- The app never requires sign-in; signed out remains 100% on-device. In-app account
+  deletion (App Review 5.1.1(v)) runs through a service-role edge function.
+
 ## Known limitations (candid)
 
 - Engine day labels ("Landing day · Sun, Sep 20") are English strings from the kit.
