@@ -240,7 +240,7 @@ struct FlightLookupView: View {
     }
 }
 
-private struct ScheduledFlightRow: View {
+struct ScheduledFlightRow: View {
     let flight: ScheduledFlight
 
     var body: some View {

@@ -9,6 +9,7 @@ struct AddTripFlow: View {
     enum Route: Hashable {
         case calendarImport
         case flightLookup
+        case emailPaste
         case manualEntry
         case joinShared
     }
@@ -81,6 +82,20 @@ struct AddTripFlow: View {
                         }
                         .buttonStyle(PressableCardStyle())
                     }
+                    if lookupAvailable {
+                        Button {
+                            model.deps.analytics.track(.importMethodSelected(method: "email_paste"))
+                            path.append(.emailPaste)
+                        } label: {
+                            ImportOptionCard(
+                                icon: "envelope.fill",
+                                tint: Theme.tint(for: .windDown),
+                                title: "Paste from an email",
+                                subtitle: "Copy the confirmation — the flights find themselves."
+                            )
+                        }
+                        .buttonStyle(PressableCardStyle())
+                    }
                     Button {
                         model.deps.analytics.track(.importMethodSelected(method: "manual"))
                         path.append(.manualEntry)
@@ -129,6 +144,8 @@ struct AddTripFlow: View {
                     CalendarImportView(onFinished: { dismiss() })
                 case .flightLookup:
                     FlightLookupView(onFinished: { dismiss() })
+                case .emailPaste:
+                    EmailPasteImportView(onFinished: { dismiss() })
                 case .manualEntry:
                     ManualTripEntryView(onFinished: { dismiss() })
                 case .joinShared:
