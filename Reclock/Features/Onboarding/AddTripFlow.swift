@@ -192,6 +192,7 @@ struct CalendarImportView: View {
     @State private var phase: Phase = .explaining
     @State private var selectedIDs: Set<String> = []
     @State private var isCreating = false
+    @State private var importError: String?
 
     var body: some View {
         Group {
@@ -319,6 +320,11 @@ struct CalendarImportView: View {
                     Text("Only the flights you keep selected are imported. Incomplete detections can be finished manually.")
                 }
                 Section {
+                    if let importError {
+                        Label(importError, systemImage: "exclamationmark.triangle")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                    }
                     Button {
                         Task { await importSelected(flights) }
                     } label: {
@@ -338,6 +344,7 @@ struct CalendarImportView: View {
 
     private func importSelected(_ flights: [DetectedFlight]) async {
         isCreating = true
+        importError = nil
         defer { isCreating = false }
         let parser = FlightEventParser()
         let segments = flights
@@ -349,10 +356,15 @@ struct CalendarImportView: View {
             homeZone: homeZone,
             airports: model.deps.airports,
             importSource: .calendar
-        ) else { return }
+        ) else {
+            importError = "Those flights don't line up as one trip — try importing fewer, or add the trip manually."
+            return
+        }
         if await model.addTrip(trip) {
             Haptics.success()
             onFinished()
+        } else {
+            importError = "Couldn't build a plan from those flights. Add the trip manually and it'll take under a minute."
         }
     }
 }
@@ -377,7 +389,7 @@ private struct DetectedFlightRow: View {
                     Text(flight.sourceTitle)
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                     if !flight.isComplete {
                         Label("Needs details — finish manually after import", systemImage: "exclamationmark.triangle")
                             .font(.caption2)

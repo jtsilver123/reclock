@@ -208,10 +208,15 @@ struct ManualTripEntryView: View {
             preTripDaysOverride: preTripChoice < 0 ? nil : preTripChoice,
             airportTransferMinutes: transferMinutes,
             importSource: .manual
-        ) else { return }
+        ) else {
+            validationMessages = ["These flights don't line up as one trip — check dates and order."]
+            return
+        }
         if await model.addTrip(trip) {
             Haptics.success()
             onFinished()
+        } else {
+            validationMessages = ["Couldn't build the plan. Check the times make sense, then try again."]
         }
     }
 }
@@ -221,6 +226,8 @@ struct ManualTripEntryView: View {
 private struct SegmentEditor: View {
     @Environment(AppModel.self) private var model
     @Binding var draft: ManualTripEntryView.SegmentDraft
+    /// The chooser's "Type it in" promise is manual entry; the toggle still offers lookup.
+    var defaultMode: EntryMode = .manual
     @State private var isLookingUp = false
     @State private var lookupNote: String?
     @State private var lookupFailed = false
@@ -242,7 +249,7 @@ private struct SegmentEditor: View {
     @State private var mode: EntryMode?
 
     private var effectiveMode: EntryMode {
-        mode ?? (lookupAvailable ? .flightNumber : .manual)
+        mode ?? (lookupAvailable ? defaultMode : .manual)
     }
 
     private var filled: Bool {
@@ -343,7 +350,7 @@ private struct SegmentEditor: View {
                 .foregroundStyle(Theme.textSecondary)
         }
         if let dep = draft.departureAirport, let arr = draft.arrivalAirport {
-            Text("Times read as local: \(dep.iata) departs \(dep.zone.identifier), \(arr.iata) arrives \(arr.zone.identifier).")
+            Text("Times read as local: \(dep.iata) departs \(TimeFormat.zoneCity(dep.zone.resolved)) time, \(arr.iata) arrives \(TimeFormat.zoneCity(arr.zone.resolved)) time.")
                 .font(.caption2)
                 .foregroundStyle(Theme.textSecondary)
         }
@@ -448,6 +455,7 @@ struct AirportField: View {
                     }
                 } else {
                     TextField("City or code", text: $query)
+                        .textInputAutocapitalization(.never)
                         .multilineTextAlignment(.trailing)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -469,9 +477,11 @@ struct AirportField: View {
                                 Text(airport.city)
                                     .font(.subheadline)
                                     .foregroundStyle(Theme.textPrimary)
+                                    .lineLimit(1)
                                 Text(airport.name)
                                     .font(.caption2)
                                     .foregroundStyle(Theme.textSecondary)
+                                    .lineLimit(1)
                             }
                             Spacer()
                         }

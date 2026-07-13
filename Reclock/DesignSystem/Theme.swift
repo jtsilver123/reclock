@@ -119,6 +119,21 @@ enum Theme {
         }
     }
 
+    /// Filled-pill color: always deep enough for white content, in both modes.
+    /// (The adaptive `tint(for:)` goes pastel in dark mode — right for strokes and
+    /// glyphs on dark ground, wrong behind white text.)
+    static func solidTint(for type: ActionType) -> Color {
+        switch type {
+        case .seekLight: Color(red: 0.85, green: 0.48, blue: 0.05)
+        case .avoidLight: Color(red: 0.36, green: 0.31, blue: 0.60)
+        case .sleep, .windDown, .nap: Color(red: 0.28, green: 0.36, blue: 0.72)
+        case .stayAwake: Color(red: 0.80, green: 0.34, blue: 0.22)
+        case .caffeineOK, .caffeineCutoff: Color(red: 0.52, green: 0.36, blue: 0.24)
+        case .melatoninOptional: Color(red: 0.30, green: 0.50, blue: 0.42)
+        default: Color(red: 0.72, green: 0.50, blue: 0.05)
+        }
+    }
+
     /// Immersive gradient identity per action — the "sky" of that moment of the body's
     /// day. Foreground on these is always white; every gradient is dark enough for it.
     static func skyColors(for type: ActionType) -> [Color] {

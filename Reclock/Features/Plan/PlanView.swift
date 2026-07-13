@@ -171,10 +171,12 @@ private struct PlanContent: View {
                             }
                         }
                         .padding(.top, Theme.Space.s)
-                        .padding(.bottom, Theme.Space.xl)
+                        .padding(.bottom, 96)  // clears the floating assistant orb
                     }
-                    .onAppear {
-                        // Mid-trip, the reader's day is what matters — not day 0 last week.
+                    .task {
+                        // Mid-trip, the reader's day is what matters — not day 0 last
+                        // week. A beat's delay lets the lazy rows realize first.
+                        try? await Task.sleep(nanoseconds: 200_000_000)
                         if let today = PlanDays.currentDayID(
                             plan: plan, filter: priorityFilter, now: model.deps.now()
                         ) {
@@ -183,9 +185,9 @@ private struct PlanContent: View {
                     }
                 }
             }
-            .navigationDestination(for: PlanAction.self) { action in
-                ActionDetailView(action: action, trip: trip)
-            }
+        }
+        .navigationDestination(for: PlanAction.self) { action in
+            ActionDetailView(action: action, trip: trip)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

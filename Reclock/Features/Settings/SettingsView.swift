@@ -56,7 +56,9 @@ struct SettingsView: View {
                     Task { await model.deleteAllData() }
                 }
             } message: {
-                Text("Removes your profile, trips, plans, reminders and survey answers from this device. There is no server copy — this is permanent.")
+                Text(model.auth.isSignedIn
+                     ? "Removes your profile, trips, plans, reminders and survey answers from this device. Your encrypted server backup is not touched — use Delete account & backup to remove that too."
+                     : "Removes your profile, trips, plans, reminders and survey answers from this device. There is no server copy — this is permanent.")
             }
             .sheet(item: $exportedData) { payload in
                 ShareSheet(url: payload.url)
@@ -74,7 +76,7 @@ struct SettingsView: View {
                     ProfileEditorView(profile: profile)
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Sleep \(profile.typicalBedtime.description) – \(profile.typicalWakeTime.description) · \(profile.chronotype.displayName)")
+                        Text("Sleep \(clockText(profile.typicalBedtime)) – \(clockText(profile.typicalWakeTime)) · \(profile.chronotype.displayName)")
                             .font(.subheadline)
                         Text("Plane sleep: \(profile.planeSleepAbility.displayName) · Pre-trip: \(profile.preTripAdjustment.displayName)")
                             .font(.caption)
@@ -153,7 +155,16 @@ struct SettingsView: View {
     private var backupSection: some View {
         Section {
             if model.auth.isSignedIn {
-                LabeledContent("Signed in", value: model.auth.email ?? "Apple ID")
+                LabeledContent("Signed in") {
+                    Text(model.auth.email ?? "Apple ID")
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                if let error = model.auth.lastError {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
                 Button {
                     Task {
                         await model.backUpNow()
@@ -284,6 +295,14 @@ struct SettingsView: View {
         } header: {
             SettingsHeader(title: "About", symbol: "info.circle.fill")
         }
+    }
+
+    /// Locale-aware rendering of a stored clock time (12/24-hour follows the device).
+    private func clockText(_ clock: LocalClockTime) -> String {
+        let date = Calendar.current.date(
+            bySettingHour: clock.hour, minute: clock.minute, second: 0, of: Date()
+        ) ?? Date()
+        return date.formatted(date: .omitted, time: .shortened)
     }
 
     private var appVersion: String {

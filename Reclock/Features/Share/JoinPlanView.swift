@@ -105,6 +105,12 @@ struct JoinPlanView: View {
         }
         .navigationTitle("Join a friend's trip")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: model.auth.isSignedIn) { _, signedIn in
+            // Arriving from an invite link signed out: after sign-in, keep going.
+            if signedIn && !code.trimmingCharacters(in: .whitespaces).isEmpty {
+                Task { await find() }
+            }
+        }
         .onAppear {
             if code.isEmpty { code = prefilledCode }
             // Arriving via invite link with a session ready: look it up immediately.

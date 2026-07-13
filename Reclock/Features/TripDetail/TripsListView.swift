@@ -37,9 +37,19 @@ struct TripsListView: View {
                     Button {
                         showJoin = true
                     } label: {
-                        Label("Join a friend's trip", systemImage: "person.2.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Theme.accentDeep)
+                        HStack(spacing: Theme.Space.m) {
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Theme.accentDeep)
+                                .frame(width: 40, height: 40)
+                                .background(Circle().fill(Theme.accent.opacity(0.15)))
+                                .accessibilityHidden(true)
+                            Text("Join a friend's trip")
+                                .font(.headline)
+                                .fontDesign(.rounded)
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                        }
                     }
                 }
 
@@ -82,6 +92,7 @@ struct TripsListView: View {
                 }
             }
             .navigationTitle("Trips")
+            .contentMargins(.bottom, 84, for: .scrollContent)
             .sheet(isPresented: $showAddTrip) {
                 AddTripFlow()
             }
@@ -161,6 +172,8 @@ private struct TripListRow: View {
                 Text("\(trip.origin) → \(trip.destination)")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Text(dateRange)
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)

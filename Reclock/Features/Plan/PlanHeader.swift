@@ -74,7 +74,7 @@ struct PlanPinnedHeader: View {
         .overlay(alignment: .bottom) {
             // Content scrolling past reads as sliding under the frozen block.
             LinearGradient(
-                colors: [Color.black.opacity(0.07), .clear],
+                colors: [Theme.textPrimary.opacity(0.08), .clear],
                 startPoint: .top, endPoint: .bottom
             )
             .frame(height: 5)

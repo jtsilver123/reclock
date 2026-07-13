@@ -159,7 +159,9 @@ private struct BuddyRow: View {
                 Text(isMe ? "\(member.displayName) (you)" : member.displayName)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
-                Spacer()
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: Theme.Space.s)
                 if !todaysActions.isEmpty {
                     Text("\(doneCount)/\(todaysActions.count) today")
                         .font(.caption.weight(.semibold).monospacedDigit())
@@ -175,7 +177,9 @@ private struct BuddyRow: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(kudosSent)
-                    .accessibilityLabel("Send kudos to \(member.displayName)")
+                    .accessibilityLabel(kudosSent
+                        ? "Kudos sent to \(member.displayName)"
+                        : "Send kudos to \(member.displayName)")
                 }
             }
             if !todaysActions.isEmpty {

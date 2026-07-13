@@ -114,7 +114,7 @@ struct OnboardingFlow: View {
                 Divider()
                 Picker("Chronotype", selection: $chronotype) {
                     ForEach(Chronotype.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
+                        Text(shortLabel(for: type)).tag(type)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -147,7 +147,7 @@ struct OnboardingFlow: View {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Picker("Can you sleep on planes?", selection: $planeSleep) {
                     ForEach(PlaneSleepAbility.allCases, id: \.self) { ability in
-                        Text(ability.displayName).tag(ability)
+                        Text(shortLabel(for: ability)).tag(ability)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -265,6 +265,25 @@ struct OnboardingFlow: View {
     }
 
     // MARK: Completion
+
+    /// Segmented controls truncate long labels on smaller phones; these fit everywhere.
+    private func shortLabel(for type: Chronotype) -> String {
+        switch type {
+        case .early: "Early"
+        case .neutral: "Neutral"
+        case .late: "Late"
+        case .unsure: "Unsure"
+        }
+    }
+
+    private func shortLabel(for ability: PlaneSleepAbility) -> String {
+        switch ability {
+        case .easily: "Easily"
+        case .sometimes: "Sometimes"
+        case .rarely: "Rarely"
+        case .never: "Never"
+        }
+    }
 
     private func time(from clock: LocalClockTime) -> Date {
         Calendar.current.date(

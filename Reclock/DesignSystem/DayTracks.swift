@@ -121,7 +121,7 @@ struct DayColumn: View {
                 ForEach(caps) { cap in
                     let y = max(0, cap.window.start.timeIntervalSince(domainStart) / 3600 * hourHeight)
                     let rawHeight = cap.window.duration / 3600 * hourHeight
-                    let height = min(max(34, rawHeight), totalHeight - y)
+                    let height = min(max(44, rawHeight), totalHeight - y)
                     NavigationLink(value: cap.action) {
                         TrackCapsule(cap: cap, height: height, width: laneWidth - 10)
                     }
@@ -163,6 +163,7 @@ struct TrackCapsule: View {
     let width: CGFloat
 
     private var tint: Color { Theme.tint(for: cap.action.type) }
+    private var fill: Color { Theme.solidTint(for: cap.action.type) }
     private var done: Bool { cap.action.completion == .done }
 
     var body: some View {
@@ -172,7 +173,7 @@ struct TrackCapsule: View {
                     .strokeBorder(tint.opacity(0.75), lineWidth: 1.5)
                     .background(Capsule().fill(tint.opacity(0.05)))
             } else {
-                Capsule().fill(tint.opacity(done ? 0.45 : 0.9))
+                Capsule().fill(fill.opacity(done ? 0.5 : 0.95))
             }
             VStack(spacing: 4) {
                 ZStack {

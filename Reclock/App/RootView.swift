@@ -59,7 +59,7 @@ struct MainTabs: View {
             if let celebration = model.celebration {
                 CelebrationToast(event: celebration)
                     .transition(CelebrationToast.transition(reduceMotion: reduceMotion))
-                    .padding(.top, Theme.Space.xs)
+                    .padding(.top, 52)  // below the nav bar, not on it
             }
         }
         .animation(Theme.Anim.spring, value: model.celebration)

@@ -46,7 +46,8 @@ enum PlanDays {
     static func currentDayID(plan: JetLagPlan, filter: PriorityFilter, now: Date) -> UUID? {
         let days = groupedPhases(plan: plan, filter: filter).flatMap(\.days).map(\.day)
         let current = days.last { $0.dayStart <= now && now < $0.dayStart.addingTimeInterval(36 * 3600) }
-        let target = current ?? days.first { $0.dayStart > now }
+        // Future day next; for a fully-past plan, land on the most recent day.
+        let target = current ?? days.first { $0.dayStart > now } ?? days.last
         // Only jump when the target isn't already the first visible day.
         return target?.id == days.first?.id ? nil : target?.id
     }
@@ -79,6 +80,8 @@ struct PlanDayBlock: View {
                 Text(day.label)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                 if isPast {
                     Text("Past")
                         .font(.caption2.weight(.bold))
@@ -159,7 +162,7 @@ struct PlanPhaseHeader: View {
         .padding(.horizontal, Theme.Space.m)
         .padding(.vertical, Theme.Space.s)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.background.opacity(0.96))
+        .background(Theme.background)
         .accessibilityAddTraits(.isHeader)
     }
 }

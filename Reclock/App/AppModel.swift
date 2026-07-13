@@ -186,9 +186,14 @@ final class AppModel {
             }
         }
 
-        if let today = plan.days.last(where: { $0.dayStart <= now }) ?? plan.days.first {
+        let orderedDays = plan.days.sorted { $0.index < $1.index }
+        if let today = orderedDays.last(where: { $0.dayStart <= now }) {
             context.progress = plan.progress(atEndOfDay: today.index)
             context.dayLabel = today.label
+        } else if let first = orderedDays.first {
+            // The plan hasn't started: progress is zero and the label says when it does.
+            context.progress = 0
+            context.dayLabel = "Plan starts \(TimeFormat.dayDate(first.dayStart, zone: first.zone.resolved))"
         }
         return context
     }

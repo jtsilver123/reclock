@@ -58,7 +58,12 @@ struct AssistantView: View {
                         .padding(Theme.Space.m)
                     }
                     .onChange(of: messages) { _, newValue in
-                        if let last = newValue.last {
+                        guard let last = newValue.last else { return }
+                        if isThinking {
+                            // Streaming mutates the last bubble many times a second;
+                            // animating each hop reads as stutter. Just keep up.
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        } else {
                             withAnimation(Theme.Anim.gentle) {
                                 proxy.scrollTo(last.id, anchor: .bottom)
                             }
@@ -223,7 +228,7 @@ private struct FlowChips: View {
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(Theme.textPrimary)
                         .padding(.horizontal, Theme.Space.m)
-                        .padding(.vertical, 8)
+                        .frame(minHeight: 44)
                         .background(Theme.surfaceSecondary, in: Capsule())
                 }
                 .buttonStyle(PressableCardStyle())
