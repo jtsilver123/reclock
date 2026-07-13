@@ -12,6 +12,9 @@ public struct PlannedNotification: Sendable, Hashable, Identifiable {
     public var categoryID: String
     public var actionID: UUID
     public var kind: Kind
+    /// Missing this notification has immediate real-world cost (e.g. leave-for-airport),
+    /// so delivery may break through Focus modes where the platform supports it.
+    public var isTimeCritical: Bool
 
     public enum Kind: String, Sendable {
         case start          // action window is beginning
@@ -19,7 +22,7 @@ public struct PlannedNotification: Sendable, Hashable, Identifiable {
         case cutoff         // hard stop (e.g. last caffeine)
     }
 
-    public init(id: String, fireDate: Date, title: String, body: String, categoryID: String, actionID: UUID, kind: Kind) {
+    public init(id: String, fireDate: Date, title: String, body: String, categoryID: String, actionID: UUID, kind: Kind, isTimeCritical: Bool = false) {
         self.id = id
         self.fireDate = fireDate
         self.title = title
@@ -27,6 +30,7 @@ public struct PlannedNotification: Sendable, Hashable, Identifiable {
         self.categoryID = categoryID
         self.actionID = actionID
         self.kind = kind
+        self.isTimeCritical = isTimeCritical
     }
 }
 
@@ -93,7 +97,10 @@ public struct NotificationPlanner: Sendable {
                 body: body,
                 categoryID: category,
                 actionID: action.id,
-                kind: kind
+                kind: kind,
+                // Only leave-for-airport breaks through Focus: missing it forfeits the
+                // flight. Everything else respects the user's attention settings.
+                isTimeCritical: action.type == .leaveForAirport
             )
         }
 
@@ -184,7 +191,8 @@ public struct NotificationPlanner: Sendable {
             body: notification.body,
             categoryID: notification.categoryID,
             actionID: notification.actionID,
-            kind: notification.kind
+            kind: notification.kind,
+            isTimeCritical: notification.isTimeCritical
         )
     }
 

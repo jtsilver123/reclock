@@ -51,6 +51,9 @@ final class LocalNotificationScheduler: NotificationScheduling {
             content.categoryIdentifier = planned.categoryID
             content.threadIdentifier = "reclock-plan"
             content.userInfo = ["actionID": planned.actionID.uuidString]
+            // Requires the time-sensitive entitlement; without it the system
+            // silently treats this as .active, so it degrades safely.
+            content.interruptionLevel = planned.isTimeCritical ? .timeSensitive : .active
 
             let interval = planned.fireDate.timeIntervalSinceNow
             guard interval > 1 else { continue }

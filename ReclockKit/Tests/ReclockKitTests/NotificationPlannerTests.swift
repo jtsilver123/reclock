@@ -30,6 +30,25 @@ struct NotificationPlannerTests {
         #expect(notifications == again)
     }
 
+    @Test("Only leave-for-airport notifications are time-critical (Focus break-through)")
+    func timeCriticalFlag() throws {
+        let (plan, trip, profile) = try makePlanAndTrip()
+        let notifications = planner.plannedNotifications(
+            plan: plan, trip: trip, profile: profile, after: TestSupport.reference
+        )
+        let actionsByID = Dictionary(uniqueKeysWithValues: plan.actions.map { ($0.id, $0) })
+        let critical = notifications.filter(\.isTimeCritical)
+        let leaveActions = plan.actions.filter { $0.type == .leaveForAirport }
+        #expect(!leaveActions.isEmpty, Comment(rawValue: "demo trip should produce leave-for-airport actions"))
+        for n in critical {
+            #expect(actionsByID[n.actionID]?.type == .leaveForAirport)
+        }
+        // Every future leave-for-airport notification carries the flag.
+        for n in notifications where actionsByID[n.actionID]?.type == .leaveForAirport {
+            #expect(n.isTimeCritical)
+        }
+    }
+
     @Test("A new revision produces a fully distinct ID set (old ones removable by prefix)")
     func revisionReplacement() throws {
         let (plan, trip, profile) = try makePlanAndTrip()

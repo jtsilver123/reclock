@@ -37,7 +37,8 @@ The first open resolves the local `ReclockKit` package automatically (no network
 2. Choose your team; bundle ID defaults to `app.reclock.ios` — change it to one your
    account owns (also update `PRODUCT_BUNDLE_IDENTIFIER` for the UITests target:
    `<your-id>.uitests`).
-3. Automatic signing handles the rest. No special entitlements are required for v1.
+3. Automatic signing handles the rest. `Reclock.entitlements` (time-sensitive
+   notifications + HealthKit) is already wired via `CODE_SIGN_ENTITLEMENTS`.
 
 ## Flight-number lookup (optional, key-gated)
 
@@ -69,16 +70,17 @@ dashboard (takes seconds, the old key dies instantly).
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
-| `FeatureFlags.healthKitEnabled` | `true` | Compiles the HealthKit provider. It activates only if the capability is added AND the user opts in. Without the capability the provider reports "unsupported" and the UI hides itself. |
+| `FeatureFlags.healthKitEnabled` | `true` | Compiles the HealthKit provider. The entitlement ships in `Reclock.entitlements`; the feature still activates only if the user opts in, and if the entitlement is ever stripped the provider reports "unsupported" and the UI hides itself. |
 | `FeatureFlags.emailForwardingEnabled` | `false` | AwardWallet email-parsing scaffold. Requires a commercial agreement + server proxy. Leave off. |
 | `FeatureFlags.cloudSyncEnabled` | `false` | Interface exists; no backend in v1. |
 
-### Enabling HealthKit fully (optional)
+### HealthKit (ships enabled)
 
-1. Target → Signing & Capabilities → **+ Capability → HealthKit** (no background delivery).
-2. That's it — `NSHealthShareUsageDescription` is already set via build settings, the
-   provider is already wired behind `SleepDataProvider`, and the app functions identically
-   if the user declines.
+The HealthKit + Time Sensitive Notifications entitlements live in
+`Reclock.entitlements` (wired via `CODE_SIGN_ENTITLEMENTS`), and both capabilities
+are enabled on the App ID. `NSHealthShareUsageDescription` is set via build settings,
+the provider is wired behind `SleepDataProvider`, everything is opt-in at runtime,
+and the app functions identically if the user declines.
 
 ## Dev conveniences
 
@@ -125,10 +127,12 @@ profile, which requires a registered device), and `-exportArchive` re-signs it f
 the App Store using the cloud-managed distribution certificate via the API key.
 No certificates, profiles, or devices to manage from a Mac.
 
-Caveat inherited from this approach: the export re-sign derives entitlements from
-scratch, so if the app ever gains capability entitlements (push, HealthKit, Sign in
-with Apple…), ad-hoc-sign the archived .app with the entitlements file before the
-export step — see the workflow comment and the same pattern in jtsilver123/cini.
+Because the export re-sign derives entitlements from what the app already carries,
+the workflow ad-hoc-signs the archived .app with `Reclock.entitlements` before the
+export step and fails the run if either entitlement is missing from the final IPA
+(pattern proven in jtsilver123/cini, where the re-sign once silently dropped
+Sign in with Apple). Add any future entitlement to `Reclock.entitlements` and to
+the verify list in `.github/workflows/testflight.yml`.
 
 ## Credentials still required (account owner)
 

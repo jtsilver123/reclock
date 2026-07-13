@@ -6,9 +6,9 @@ import ReclockKit
 /// Optional, read-only sleep history used to pre-fill typical bed/wake times during
 /// onboarding. Data never leaves the device; the app is fully functional without it.
 ///
-/// NOTE: activating this on-device requires the HealthKit capability + entitlement in
-/// Signing & Capabilities (see SETUP.md). Without the entitlement the availability check
-/// reports `.unsupported` and the UI hides the option.
+/// The HealthKit entitlement ships in Reclock.entitlements. If it's ever stripped
+/// (e.g. a signing path that loses entitlements), the availability check reports
+/// `.unsupported` and the UI hides the option — nothing crashes.
 final class HealthKitSleepProvider: SleepDataProvider {
     private let healthStore = HKHealthStore()
 

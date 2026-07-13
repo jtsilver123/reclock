@@ -68,9 +68,20 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
-      # Reclock declares no entitlements (local notifications only — no push, no
-      # HealthKit capability in v1), so unlike Cini there is nothing to stamp into
-      # the archive before the export re-sign builds its entitlements.
+      # The export re-sign derives entitlements from what the app already carries —
+      # an unsigned archive carries none, and capabilities would silently vanish
+      # (cini build 6 shipped without Sign in with Apple exactly this way). Ad-hoc
+      # sign with our entitlements first so the distribution re-sign preserves them.
+      - name: Stamp entitlements into the archive
+        run: |
+          APP="$RUNNER_TEMP/Reclock.xcarchive/Products/Applications/Reclock.app"
+          if [ -d "$APP/Frameworks" ]; then
+            find "$APP/Frameworks" -maxdepth 1 \( -name '*.dylib' -o -name '*.framework' \) \
+              -exec codesign --force --sign - {} \;
+          fi
+          codesign --force --sign - --entitlements Reclock.entitlements "$APP"
+          echo "--- entitlements now in archive ---"
+          codesign -d --entitlements :- "$APP"
 
       - name: Export IPA (re-signed for App Store)
         run: |
@@ -93,6 +104,19 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             -allowProvisioningUpdates
+
+      # Fail fast if the distribution re-sign dropped our entitlements — otherwise
+      # time-sensitive delivery and HealthKit break on device and only a tester notices.
+      - name: Verify entitlements survived export
+        run: |
+          IPA=$(find "$RUNNER_TEMP/export" -name '*.ipa' | head -1)
+          unzip -q "$IPA" -d "$RUNNER_TEMP/ipa-check"
+          APP=$(find "$RUNNER_TEMP/ipa-check/Payload" -maxdepth 1 -name '*.app' | head -1)
+          codesign -d --entitlements :- "$APP" | tee "$RUNNER_TEMP/final-entitlements.plist"
+          for key in "com.apple.developer.usernotifications.time-sensitive" "com.apple.developer.healthkit"; do
+            grep -q "$key" "$RUNNER_TEMP/final-entitlements.plist" \
+              || { echo "::error::$key missing from final IPA"; exit 1; }
+          done
 
       - name: Upload to TestFlight
         run: |
