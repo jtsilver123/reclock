@@ -9,48 +9,69 @@ struct TripsListView: View {
     @State private var showJoin = false
     @State private var pendingDelete: Trip?
     @State private var showClearPast = false
+    @State private var buddiesTrip: Trip?
+    @State private var buddyCounts: [UUID: Int] = [:]
 
     var body: some View {
         NavigationStack {
             List {
+                // The tab's whole reason to exist, drawn at hero size.
                 Section {
                     Button {
                         Haptics.soft()
                         showAddTrip = true
                     } label: {
                         HStack(spacing: Theme.Space.m) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 20, weight: .bold))
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Add a trip")
+                                    .font(Theme.display(26))
+                                    .foregroundStyle(Theme.ink)
+                                Text("Flight number in, plan out.")
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(Theme.ink.opacity(0.72))
+                            }
+                            Spacer(minLength: Theme.Space.s)
+                            Image(systemName: "airplane.departure")
+                                .font(.system(size: 42, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
-                                .frame(width: 40, height: 40)
-                                .background(Circle().fill(Theme.accent))
                                 .accessibilityHidden(true)
-                            Text("Add a trip")
-                                .font(.headline)
-                                .fontDesign(.rounded)
-                                .foregroundStyle(Theme.textPrimary)
-                            Spacer()
                         }
+                        .padding(Theme.Space.l)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                                .fill(Theme.accent)
+                                .shadow(color: Theme.accent.opacity(0.4), radius: 14, y: 6)
+                        )
+                        .grain()
                     }
+                    .buttonStyle(PressableCardStyle())
                     .accessibilityIdentifier("trips.add")
+                    .accessibilityLabel("Add a trip")
+                    .listRowInsets(EdgeInsets(top: Theme.Space.s, leading: Theme.Space.m,
+                                              bottom: Theme.Space.xs, trailing: Theme.Space.m))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
 
                     Button {
                         showJoin = true
                     } label: {
-                        HStack(spacing: Theme.Space.m) {
+                        HStack(spacing: Theme.Space.s) {
                             Image(systemName: "person.2.fill")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Theme.accentDeep)
-                                .frame(width: 40, height: 40)
-                                .background(Circle().fill(Theme.accent.opacity(0.15)))
-                                .accessibilityHidden(true)
+                                .font(.footnote.weight(.semibold))
                             Text("Join a friend's trip")
-                                .font(.headline)
-                                .fontDesign(.rounded)
-                                .foregroundStyle(Theme.textPrimary)
-                            Spacer()
+                                .font(.subheadline.weight(.semibold))
                         }
+                        .foregroundStyle(Theme.accentDeep)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Space.s)
+                        .background(Theme.accent.opacity(0.12), in: Capsule())
                     }
+                    .buttonStyle(PressableCardStyle())
+                    .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.m,
+                                              bottom: Theme.Space.s, trailing: Theme.Space.m))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
 
                 if model.state.trips.isEmpty {
@@ -100,6 +121,19 @@ struct TripsListView: View {
                 NavigationStack { JoinPlanView() }
                     .presentationDetents([.medium, .large])
             }
+            .sheet(item: $buddiesTrip) { trip in
+                NavigationStack {
+                    List {
+                        TravelBuddiesSection(trip: trip)
+                    }
+                    .navigationTitle("\(trip.origin) → \(trip.destination)")
+                    .navigationBarTitleDisplayMode(.inline)
+                }
+                .presentationDetents([.medium, .large])
+            }
+            .task(id: taskKey) {
+                await refreshBuddyCounts()
+            }
             .confirmationDialog(
                 "Clear \(pastTrips.count) past trip\(pastTrips.count == 1 ? "" : "s")?",
                 isPresented: $showClearPast,
@@ -142,11 +176,33 @@ struct TripsListView: View {
     private var currentTrips: [Trip] { sortedTrips.filter { $0.status != .completed } }
     private var pastTrips: [Trip] { sortedTrips.filter { $0.status == .completed } }
 
+    /// Re-fetch buddy counts when trips or share states change.
+    private var taskKey: String {
+        model.state.trips.map { "\($0.id):\($0.sharedPlanCode ?? "-")" }.joined()
+    }
+
+    private func refreshBuddyCounts() async {
+        guard model.auth.isSignedIn else { return }
+        for trip in currentTrips where trip.sharedPlanCode != nil {
+            if let board = await model.fetchBuddyBoard(for: trip) {
+                buddyCounts[trip.id] = board.members.count
+            }
+        }
+    }
+
     private func tripRow(_ trip: Trip) -> some View {
         NavigationLink {
             TripDetailView(trip: trip)
         } label: {
-            TripListRow(trip: trip)
+            TripListRow(
+                trip: trip,
+                isOnPlanTab: model.activeTrip?.id == trip.id,
+                buddyCount: buddyCounts[trip.id],
+                onBuddies: {
+                    Haptics.selection()
+                    buddiesTrip = trip
+                }
+            )
         }
         .accessibilityIdentifier("trips.row")
         .swipeActions(edge: .trailing) {
@@ -161,10 +217,13 @@ struct TripsListView: View {
 
 private struct TripListRow: View {
     let trip: Trip
+    let isOnPlanTab: Bool
+    let buddyCount: Int?
+    var onBuddies: () -> Void
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
-            Image(systemName: "airplane.circle.fill")
+            Image(systemName: isOnPlanTab ? "sun.horizon.fill" : "airplane.circle.fill")
                 .font(.title2)
                 .foregroundStyle(trip.status == .completed ? Theme.textSecondary : Theme.accent)
                 .accessibilityHidden(true)
@@ -178,7 +237,46 @@ private struct TripListRow: View {
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
-            Spacer()
+            Spacer(minLength: Theme.Space.s)
+
+            // Who's on this plan — or the door to inviting someone.
+            if trip.status != .completed {
+                Button(action: onBuddies) {
+                    HStack(spacing: 3) {
+                        Image(systemName: trip.sharedPlanCode == nil ? "person.badge.plus" : "person.2.fill")
+                            .font(.footnote.weight(.semibold))
+                        if let buddyCount, trip.sharedPlanCode != nil {
+                            Text("\(buddyCount)")
+                                .font(.caption.weight(.bold).monospacedDigit())
+                        }
+                    }
+                    .foregroundStyle(Theme.accentDeep)
+                    .padding(.horizontal, Theme.Space.s)
+                    .frame(height: 30)
+                    .background(Theme.accent.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(trip.sharedPlanCode == nil
+                    ? "Invite a friend to this trip"
+                    : "Travel buddies\(buddyCount.map { ": \($0) on this plan" } ?? "")")
+            }
+
+            statusCapsule
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var statusCapsule: some View {
+        if isOnPlanTab {
+            Text("On Plan")
+                .font(.caption2.weight(.bold))
+                .padding(.horizontal, Theme.Space.s)
+                .padding(.vertical, 3)
+                .background(Theme.accent.opacity(0.4), in: Capsule())
+                .foregroundStyle(Theme.ink)
+                .accessibilityLabel("Currently shown on the Plan tab")
+        } else {
             Text(statusText)
                 .font(.caption2.weight(.semibold))
                 .padding(.horizontal, Theme.Space.s)
@@ -186,8 +284,6 @@ private struct TripListRow: View {
                 .background(Theme.surfaceSecondary, in: Capsule())
                 .foregroundStyle(Theme.textSecondary)
         }
-        .padding(.vertical, 2)
-        .accessibilityElement(children: .combine)
     }
 
     private var statusText: String {
