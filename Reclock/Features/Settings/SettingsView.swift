@@ -99,7 +99,7 @@ struct SettingsView: View {
                 } label: {
                     Label("Enable reminders", systemImage: "bell.badge")
                 }
-                Text("Without alerts, the Today tab still shows everything as an in-app checklist. You can also enable alerts later in iOS Settings → Notifications → Reclock.")
+                Text("Without alerts, the Plan tab still shows everything as an in-app checklist. You can also enable alerts later in iOS Settings → Notifications → Reclock.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
             } else {

@@ -36,12 +36,9 @@ enum PreviewData {
         .environment(PreviewData.model())
 }
 
-#Preview("Timeline") {
-    let (trip, plan, _) = PreviewData.landingDayTrip
-    return NavigationStack {
-        PlanTimelineView(trip: trip, plan: plan)
-    }
-    .environment(PreviewData.model())
+#Preview("Plan tab") {
+    PlanView()
+        .environment(PreviewData.model())
 }
 
 #Preview("Trip detail") {
@@ -78,7 +75,7 @@ enum PreviewData {
     let (trip, plan, _) = PreviewData.landingDayTrip
     let action = plan.actions.first { $0.type == .seekLight } ?? plan.actions[0]
     return ScrollView {
-        NowCard(action: action, trip: trip, now: action.window.start.addingTimeInterval(600))
+        CompactNowCard(action: action, trip: trip, now: action.window.start.addingTimeInterval(600))
             .padding()
     }
     .background(Theme.background)

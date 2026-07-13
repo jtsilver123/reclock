@@ -213,3 +213,22 @@ product brief left open — or where I deliberately diverged from it — are cal
   "review changes" diff screen is a v1.1 nicety.
 - Flight-number-only entry doesn't look up schedules (no API); the field is stored for
   reference and display.
+
+## Three tabs, three jobs (2026-07)
+
+Today and Timeline both drew today's plan — two tabs answering the same
+question with different framing, while trip management hid behind a toolbar
+sheet. Restructured to one job per tab:
+
+- **Plan** (default): a pinned header — route, day, destination clock, shift
+  progress, and the current step with one-tap Done — with the entire
+  day-by-day plan scrolling beneath it, auto-scrolled to today. Frozen = now,
+  scroll = the journey. The big action card moved to the action detail screen.
+- **Trips**: add, join a friend's trip, open a trip for flights/buddies/
+  changes, clear past trips. Tapping a trip manages it; it no longer silently
+  switches what the Plan tab shows.
+- **Settings**: unchanged.
+
+Trip *switching* stays on the Plan tab (chip strip, only visible with 2+
+active trips) so new users never meet the concept. Celebration toasts moved
+to the tab container so they show on any tab.

@@ -50,49 +50,57 @@ final class ReclockUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Add a trip"].waitForExistence(timeout: 10))
         app.buttons["Cancel"].firstMatch.tap()
 
-        // Dismissing lands on the empty-home hero with tabs alive.
+        // Dismissing lands on the empty-plan hero with tabs alive.
         XCTAssertTrue(app.staticTexts["Feel local when you land"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.tabBars.buttons["Settings"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Trips"].exists)
     }
 
-    // MARK: Active-trip path
+    // MARK: Plan tab
 
     func testSeededTripShowsPlanAndCompletesAction() throws {
         let app = launchSeeded()
 
-        // Landing-day demo: either a Now card with Done, or the quiet card.
+        // Landing-day demo: the pinned header shows a Now card with Done, or the quiet card.
         let done = app.buttons["Done"].firstMatch
         let quiet = app.staticTexts["Nothing to do right now"]
         let hasContent = done.waitForExistence(timeout: 12) || quiet.waitForExistence(timeout: 4)
-        XCTAssertTrue(hasContent, "Home should show a Now card or the quiet state")
+        XCTAssertTrue(hasContent, "Plan tab should show a Now card or the quiet state")
 
         if done.exists {
             done.tap()
-            // The action completes; home remains functional.
-            XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 5))
+            // The action completes; the Plan tab remains functional.
+            XCTAssertTrue(app.tabBars.buttons["Plan"].waitForExistence(timeout: 5))
         }
     }
 
-    func testTimelineShowsPhases() throws {
+    func testPlanShowsPhases() throws {
         let app = launchSeeded()
-        app.tabBars.buttons["Timeline"].tap()
 
-        // Phase headers from the demo trip.
-        let anyPhase = app.staticTexts["After arrival"].waitForExistence(timeout: 10)
-            || app.staticTexts["In flight"].exists
-            || app.staticTexts["Before departure"].exists
-            || app.staticTexts["Recovery days"].exists
-        XCTAssertTrue(anyPhase, "Timeline should show phase headers")
+        // The full plan scrolls beneath the pinned header, grouped by phase.
+        func anyPhaseVisible() -> Bool {
+            app.staticTexts["After arrival"].exists
+                || app.staticTexts["In flight"].exists
+                || app.staticTexts["Before departure"].exists
+                || app.staticTexts["Recovery days"].exists
+        }
+        let appeared = app.staticTexts["After arrival"].waitForExistence(timeout: 10) || anyPhaseVisible()
+        if !appeared {
+            app.swipeUp()
+        }
+        XCTAssertTrue(anyPhaseVisible(), "Plan tab should show phase headers in the scrolling plan")
     }
+
+    // MARK: Trips tab
 
     func testReportDelayFlow() throws {
         let app = launchSeeded()
 
-        // Navigate: Today → trip card (below the fold on landing day) → Trip detail.
-        let tripCard = app.buttons["home.tripCard"]
-        XCTAssertTrue(tripCard.waitForExistence(timeout: 10))
-        scrollTo(tripCard, in: app)
-        tripCard.tap()
+        // Navigate: Trips tab → the trip's row → Trip detail.
+        app.tabBars.buttons["Trips"].tap()
+        let row = app.buttons["trips.row"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
 
         // Trip detail is a List: rows below the fold do not exist in the hierarchy
         // until scrolled to — scroll FIRST, then assert. (Asserting existence before
@@ -122,10 +130,10 @@ final class ReclockUITests: XCTestCase {
     func testDeleteTrip() throws {
         let app = launchSeeded()
 
-        let tripCard = app.buttons["home.tripCard"]
-        XCTAssertTrue(tripCard.waitForExistence(timeout: 10))
-        scrollTo(tripCard, in: app)
-        tripCard.tap()
+        app.tabBars.buttons["Trips"].tap()
+        let row = app.buttons["trips.row"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
 
         // "Delete trip" is the last List section — scroll first (see testReportDelayFlow).
         let deleteButton = app.buttons["Delete trip"]
@@ -137,9 +145,15 @@ final class ReclockUITests: XCTestCase {
         XCTAssertTrue(confirm.waitForExistence(timeout: 8))
         confirm.tap()
 
-        // Home returns to the empty hero.
+        // Back on the Trips tab, now empty.
+        XCTAssertTrue(app.staticTexts["No trips yet"].waitForExistence(timeout: 10))
+
+        // And the Plan tab returns to the empty hero.
+        app.tabBars.buttons["Plan"].tap()
         XCTAssertTrue(app.staticTexts["Feel local when you land"].waitForExistence(timeout: 10))
     }
+
+    // MARK: Settings tab
 
     func testSettingsPrivacyControlsExist() throws {
         let app = launchSeeded()
@@ -151,7 +165,6 @@ final class ReclockUITests: XCTestCase {
         XCTAssertTrue(privacyLabel.waitForExistence(timeout: 8))
         // Privacy rows sit below the fold; List rows materialize on scroll.
         let export = app.buttons["Export my data (JSON)"]
-        // Backup & sync section sits above privacy now — allow a couple more swipes.
         scrollTo(export, in: app, maxSwipes: 9)
         XCTAssertTrue(export.waitForExistence(timeout: 4))
         XCTAssertTrue(app.buttons["Delete all data"].exists)

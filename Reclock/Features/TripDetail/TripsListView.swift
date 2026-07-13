@@ -1,69 +1,93 @@
 import SwiftUI
 import ReclockKit
 
-/// All trips in one place: tap to focus Today/Timeline on a trip, swipe to delete.
+/// The Trips tab: every plan you're running — add one, join a friend's, open a trip
+/// for its flights and buddies, clean up the past. Viewing happens on the Plan tab.
 struct TripsListView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     @State private var showAddTrip = false
+    @State private var showJoin = false
     @State private var pendingDelete: Trip?
     @State private var showClearPast = false
 
     var body: some View {
         NavigationStack {
             List {
-                if model.state.trips.isEmpty {
-                    ContentUnavailableView(
-                        "No trips yet",
-                        systemImage: "airplane",
-                        description: Text("Add your first trip and the plan appears instantly.")
-                    )
-                } else {
-                    if !currentTrips.isEmpty {
-                        Section {
-                            ForEach(currentTrips) { trip in
-                                tripRow(trip)
-                            }
-                        } footer: {
-                            Text("Tap a trip to focus Today and Timeline on it. Reclock follows your current or next trip automatically unless you choose one.")
-                        }
-                    }
-                    if !pastTrips.isEmpty {
-                        Section {
-                            ForEach(pastTrips) { trip in
-                                tripRow(trip)
-                                    .opacity(0.6)
-                            }
-                            Button(role: .destructive) {
-                                showClearPast = true
-                            } label: {
-                                Label("Clear all past trips", systemImage: "trash")
-                            }
-                        } header: {
-                            Text("Past trips")
-                        } footer: {
-                            Text("Finished trips keep their plans for reference. Clearing removes them — and their reminders — for good.")
-                        }
-                    }
-                }
-            }
-            .navigationTitle("My trips")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
+                Section {
                     Button {
+                        Haptics.soft()
                         showAddTrip = true
                     } label: {
-                        Image(systemName: "plus")
-                            .accessibilityLabel("Add trip")
+                        HStack(spacing: Theme.Space.m) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(Theme.ink)
+                                .frame(width: 40, height: 40)
+                                .background(Circle().fill(Theme.accent))
+                                .accessibilityHidden(true)
+                            Text("Add a trip")
+                                .font(.headline)
+                                .fontDesign(.rounded)
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                        }
+                    }
+                    .accessibilityIdentifier("trips.add")
+
+                    Button {
+                        showJoin = true
+                    } label: {
+                        Label("Join a friend's trip", systemImage: "person.2.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.accentDeep)
+                    }
+                }
+
+                if model.state.trips.isEmpty {
+                    Section {
+                        ContentUnavailableView(
+                            "No trips yet",
+                            systemImage: "airplane",
+                            description: Text("Add your first trip and the plan appears instantly.")
+                        )
+                    }
+                }
+
+                if !currentTrips.isEmpty {
+                    Section {
+                        ForEach(currentTrips) { trip in
+                            tripRow(trip)
+                        }
+                    } footer: {
+                        Text("Tap a trip for flights, travel buddies, and changes. The Plan tab follows your current or next trip on its own — switch trips at the top of it.")
+                    }
+                }
+
+                if !pastTrips.isEmpty {
+                    Section {
+                        ForEach(pastTrips) { trip in
+                            tripRow(trip)
+                                .opacity(0.6)
+                        }
+                        Button(role: .destructive) {
+                            showClearPast = true
+                        } label: {
+                            Label("Clear all past trips", systemImage: "trash")
+                        }
+                    } header: {
+                        Text("Past trips")
+                    } footer: {
+                        Text("Finished trips keep their plans for reference. Clearing removes them — and their reminders — for good.")
                     }
                 }
             }
+            .navigationTitle("Trips")
             .sheet(isPresented: $showAddTrip) {
                 AddTripFlow()
+            }
+            .sheet(isPresented: $showJoin) {
+                NavigationStack { JoinPlanView() }
+                    .presentationDetents([.medium, .large])
             }
             .confirmationDialog(
                 "Clear \(pastTrips.count) past trip\(pastTrips.count == 1 ? "" : "s")?",
@@ -107,22 +131,13 @@ struct TripsListView: View {
     private var currentTrips: [Trip] { sortedTrips.filter { $0.status != .completed } }
     private var pastTrips: [Trip] { sortedTrips.filter { $0.status == .completed } }
 
-    @ViewBuilder
     private func tripRow(_ trip: Trip) -> some View {
-        TripListRow(
-            trip: trip,
-            isFocused: model.activeTrip?.id == trip.id,
-            isAutomaticChoice: model.automaticTrip?.id == trip.id
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            Task {
-                // Selecting the automatic choice clears the pin.
-                let id = model.automaticTrip?.id == trip.id ? nil : trip.id
-                await model.selectTrip(id)
-                dismiss()
-            }
+        NavigationLink {
+            TripDetailView(trip: trip)
+        } label: {
+            TripListRow(trip: trip)
         }
+        .accessibilityIdentifier("trips.row")
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 pendingDelete = trip
@@ -135,14 +150,12 @@ struct TripsListView: View {
 
 private struct TripListRow: View {
     let trip: Trip
-    let isFocused: Bool
-    let isAutomaticChoice: Bool
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
             Image(systemName: "airplane.circle.fill")
                 .font(.title2)
-                .foregroundStyle(isFocused ? Theme.accent : Theme.textSecondary)
+                .foregroundStyle(trip.status == .completed ? Theme.textSecondary : Theme.accent)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(trip.origin) → \(trip.destination)")
@@ -159,15 +172,9 @@ private struct TripListRow: View {
                 .padding(.vertical, 3)
                 .background(Theme.surfaceSecondary, in: Capsule())
                 .foregroundStyle(Theme.textSecondary)
-            if isFocused {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Theme.accentDeep)
-                    .accessibilityLabel("Currently shown on Today")
-            }
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isFocused ? [.isSelected] : [])
     }
 
     private var statusText: String {
