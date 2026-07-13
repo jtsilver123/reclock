@@ -118,7 +118,10 @@ One-time setup:
    - `ASC_ISSUER_ID` — the issuer UUID shown above the key list
    - `ASC_API_KEY_P8` — the full contents of the `.p8` file
    - `APPLE_TEAM_ID` — your 10-character team ID (Membership page)
-4. Run the workflow. Build number defaults to the run number; the upload appears in
+4. **Optional — flight-number search in TestFlight builds:** add repo secret
+   `RECLOCK_AERODATABOX_KEY` (the AeroDataBox key). Without it the build works fully;
+   the search option simply hides itself. Local builds keep using `Secrets.xcconfig`.
+5. Run the workflow. Build number defaults to the run number; the upload appears in
    TestFlight after Apple's ~5–15 min processing.
 
 Signing works with **zero registered devices**: the archive is built unsigned

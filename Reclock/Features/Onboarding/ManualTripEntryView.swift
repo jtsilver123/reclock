@@ -194,12 +194,46 @@ struct ManualTripEntryView: View {
 // MARK: - Segment editor
 
 private struct SegmentEditor: View {
+    @Environment(AppModel.self) private var model
     @Binding var draft: ManualTripEntryView.SegmentDraft
+    @State private var isLookingUp = false
+    @State private var lookupNote: String?
+    @State private var lookupFailed = false
+
+    private var lookupAvailable: Bool {
+        model.deps.scheduleProvider.isConfigured && !model.state.settings.localOnlyMode
+    }
+
+    private var cleanedNumber: String {
+        draft.flightNumber.trimmingCharacters(in: .whitespaces)
+    }
 
     var body: some View {
-        TextField("Flight number (optional, e.g. AY 16)", text: $draft.flightNumber)
+        TextField(
+            lookupAvailable
+                ? "Flight number (e.g. AA 8987)"
+                : "Flight number (optional — shown on your plan)",
+            text: $draft.flightNumber
+        )
             .textInputAutocapitalization(.characters)
             .autocorrectionDisabled()
+        if lookupAvailable && cleanedNumber.count >= 3 {
+            Button {
+                Task { await fillFromFlightNumber() }
+            } label: {
+                if isLookingUp {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else {
+                    Label("Fill everything from this flight", systemImage: "wand.and.stars")
+                }
+            }
+            .disabled(isLookingUp)
+        }
+        if let lookupNote {
+            Label(lookupNote, systemImage: lookupFailed ? "exclamationmark.triangle" : "checkmark.circle")
+                .font(.caption2)
+                .foregroundStyle(lookupFailed ? .orange : Theme.textSecondary)
+        }
         AirportField(label: "From", selection: $draft.departureAirport)
         AirportField(label: "To", selection: $draft.arrivalAirport)
         DatePicker("Departs", selection: $draft.departureDate, displayedComponents: [.date, .hourAndMinute])
@@ -224,6 +258,52 @@ private struct SegmentEditor: View {
             Text("Times read as local: \(dep.iata) departs \(dep.zone.identifier), \(arr.iata) arrives \(arr.zone.identifier).")
                 .font(.caption2)
                 .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    /// One tap: the schedule service fills airports and both times from the number.
+    /// Codeshares resolve to the operating flight (AA 8987 → AY 9) — we say so.
+    private func fillFromFlightNumber() async {
+        isLookingUp = true
+        lookupFailed = false
+        lookupNote = nil
+        defer { isLookingUp = false }
+        do {
+            let homeZone = model.profile?.homeZone.resolved ?? .current
+            let found = try await model.deps.scheduleProvider.lookup(
+                flightNumber: cleanedNumber,
+                departureDate: draft.departureDate,
+                homeZone: homeZone
+            )
+            guard let flight = found.first else {
+                lookupFailed = true
+                lookupNote = "Couldn't find \(cleanedNumber.uppercased()) on that date — check the number and departure date."
+                return
+            }
+            draft.departureAirport = model.deps.airports.airport(iata: flight.departureAirport)
+            draft.arrivalAirport = model.deps.airports.airport(iata: flight.arrivalAirport)
+            draft.departureDate = TimeFormat.pickerDate(for: flight.departure, in: flight.departureZone.resolved)
+            let arrivalPicker = TimeFormat.pickerDate(for: flight.arrival, in: flight.arrivalZone.resolved)
+            draft.lastAutoArrival = arrivalPicker
+            draft.arrivalDate = arrivalPicker
+            // Schedule times are authoritative; the route estimator must not touch them.
+            draft.arrivalEdited = true
+
+            let operated = flight.flightNumber.replacingOccurrences(of: " ", with: "")
+            let typed = cleanedNumber.uppercased().replacingOccurrences(of: " ", with: "")
+            var note = "Filled: \(flight.departureAirport) → \(flight.arrivalAirport)"
+            if operated.caseInsensitiveCompare(typed) != .orderedSame {
+                note += " (operated as \(flight.flightNumber))"
+            }
+            if draft.departureAirport == nil || draft.arrivalAirport == nil {
+                note += ". One airport isn't in the built-in list — pick it below."
+                lookupFailed = true
+            }
+            lookupNote = note
+            Haptics.soft()
+        } catch {
+            lookupFailed = true
+            lookupNote = "Lookup didn't go through — check your connection and try again."
         }
     }
 
