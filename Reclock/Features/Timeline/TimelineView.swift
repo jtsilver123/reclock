@@ -157,15 +157,33 @@ private struct AdjustedDayRow: View {
 private struct PhaseHeader: View {
     let phase: TripPhase
 
+    private var symbol: String {
+        switch phase {
+        case .beforeDeparture: "airplane.departure"
+        case .atAirport: "figure.walk.departure"
+        case .inFlight: "airplane"
+        case .afterArrival: "sun.max.fill"
+        case .recovery: "sparkles"
+        case .returnTrip: "airplane.arrival"
+        }
+    }
+
     var body: some View {
-        Text(phase.displayName)
-            .font(.headline)
-            .foregroundStyle(Theme.textPrimary)
-            .padding(.horizontal, Theme.Space.m)
-            .padding(.vertical, Theme.Space.s)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.background.opacity(0.96))
-            .accessibilityAddTraits(.isHeader)
+        HStack(spacing: Theme.Space.s) {
+            Image(systemName: symbol)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
+            Text(phase.displayName)
+                .font(.title3.weight(.bold))
+                .fontDesign(.rounded)
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, Theme.Space.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.background.opacity(0.96))
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -221,35 +239,50 @@ private struct TimelineActionRow: View {
     let trip: Trip
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.m) {
-            ActionGlyph(type: action.type, size: 34)
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            ActionGlyph(type: action.type, size: 40)
             VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(action.title)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.textPrimary)
-                        .strikethrough(action.completion == .done)
-                        .lineLimit(2)
-                    Spacer()
-                    PriorityBadge(priority: action.priority)
-                }
+                Text(action.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .strikethrough(action.completion == .done)
+                    .lineLimit(1)
                 ForEach(timeLines, id: \.self) { line in
                     Text(line)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
+            Spacer(minLength: Theme.Space.s)
             if action.completion != .pending {
                 Image(systemName: action.completion == .done ? "checkmark.circle.fill" : "slash.circle")
+                    .font(.title3)
                     .foregroundStyle(action.completion == .done ? .green : Theme.textSecondary)
                     .symbolEffect(.bounce, value: action.completion)
                     .accessibilityLabel(action.completion == .done ? "Done" : "Skipped")
+            } else {
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(TimeFormat.time(action.window.start, zone: displayZone))
+                        .font(.callout.weight(.semibold).monospacedDigit())
+                        .fontDesign(.rounded)
+                        .foregroundStyle(Theme.tint(for: action.type))
+                    if action.priority == .mustDo {
+                        Circle()
+                            .fill(Theme.priorityColor(.mustDo))
+                            .frame(width: 7, height: 7)
+                            .accessibilityLabel("Must do")
+                    }
+                }
             }
         }
         .padding(Theme.Space.s)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
         .opacity(action.completion == .pending ? 1 : 0.7)
         .accessibilityElement(children: .combine)
+    }
+
+    private var displayZone: TimeZone {
+        displayMode == .home ? trip.homeZone.resolved : action.displayZone.resolved
     }
 
     private var timeLines: [String] {

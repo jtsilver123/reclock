@@ -176,6 +176,21 @@ product brief left open — or where I deliberately diverged from it — are cal
 41. **Every loop respects Reduce Motion**: breathing welcome sun, sparkle shimmer on
     adjusted days, toast slide, and hero transitions all degrade to opacity fades.
 
+## Visual language ("the sky is the interface")
+
+- Every action type owns a gradient of its moment in the body's day — sunrise ambers
+  for seek-light, midnight indigos for sleep, dusk violets for wind-down, espresso
+  browns for caffeine. The Now hero is an immersive gradient card: huge glyph, giant
+  countdown, one line of instruction. Text carries detail; color carries meaning.
+- Foreground on gradients is always white; every gradient is tuned dark enough in both
+  light and dark mode, with a uniform 8% black overlay for contrast headroom.
+- The DayRibbon renders the whole day as one strip of color with a now-marker — zero
+  words. Specific times live in the hero, Tonight card, and timeline.
+- Rows are icon-forward: big tinted glyph, one line of words, the time as the loudest
+  text. Priority badges collapsed to a small must-do dot (full badge in detail views).
+- "Why this helps" moved from an always-visible disclosure into the More menu and the
+  action detail screen — the science stays one tap away, never in the way.
+
 ## Known limitations (candid)
 
 - Engine day labels ("Landing day · Sun, Sep 20") are English strings from the kit.

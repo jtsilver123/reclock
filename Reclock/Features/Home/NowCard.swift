@@ -9,58 +9,55 @@ struct NowCard: View {
     let trip: Trip
     let now: Date
 
+    @State private var showWhy = false
+
     private var zone: TimeZone { action.displayZone.resolved }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(alignment: .top) {
-                ActionGlyph(type: action.type, size: 52)
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    PriorityBadge(priority: action.priority)
-                    Text("\(TimeFormat.countdown(to: action.window.end, from: now)) left")
-                        .font(.caption.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(Theme.textSecondary)
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                HeroGlyph(systemName: action.type.symbolName)
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(TimeFormat.countdown(to: action.window.end, from: now))
+                        .font(.system(size: 42, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Color.white)
                         .contentTransition(.numericText(countsDown: true))
                         .animation(Theme.Anim.gentle, value: TimeFormat.countdown(to: action.window.end, from: now))
+                    Text("left · until \(TimeFormat.time(action.window.end, zone: zone))")
+                        .font(.footnote.weight(.medium).monospacedDigit())
+                        .foregroundStyle(Color.white.opacity(0.75))
                 }
             }
 
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text("Now")
-                    .font(.caption.weight(.bold))
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.tint(for: action.type))
                 Text(action.title)
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(Theme.textPrimary)
+                    .font(.title.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(Color.white)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Until \(TimeFormat.time(action.window.end, zone: zone)) · \(TimeFormat.zoneCity(zone)) time")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(Theme.textSecondary)
+                Text(action.instruction)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.white.opacity(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(3)
             }
 
-            Text(action.instruction)
-                .font(.callout)
-                .foregroundStyle(Theme.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            DisclosureGroup {
+            if showWhy {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text(action.explanation)
                         .font(.footnote)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(Color.white.opacity(0.85))
                     if let alternative = action.alternative {
                         Label(alternative, systemImage: "arrow.triangle.branch")
                             .font(.footnote)
-                            .foregroundStyle(Theme.textSecondary)
+                            .foregroundStyle(Color.white.opacity(0.85))
                     }
                 }
-                .padding(.top, Theme.Space.xs)
-            } label: {
-                Text("Why this helps")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
+                .padding(Theme.Space.m)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             HStack(spacing: Theme.Space.s) {
@@ -70,9 +67,12 @@ struct NowCard: View {
                 } label: {
                     Label("Done", systemImage: "checkmark")
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(OnGradientPrimaryButtonStyle())
 
                 Menu {
+                    Button(showWhy ? "Hide why this helps" : "Why this helps") {
+                        withAnimation(Theme.Anim.spring) { showWhy.toggle() }
+                    }
                     Button("Couldn't do it") {
                         Haptics.soft()
                         Task { await model.setCompletion(.notPossible, for: action, in: trip) }
@@ -96,18 +96,22 @@ struct NowCard: View {
                         .font(.headline)
                         .frame(maxWidth: 100)
                         .padding(.vertical, 14)
-                        .background(Theme.surfaceSecondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .foregroundStyle(Theme.textPrimary)
+                        .background(Color.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .foregroundStyle(Color.white)
                 }
                 .accessibilityLabel("More options")
             }
         }
         .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card(emphasized: true)
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                .strokeBorder(Theme.tint(for: action.type).opacity(0.35), lineWidth: 1.5)
+                .fill(Theme.sky(for: action.type))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .fill(Color.black.opacity(0.08))
+                )
+                .shadow(color: Theme.skyColors(for: action.type).last?.opacity(0.35) ?? .clear, radius: 16, y: 6)
         )
         .accessibilityElement(children: .contain)
     }

@@ -99,6 +99,70 @@ enum Theme {
         }
     }
 
+    /// Immersive gradient identity per action — the "sky" of that moment of the body's
+    /// day. Foreground on these is always white; every gradient is dark enough for it.
+    static func skyColors(for type: ActionType) -> [Color] {
+        switch type {
+        case .seekLight:  // sunrise
+            [dynamic(light: UIColor(red: 0.98, green: 0.58, blue: 0.12, alpha: 1),
+                     dark: UIColor(red: 0.88, green: 0.48, blue: 0.10, alpha: 1)),
+             dynamic(light: UIColor(red: 0.89, green: 0.35, blue: 0.10, alpha: 1),
+                     dark: UIColor(red: 0.72, green: 0.28, blue: 0.10, alpha: 1))]
+        case .avoidLight:  // shaded noon
+            [dynamic(light: UIColor(red: 0.42, green: 0.35, blue: 0.72, alpha: 1),
+                     dark: UIColor(red: 0.34, green: 0.28, blue: 0.60, alpha: 1)),
+             dynamic(light: UIColor(red: 0.26, green: 0.22, blue: 0.52, alpha: 1),
+                     dark: UIColor(red: 0.20, green: 0.17, blue: 0.42, alpha: 1))]
+        case .sleep, .nap:  // deep night
+            [dynamic(light: UIColor(red: 0.25, green: 0.31, blue: 0.66, alpha: 1),
+                     dark: UIColor(red: 0.19, green: 0.24, blue: 0.54, alpha: 1)),
+             dynamic(light: UIColor(red: 0.12, green: 0.15, blue: 0.38, alpha: 1),
+                     dark: UIColor(red: 0.08, green: 0.10, blue: 0.28, alpha: 1))]
+        case .windDown, .melatoninOptional:  // dusk
+            [dynamic(light: UIColor(red: 0.48, green: 0.32, blue: 0.64, alpha: 1),
+                     dark: UIColor(red: 0.38, green: 0.25, blue: 0.54, alpha: 1)),
+             dynamic(light: UIColor(red: 0.25, green: 0.20, blue: 0.50, alpha: 1),
+                     dark: UIColor(red: 0.18, green: 0.14, blue: 0.38, alpha: 1))]
+        case .stayAwake:  // hold-the-line ember
+            [dynamic(light: UIColor(red: 0.90, green: 0.42, blue: 0.22, alpha: 1),
+                     dark: UIColor(red: 0.78, green: 0.34, blue: 0.18, alpha: 1)),
+             dynamic(light: UIColor(red: 0.72, green: 0.22, blue: 0.22, alpha: 1),
+                     dark: UIColor(red: 0.58, green: 0.17, blue: 0.18, alpha: 1))]
+        case .caffeineOK, .caffeineCutoff:  // espresso
+            [dynamic(light: UIColor(red: 0.58, green: 0.40, blue: 0.26, alpha: 1),
+                     dark: UIColor(red: 0.48, green: 0.33, blue: 0.22, alpha: 1)),
+             dynamic(light: UIColor(red: 0.38, green: 0.25, blue: 0.17, alpha: 1),
+                     dark: UIColor(red: 0.30, green: 0.20, blue: 0.14, alpha: 1))]
+        case .leaveForAirport:  // clear travel sky
+            [dynamic(light: UIColor(red: 0.20, green: 0.48, blue: 0.85, alpha: 1),
+                     dark: UIColor(red: 0.16, green: 0.38, blue: 0.70, alpha: 1)),
+             dynamic(light: UIColor(red: 0.12, green: 0.28, blue: 0.62, alpha: 1),
+                     dark: UIColor(red: 0.09, green: 0.20, blue: 0.48, alpha: 1))]
+        default:  // brand dusk blue
+            [dynamic(light: UIColor(red: 0.28, green: 0.38, blue: 0.72, alpha: 1),
+                     dark: UIColor(red: 0.22, green: 0.30, blue: 0.60, alpha: 1)),
+             dynamic(light: UIColor(red: 0.16, green: 0.22, blue: 0.50, alpha: 1),
+                     dark: UIColor(red: 0.11, green: 0.15, blue: 0.38, alpha: 1))]
+        }
+    }
+
+    static func sky(for type: ActionType) -> LinearGradient {
+        LinearGradient(colors: skyColors(for: type), startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    /// The quiet state's calm night sky (no action to push).
+    static var quietSky: LinearGradient {
+        LinearGradient(
+            colors: [
+                dynamic(light: UIColor(red: 0.23, green: 0.30, blue: 0.52, alpha: 1),
+                        dark: UIColor(red: 0.15, green: 0.20, blue: 0.38, alpha: 1)),
+                dynamic(light: UIColor(red: 0.13, green: 0.17, blue: 0.34, alpha: 1),
+                        dark: UIColor(red: 0.08, green: 0.11, blue: 0.24, alpha: 1)),
+            ],
+            startPoint: .topLeading, endPoint: .bottomTrailing
+        )
+    }
+
     static func priorityColor(_ priority: ActionPriority) -> Color {
         switch priority {
         case .mustDo:

@@ -80,20 +80,32 @@ private struct EmptyHome: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Space.l) {
-                Spacer(minLength: 40)
-                BreathingSymbol(systemName: "sun.and.horizon.fill", size: 56)
-                Text("Feel local when you land")
-                    .font(.largeTitle.weight(.bold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(Theme.textPrimary)
-                Text("Add your next trip and Reclock builds a practical plan for sleep, light, and caffeine — free, private, and it works offline.")
-                    .font(.body)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(Theme.textSecondary)
-                    .padding(.horizontal)
-                Button("Add my trip") { showAddTrip = true }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .padding(.horizontal, Theme.Space.xl)
+                VStack(spacing: Theme.Space.l) {
+                    HeroGlyph(systemName: "sun.and.horizon.fill", size: 104)
+                        .padding(.top, Theme.Space.xl)
+                    Text("Feel local when you land")
+                        .font(.largeTitle.weight(.bold))
+                        .fontDesign(.rounded)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Color.white)
+                    Text("Your trip becomes a plan for sleep, light, and caffeine. Free, private, offline.")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .padding(.horizontal, Theme.Space.l)
+                    Button("Add my trip") { showAddTrip = true }
+                        .buttonStyle(OnGradientPrimaryButtonStyle())
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.bottom, Theme.Space.xl)
+                }
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(Theme.sky(for: .seekLight))
+                        .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
+                )
+                .padding(.top, Theme.Space.m)
+
                 Button("See an example") {
                     Task { await model.seedDemoData() }
                 }
@@ -167,6 +179,19 @@ private struct TripHomeContent: View {
                     }
                     .animation(Theme.Anim.spring, value: context.current.first?.id)
 
+                    // Today at a glance: one strip of color, no words.
+                    if let plan,
+                       let today = plan.days.first(where: {
+                           $0.dayStart <= now && now < $0.dayStart.addingTimeInterval(86_400)
+                       }) {
+                        DayRibbon(
+                            actions: plan.actions(onDay: today.index),
+                            dayStart: today.dayStart,
+                            now: now
+                        )
+                        .padding(.horizontal, Theme.Space.xs)
+                    }
+
                     if context.current.count > 1 {
                         ForEach(context.current.dropFirst()) { action in
                             NavigationLink(value: action) {
@@ -191,7 +216,7 @@ private struct TripHomeContent: View {
                     NavigationLink {
                         TripDetailView(trip: trip)
                     } label: {
-                        TripSummaryRow(trip: trip, plan: model.plan(for: trip))
+                        TripSummaryRow(trip: trip, plan: model.plan(for: trip), progress: context.progress)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("home.tripCard")
@@ -384,25 +409,42 @@ private struct QuietNowCard: View {
     let now: Date
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Label("Nothing to do right now", systemImage: "checkmark.seal.fill")
-                .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
-            if let next {
-                Text("Next up: \(next.title.lowercased()) in \(TimeFormat.countdown(to: next.window.start, from: now)).")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
-                    .contentTransition(.numericText(countsDown: true))
-                    .animation(Theme.Anim.gentle, value: TimeFormat.countdown(to: next.window.start, from: now))
-            } else {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                HeroGlyph(systemName: next == nil ? "checkmark.seal.fill" : "moon.stars.fill", size: 76)
+                Spacer(minLength: 0)
+                if let next {
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(TimeFormat.countdown(to: next.window.start, from: now))
+                            .font(.system(size: 42, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(Color.white)
+                            .contentTransition(.numericText(countsDown: true))
+                            .animation(Theme.Anim.gentle, value: TimeFormat.countdown(to: next.window.start, from: now))
+                        Text("until \(next.title.lowercased())")
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(Color.white.opacity(0.75))
+                            .lineLimit(1)
+                    }
+                }
+            }
+            Text("Nothing to do right now")
+                .font(.title3.weight(.bold))
+                .fontDesign(.rounded)
+                .foregroundStyle(Color.white)
+            if next == nil {
                 Text("You're through the plan. Keep regular hours and enjoy the trip.")
                     .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(Color.white.opacity(0.8))
             }
         }
         .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card()
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(Theme.quietSky)
+                .shadow(color: .black.opacity(0.18), radius: 14, y: 5)
+        )
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -454,17 +496,22 @@ private struct TonightRow: View {
     let value: String
 
     var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundStyle(tint)
-                .frame(width: 28)
-                .accessibilityHidden(true)
+        HStack(spacing: Theme.Space.m) {
+            ZStack {
+                Circle().fill(tint.opacity(0.16))
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(tint)
+            }
+            .frame(width: 38, height: 38)
+            .accessibilityHidden(true)
             Text(title)
                 .font(.subheadline)
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(Theme.textSecondary)
             Spacer()
             Text(value)
-                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .font(.title3.weight(.semibold).monospacedDigit())
+                .fontDesign(.rounded)
                 .foregroundStyle(Theme.textPrimary)
         }
         .accessibilityElement(children: .combine)
@@ -476,33 +523,61 @@ private struct TonightRow: View {
 private struct TripSummaryRow: View {
     let trip: Trip
     let plan: JetLagPlan?
+    var progress: Double = 0
 
     var body: some View {
-        HStack(spacing: Theme.Space.m) {
-            Image(systemName: "airplane.circle.fill")
-                .font(.title2)
-                .foregroundStyle(Theme.accent)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(trip.origin) → \(trip.destination)")
-                    .font(.subheadline.weight(.semibold))
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(trip.origin)
+                    .font(.title2.weight(.heavy))
+                    .fontDesign(.rounded)
                     .foregroundStyle(Theme.textPrimary)
+                Spacer()
+                Text(trip.destination)
+                    .font(.title2.weight(.heavy))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(Theme.textPrimary)
+            }
+
+            // The plane rides the body-clock progress line between the two cities.
+            GeometryReader { geo in
+                let width = geo.size.width
+                let x = min(1, max(0, progress)) * max(0, width - 22)
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Theme.surfaceSecondary)
+                        .frame(height: 4)
+                    Capsule()
+                        .fill(Theme.accent)
+                        .frame(width: x + 4, height: 4)
+                    Image(systemName: "airplane")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .offset(x: x)
+                        .animation(Theme.Anim.spring, value: x)
+                }
+            }
+            .frame(height: 22)
+            .accessibilityHidden(true)
+
+            HStack {
                 if let plan {
                     Text(plan.strategySummary)
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
-                        .lineLimit(2)
+                        .lineLimit(1)
                 }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .accessibilityHidden(true)
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.textSecondary)
-                .accessibilityHidden(true)
         }
         .padding(Theme.Space.m)
         .card()
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("Trip \(trip.origin) to \(trip.destination), \(Int((progress * 100).rounded())) percent adjusted")
     }
 }

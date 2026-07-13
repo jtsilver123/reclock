@@ -58,8 +58,9 @@ struct ActionGlyph: View {
     }
 }
 
-// MARK: - Action row (timeline / next list)
+// MARK: - Action row (next list)
 
+/// Visual-first row: big glyph, one line of words, the time as the loudest text.
 struct ActionRow: View {
     let action: PlanAction
     var showsDay = false
@@ -67,35 +68,45 @@ struct ActionRow: View {
     private var zone: TimeZone { action.displayZone.resolved }
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.m) {
-            ActionGlyph(type: action.type)
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                HStack {
-                    Text(action.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .strikethrough(action.completion == .done)
-                    Spacer()
-                    PriorityBadge(priority: action.priority)
+        HStack(spacing: Theme.Space.m) {
+            ActionGlyph(type: action.type, size: 46)
+                .overlay(alignment: .topTrailing) {
+                    if action.priority == .mustDo && action.completion == .pending {
+                        Circle()
+                            .fill(Theme.priorityColor(.mustDo))
+                            .frame(width: 9, height: 9)
+                            .offset(x: 2, y: -2)
+                    }
                 }
-                Text(timeText)
-                    .font(.caption.monospacedDigit())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(action.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .strikethrough(action.completion == .done)
+                    .lineLimit(1)
+                Text(showsDay
+                     ? TimeFormat.weekdayTime(action.window.start, zone: zone)
+                     : TimeFormat.zoneCity(zone))
+                    .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
-                if let note = action.adjustmentNote {
-                    Label(note, systemImage: "info.circle")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textSecondary)
-                }
             }
+            Spacer(minLength: Theme.Space.s)
             if action.completion == .done {
                 Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
                     .foregroundStyle(.green)
                     .symbolEffect(.bounce, value: action.completion)
                     .accessibilityLabel("Done")
             } else if action.completion == .notPossible || action.completion == .skipped {
                 Image(systemName: "slash.circle")
+                    .font(.title3)
                     .foregroundStyle(Theme.textSecondary)
                     .accessibilityLabel("Skipped")
+            } else {
+                Text(TimeFormat.time(action.window.start, zone: zone))
+                    .font(.title3.weight(.semibold).monospacedDigit())
+                    .fontDesign(.rounded)
+                    .foregroundStyle(Theme.tint(for: action.type))
             }
         }
         .padding(Theme.Space.m)
@@ -103,14 +114,133 @@ struct ActionRow: View {
         .opacity(action.completion == .pending ? 1 : 0.72)
         .animation(Theme.Anim.gentle, value: action.completion)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(action.title), \(TimeFormat.range(action.window, zone: zone)), priority \(action.priority.displayName)")
+    }
+}
+
+// MARK: - On-gradient pieces
+
+/// Big white symbol in a translucent ring — the hero card's centerpiece.
+struct HeroGlyph: View {
+    let systemName: String
+    var size: CGFloat = 92
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var inhale = false
+
+    var body: some View {
+        ZStack {
+            Circle().fill(Color.white.opacity(0.16))
+            Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
+            Image(systemName: systemName)
+                .font(.system(size: size * 0.46, weight: .semibold))
+                .foregroundStyle(Color.white)
+        }
+        .frame(width: size, height: size)
+        .scaleEffect(reduceMotion ? 1 : (inhale ? 1.04 : 1))
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 2.8).repeatForever(autoreverses: true),
+            value: inhale
+        )
+        .onAppear { inhale = true }
+        .accessibilityHidden(true)
+    }
+}
+
+/// Solid white pill — the primary action on a gradient card.
+struct OnGradientPrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .foregroundStyle(Color.black.opacity(0.82))
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .scaleEffect(configuration.isPressed ? 0.965 : 1)
+            .animation(Theme.Anim.springQuick, value: configuration.isPressed)
+    }
+}
+
+// MARK: - Day ribbon
+
+/// The whole day as one strip of color — sleep, light, caffeine — with a "now" marker.
+/// Zero words; the hero and Tonight cards carry the specifics.
+struct DayRibbon: View {
+    let actions: [PlanAction]
+    /// Start of the plan-day this ribbon draws (24h domain).
+    let dayStart: Date
+    let now: Date
+
+    private static let ribbonTypes: Set<ActionType> = [
+        .sleep, .nap, .seekLight, .avoidLight, .windDown, .stayAwake, .leaveForAirport,
+    ]
+
+    private struct Segment: Identifiable {
+        let id: UUID
+        let from: Double
+        let to: Double
+        let color: Color
+        let isTick: Bool
     }
 
-    private var timeText: String {
-        let range = TimeFormat.range(action.window, zone: zone)
-        let city = TimeFormat.zoneCity(zone)
-        return showsDay
-            ? "\(TimeFormat.weekdayTime(action.window.start, zone: zone)) · \(city)"
-            : "\(range) · \(city)"
+    private var segments: [Segment] {
+        var result: [Segment] = []
+        for action in actions {
+            let isTick = action.type == .caffeineCutoff
+            guard Self.ribbonTypes.contains(action.type) || isTick else { continue }
+            let from = fraction(of: action.window.start)
+            let to = isTick ? from + 0.008 : fraction(of: action.window.end)
+            guard to > 0, from < 1, to > from else { continue }
+            result.append(Segment(
+                id: action.id,
+                from: max(0, from),
+                to: min(1, to),
+                color: Theme.tint(for: action.type),
+                isTick: isTick
+            ))
+        }
+        // Longer spans first so short moments (ticks, naps) stay visible on top.
+        return result.sorted { ($0.to - $0.from) > ($1.to - $1.from) }
+    }
+
+    private func fraction(of date: Date) -> Double {
+        date.timeIntervalSince(dayStart) / 86_400
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Theme.surfaceSecondary)
+                ForEach(segments) { segment in
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(segment.color.opacity(segment.isTick ? 1 : 0.85))
+                        .frame(width: max(3, (segment.to - segment.from) * width))
+                        .offset(x: segment.from * width)
+                }
+                let nowFraction = min(1, max(0, fraction(of: now)))
+                Circle()
+                    .fill(Theme.textPrimary)
+                    .frame(width: 7, height: 7)
+                    .background(Circle().fill(Theme.background).frame(width: 13, height: 13))
+                    .offset(x: nowFraction * width - 3.5)
+                    .animation(Theme.Anim.gentle, value: nowFraction)
+            }
+        }
+        .frame(height: 12)
+        .clipShape(Capsule())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var accessibilitySummary: String {
+        let parts = actions
+            .filter { Self.ribbonTypes.contains($0.type) || $0.type == .caffeineCutoff }
+            .sorted { $0.window.start < $1.window.start }
+            .map { "\($0.title) \(TimeFormat.time($0.window.start, zone: $0.displayZone.resolved))" }
+        return parts.isEmpty ? "No scheduled windows today" : "Today: " + parts.joined(separator: ", ")
     }
 }
 
