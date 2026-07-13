@@ -116,11 +116,25 @@ One-time setup:
    - `ASC_ISSUER_ID` — the issuer UUID shown above the key list
    - `ASC_API_KEY_P8` — the full contents of the `.p8` file
    - `APPLE_TEAM_ID` — your 10-character team ID (Membership page)
-4. Run the workflow. Build number defaults to the run number; the upload appears in
+4. **One registered device on the team.** The archive step uses Xcode automatic
+   signing, which generates a *development* profile first (export re-signs for the
+   App Store), and Apple requires ≥1 registered device for development profiles. If
+   the team has none — common when development happened all-simulator — the run fails
+   with “Your team has no devices”. Register any iPhone once: portal →
+   Certificates, Identifiers & Profiles → Devices → “+”. (UDID: connect the phone to
+   a Mac, Finder → device, click the subtitle line under the name until UDID shows,
+   right-click → Copy.) TestFlight *installs* never need device registration — this
+   is only to satisfy the CI archive.
+5. Run the workflow. Build number defaults to the run number; the upload appears in
    TestFlight after Apple's ~5–15 min processing.
 
 Signing uses `-allowProvisioningUpdates` with the API key (cloud-managed distribution
 certificate + auto-registered App ID) — no certificates or profiles to export from a Mac.
+
+If the run fails with “Your team has no devices” even though the portal lists
+devices, the `APPLE_TEAM_ID` secret points at a different team than the one holding
+the app record and devices (accounts can belong to several teams) — re-copy the Team
+ID from the Membership page while the correct team is selected.
 
 ## Credentials still required (account owner)
 

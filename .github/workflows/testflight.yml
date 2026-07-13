@@ -38,8 +38,11 @@ jobs:
           mkdir -p "$HOME/private_keys"
           printf '%s' "${{ secrets.ASC_API_KEY_P8 }}" > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
-      # Archive signs with the DISTRIBUTION identity directly: development profiles
-      # need a registered device, and a fresh team on a headless runner has none.
+      # Automatic signing archives with a DEVELOPMENT profile (export re-signs for
+      # App Store). Development profiles require ≥1 registered device on the team —
+      # register any iPhone once (portal → Devices) or this step fails with
+      # "Your team has no devices". Forcing CODE_SIGN_IDENTITY=Apple Distribution
+      # here instead is rejected as conflicting provisioning settings.
       - name: Archive
         run: |
           set -o pipefail
@@ -58,7 +61,6 @@ jobs:
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
             CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       - name: Export & upload to TestFlight
