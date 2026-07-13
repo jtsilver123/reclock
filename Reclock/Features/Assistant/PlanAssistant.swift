@@ -15,7 +15,7 @@ import FoundationModels
 enum PlanAssistant {
 
     static var isSupported: Bool {
-        SystemLanguageModel.default.availability == .available
+        SystemLanguageModel.default.isAvailable
     }
 
     /// Compact, current plan context the model can ground every answer in.
@@ -122,7 +122,7 @@ struct SetIntensityTool: Tool {
         var level: String
     }
 
-    func call(arguments: Arguments) async throws -> ToolOutput {
+    func call(arguments: Arguments) async throws -> String {
         let summary: String = await MainActor.run {
             guard var trip = model.state.trips.first(where: { $0.id == tripID }) else {
                 return "Trip not found."
@@ -139,7 +139,7 @@ struct SetIntensityTool: Tool {
         // Give the rebuild a beat, then report real times.
         try? await Task.sleep(nanoseconds: 600_000_000)
         let times = await MainActor.run { PlanAssistant.keyTimesSummary(tripID: tripID, model: model) }
-        return ToolOutput(summary + " " + times)
+        return summary + " " + times
     }
 }
 
@@ -161,7 +161,7 @@ struct SetPreTripStartTool: Tool {
         var days: Int
     }
 
-    func call(arguments: Arguments) async throws -> ToolOutput {
+    func call(arguments: Arguments) async throws -> String {
         let summary: String = await MainActor.run {
             guard var trip = model.state.trips.first(where: { $0.id == tripID }) else {
                 return "Trip not found."
@@ -173,7 +173,7 @@ struct SetPreTripStartTool: Tool {
         }
         try? await Task.sleep(nanoseconds: 600_000_000)
         let times = await MainActor.run { PlanAssistant.keyTimesSummary(tripID: tripID, model: model) }
-        return ToolOutput(summary + " " + times)
+        return summary + " " + times
     }
 }
 
@@ -196,7 +196,7 @@ struct MarkActionTool: Tool {
         var status: String
     }
 
-    func call(arguments: Arguments) async throws -> ToolOutput {
+    func call(arguments: Arguments) async throws -> String {
         let result: String = await MainActor.run {
             guard let trip = model.state.trips.first(where: { $0.id == tripID }),
                   let plan = model.plan(for: trip) else { return "Trip not found." }
@@ -213,7 +213,7 @@ struct MarkActionTool: Tool {
             Task { await model.setCompletion(completion, for: matched, in: trip) }
             return "Marked “\(matched.title)” as \(arguments.status.lowercased())."
         }
-        return ToolOutput(result)
+        return result
     }
 }
 
