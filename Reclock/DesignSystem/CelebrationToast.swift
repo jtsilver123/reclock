@@ -33,7 +33,7 @@ struct CelebrationEvent: Equatable, Identifiable {
     /// Copy is deterministic by action type so the voice stays consistent.
     var line: String {
         if let customLine { return customLine }
-        switch type {
+        return switch type {
         case .seekLight: "Light logged — the strongest lever, pulled."
         case .avoidLight: "Clock protected. The sun can wait."
         case .sleep: "Sleep banked. Everything builds on that."
