@@ -129,19 +129,34 @@ struct ActionDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                HStack {
-                    ActionGlyph(type: action.type, size: 56)
-                    Spacer()
-                    PriorityBadge(priority: action.priority)
-                }
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                // The action's sky, full bleed: glyph, title, window — zero chrome.
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack {
+                        HeroGlyph(systemName: action.type.symbolName, size: 72)
+                        Spacer()
+                        if action.priority == .mustDo {
+                            Text("MUST DO")
+                                .font(.caption2.weight(.heavy))
+                                .foregroundStyle(Color.white)
+                                .padding(.horizontal, Theme.Space.s)
+                                .padding(.vertical, 4)
+                                .background(Color.white.opacity(0.22), in: Capsule())
+                        }
+                    }
                     Text(action.title)
                         .font(.title.weight(.bold))
-                        .foregroundStyle(Theme.textPrimary)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(Color.white)
                     Text("\(TimeFormat.range(action.window, zone: zone)) · \(TimeFormat.zoneCity(zone)) time")
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(Theme.textSecondary)
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Color.white.opacity(0.85))
                 }
+                .padding(Theme.Space.l)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .fill(Theme.sky(for: action.type))
+                )
 
                 Text(action.instruction)
                     .font(.body)

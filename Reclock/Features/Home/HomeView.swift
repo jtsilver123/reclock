@@ -48,6 +48,9 @@ struct HomeView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    AssistantToolbarButton()
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showAddTrip = true
                     } label: {

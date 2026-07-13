@@ -22,12 +22,14 @@ struct SettingsView: View {
                 notificationSection
                 planningSection
                 backupSection
-                Section("Understand the plan") {
+                Section {
                     NavigationLink {
                         WhyItWorksView()
                     } label: {
                         Label("Why light, sleep & caffeine timing work", systemImage: "questionmark.circle")
                     }
+                } header: {
+                    SettingsHeader(title: "Understand the plan", symbol: "sparkles")
                 }
                 privacySection
                 aboutSection
@@ -67,7 +69,7 @@ struct SettingsView: View {
     @ViewBuilder
     private var profileSection: some View {
         if let profile = model.profile {
-            Section("Your sleep profile") {
+            Section {
                 NavigationLink {
                     ProfileEditorView(profile: profile)
                 } label: {
@@ -79,6 +81,8 @@ struct SettingsView: View {
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
+            } header: {
+                SettingsHeader(title: "Your sleep profile", symbol: "moon.stars.fill")
             }
         }
     }
@@ -86,7 +90,7 @@ struct SettingsView: View {
     // MARK: Notifications
 
     private var notificationSection: some View {
-        Section("Notifications") {
+        Section {
             if let granted = notificationStatusGranted, !granted {
                 Button {
                     Task {
@@ -109,13 +113,15 @@ struct SettingsView: View {
                 )
                 QuietHoursEditor()
             }
+        } header: {
+            SettingsHeader(title: "Notifications", symbol: "bell.badge.fill")
         }
     }
 
     // MARK: Planning
 
     private var planningSection: some View {
-        Section("Planning") {
+        Section {
             Toggle("Caffeine guidance", isOn: Binding(
                 get: { model.profile?.caffeine == .include },
                 set: { newValue in
@@ -136,6 +142,8 @@ struct SettingsView: View {
                     }
                 }
             ))
+        } header: {
+            SettingsHeader(title: "Planning", symbol: "slider.horizontal.3")
         }
     }
 
@@ -200,7 +208,7 @@ struct SettingsView: View {
                 }
             }
         } header: {
-            Text("Backup & sync")
+            SettingsHeader(title: "Backup & sync", symbol: "icloud.fill")
         } footer: {
             Text(model.auth.isSignedIn
                  ? "Your trips back up automatically after every change. A new phone signed into the same Apple ID restores them."
@@ -254,14 +262,14 @@ struct SettingsView: View {
                 Label("Delete all data", systemImage: "trash")
             }
         } header: {
-            Text("Privacy")
+            SettingsHeader(title: "Privacy", symbol: "lock.fill")
         }
     }
 
     // MARK: About
 
     private var aboutSection: some View {
-        Section("About") {
+        Section {
             LabeledContent("Version", value: appVersion)
             LabeledContent("Plan protocol", value: "v\(ProtocolVersion.current.description)")
             Link(destination: URL(string: "https://jtsilver123.github.io/reclock/privacy/")!) {
@@ -273,6 +281,8 @@ struct SettingsView: View {
             Text("Reclock offers general wellness guidance for travel, not medical advice. If you have a sleep disorder or health condition, talk to a clinician.")
                 .font(.caption2)
                 .foregroundStyle(Theme.textSecondary)
+        } header: {
+            SettingsHeader(title: "About", symbol: "info.circle.fill")
         }
     }
 
@@ -293,6 +303,23 @@ struct SettingsView: View {
                 }
             }
         )
+    }
+}
+
+// MARK: - Section header
+
+/// Standard header type plus a small tinted glyph, so every section gets a visual anchor.
+private struct SettingsHeader: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: symbol)
+                .foregroundStyle(Theme.accentDeep)
+        }
     }
 }
 

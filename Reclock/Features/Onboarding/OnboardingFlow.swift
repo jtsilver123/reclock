@@ -82,6 +82,7 @@ struct OnboardingFlow: View {
         OnboardingScreen(
             title: "Your normal sleep",
             subtitle: "At home, on a regular night — this anchors the whole plan.",
+            symbol: "moon.zzz.fill",
             primaryLabel: "Continue",
             primaryAction: { step = 2 }
         ) {
@@ -139,6 +140,7 @@ struct OnboardingFlow: View {
         OnboardingScreen(
             title: "Sleep on planes?",
             subtitle: "Be honest — the plan only works if it's built for the real you.",
+            symbol: "airplane",
             primaryLabel: "Continue",
             primaryAction: { step = 3 }
         ) {
@@ -176,6 +178,7 @@ struct OnboardingFlow: View {
         OnboardingScreen(
             title: "When should trips start shifting you?",
             subtitle: "Your default head start before any departure. You can set it exactly, per trip, when you add one.",
+            symbol: "calendar.badge.clock",
             primaryLabel: "Continue",
             primaryAction: { step = 4 }
         ) {
@@ -212,6 +215,7 @@ struct OnboardingFlow: View {
         OnboardingScreen(
             title: "A few last things",
             subtitle: "Everything here can change later in Settings.",
+            symbol: "slider.horizontal.3",
             primaryLabel: "Continue",
             primaryAction: { step = 5 }
         ) {
@@ -296,6 +300,7 @@ struct OnboardingFlow: View {
 private struct OnboardingScreen<Content: View>: View {
     var title: String?
     var subtitle: String?
+    var symbol: String?
     var primaryLabel: String
     var primaryAction: () -> Void
     var secondaryLabel: String?
@@ -305,6 +310,7 @@ private struct OnboardingScreen<Content: View>: View {
     init(
         title: String? = nil,
         subtitle: String? = nil,
+        symbol: String? = nil,
         primaryLabel: String,
         primaryAction: @escaping () -> Void,
         secondaryLabel: String? = nil,
@@ -313,6 +319,7 @@ private struct OnboardingScreen<Content: View>: View {
     ) {
         self.title = title
         self.subtitle = subtitle
+        self.symbol = symbol
         self.primaryLabel = primaryLabel
         self.primaryAction = primaryAction
         self.secondaryLabel = secondaryLabel
@@ -325,6 +332,17 @@ private struct OnboardingScreen<Content: View>: View {
             VStack(alignment: .center, spacing: Theme.Space.l) {
                 if let title {
                     VStack(spacing: Theme.Space.xs) {
+                        if let symbol {
+                            ZStack {
+                                Circle().fill(Theme.accent.opacity(0.18))
+                                Image(systemName: symbol)
+                                    .font(.system(size: 26, weight: .semibold))
+                                    .foregroundStyle(Theme.accentDeep)
+                            }
+                            .frame(width: 64, height: 64)
+                            .padding(.bottom, Theme.Space.xs)
+                            .accessibilityHidden(true)
+                        }
                         Text(title)
                             .font(.title.weight(.bold))
                             .multilineTextAlignment(.center)

@@ -20,26 +20,38 @@ struct TripDetailView: View {
     var body: some View {
         List {
             Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(currentTrip.origin) → \(currentTrip.destination)")
-                            .font(.title3.weight(.bold))
-                        if let plan = model.plan(for: currentTrip) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(currentTrip.origin)
+                            .font(.largeTitle.weight(.heavy))
+                            .fontDesign(.rounded)
+                        Image(systemName: "airplane")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Theme.accentDeep)
+                            .accessibilityHidden(true)
+                        Spacer()
+                        Text(currentTrip.destination)
+                            .font(.largeTitle.weight(.heavy))
+                            .fontDesign(.rounded)
+                    }
+                    if let plan = model.plan(for: currentTrip) {
+                        HStack(spacing: Theme.Space.s) {
                             Text(shiftDescription(plan))
-                                .font(.subheadline)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Theme.ink)
+                                .padding(.horizontal, Theme.Space.s)
+                                .padding(.vertical, 4)
+                                .background(Theme.accent.opacity(0.4), in: Capsule())
+                            Text(plan.strategySummary)
+                                .font(.footnote)
                                 .foregroundStyle(Theme.textSecondary)
+                                .lineLimit(2)
                         }
                     }
-                    Spacer()
-                }
-                if let plan = model.plan(for: currentTrip) {
-                    Text(plan.strategySummary)
-                        .font(.footnote)
+                    Label("Works fully offline once generated", systemImage: "airplane.circle")
+                        .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
-                Label("Plan works fully offline once generated", systemImage: "airplane.circle")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.textSecondary)
             }
 
             TravelBuddiesSection(trip: currentTrip)
