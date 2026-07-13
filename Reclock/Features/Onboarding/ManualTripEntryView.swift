@@ -63,34 +63,49 @@ struct ManualTripEntryView: View {
                 }
             }
 
-            Section("Plan style") {
-                Picker("Intensity", selection: $intensity) {
-                    ForEach(PlanIntensity.allCases, id: \.self) { value in
-                        Text(value.displayName).tag(value)
+            // The defaults are good, so the knobs stay folded — the form reads as
+            // "flight in, plan out", not a settings page.
+            Section {
+                DisclosureGroup {
+                    Picker("Intensity", selection: $intensity) {
+                        ForEach(PlanIntensity.allCases, id: \.self) { value in
+                            Text(value.displayName).tag(value)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Text(intensity.summary)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                    Picker("Start adjusting", selection: $preTripChoice) {
+                        Text("Automatic").tag(-1)
+                        Text("On travel day").tag(0)
+                        Text("1 day before").tag(1)
+                        Text("2 days before").tag(2)
+                        Text("3 days before").tag(3)
+                        Text("4 days before").tag(4)
+                    }
+                    Text("When your bedtime starts moving. Automatic follows your profile preference; picking a value makes it exact for this trip.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                    TransferTimeRow(
+                        minutes: $transferMinutes,
+                        departureAirport: segments.first?.departureAirport
+                    )
+                    Text("Door to terminal. Sets your leave-by reminder and keeps sleep clear of the airport run.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Plan style")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                        Text(planStyleSummary)
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
                     }
                 }
-                .pickerStyle(.segmented)
-                Text(intensity.summary)
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                Picker("Start adjusting", selection: $preTripChoice) {
-                    Text("Automatic").tag(-1)
-                    Text("On travel day").tag(0)
-                    Text("1 day before").tag(1)
-                    Text("2 days before").tag(2)
-                    Text("3 days before").tag(3)
-                    Text("4 days before").tag(4)
-                }
-                Text("When your bedtime starts moving. Automatic follows your profile preference; picking a value makes it exact for this trip.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                TransferTimeRow(
-                    minutes: $transferMinutes,
-                    departureAirport: segments.first?.departureAirport
-                )
-                Text("Door to terminal. Sets your leave-by reminder and keeps sleep clear of the airport run.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
+            } footer: {
+                Text("The defaults suit most trips — open only if you want to tune.")
             }
 
             if !validationMessages.isEmpty {
@@ -124,6 +139,16 @@ struct ManualTripEntryView: View {
 
     private func index(of id: UUID) -> Int {
         segments.firstIndex { $0.id == id } ?? 0
+    }
+
+    private var planStyleSummary: String {
+        let start: String = switch preTripChoice {
+        case -1: "automatic start"
+        case 0: "starts travel day"
+        case 1: "starts 1 day early"
+        default: "starts \(preTripChoice) days early"
+        }
+        return "\(intensity.displayName) · \(start)"
     }
 
     private var isComplete: Bool {
@@ -225,6 +250,12 @@ private struct SegmentEditor: View {
     }
 
     var body: some View {
+        if !lookupAvailable && model.state.settings.localOnlyMode {
+            Label("Flight-number lookup is off while Local-only mode is on (Settings).",
+                  systemImage: "airplane.circle")
+                .font(.caption2)
+                .foregroundStyle(Theme.textSecondary)
+        }
         if lookupAvailable {
             Picker("How do you want to add it?", selection: Binding(
                 get: { effectiveMode },
@@ -288,7 +319,7 @@ private struct SegmentEditor: View {
         }
 
         if effectiveMode == .manual {
-        TextField("Flight number (optional — shown on your plan)", text: $draft.flightNumber)
+        TextField("Flight number (optional)", text: $draft.flightNumber)
             .textInputAutocapitalization(.characters)
             .autocorrectionDisabled()
         AirportField(label: "From", selection: $draft.departureAirport)

@@ -54,13 +54,15 @@ struct Dependencies {
         )
     }
 
-    /// Reads `ReclockAeroDataBoxKey` from Info.plist (owner-configured; never committed).
+    /// Key baked in at archive time (InjectedSecrets), with an Info.plist fallback
+    /// for local development. Never committed either way.
     private static func liveScheduleProvider() -> FlightScheduleProvider {
-        if let key = Bundle.main.object(forInfoDictionaryKey: "ReclockAeroDataBoxKey") as? String,
-           !key.isEmpty {
-            return AeroDataBoxScheduleProvider(apiKey: key)
+        var key = InjectedSecrets.aeroDataBoxKey
+        if key.isEmpty {
+            key = (Bundle.main.object(forInfoDictionaryKey: "ReclockAeroDataBoxKey") as? String) ?? ""
         }
-        return UnconfiguredFlightScheduleProvider()
+        guard !key.isEmpty else { return UnconfiguredFlightScheduleProvider() }
+        return AeroDataBoxScheduleProvider(apiKey: key)
     }
 
     private static func mockScheduleProvider() -> FlightScheduleProvider {

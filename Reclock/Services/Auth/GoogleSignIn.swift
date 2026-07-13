@@ -7,9 +7,10 @@ import SwiftUI
 /// then the resulting id_token goes through the same Supabase exchange as Apple's.
 /// Config-gated — no client ID in the build means no Google button anywhere.
 enum GoogleAuthConfig {
-    /// iOS OAuth client ID from Info.plist (injected via build settings, like the
-    /// AeroDataBox key). E.g. "1234-abc.apps.googleusercontent.com".
+    /// iOS OAuth client ID baked in at archive time (InjectedSecrets), with an
+    /// Info.plist fallback for local development. E.g. "1234-abc.apps.googleusercontent.com".
     static var clientID: String? {
+        if !InjectedSecrets.googleClientID.isEmpty { return InjectedSecrets.googleClientID }
         guard let value = Bundle.main.object(forInfoDictionaryKey: "ReclockGoogleClientID") as? String,
               !value.isEmpty else { return nil }
         return value

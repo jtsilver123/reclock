@@ -54,6 +54,18 @@ jobs:
           cp ~/.private_keys/AuthKey_${ASC_KEY_ID}.p8 ~/.appstoreconnect/private_keys/
           printf '%s' "${{ secrets.ASC_API_KEY_P8 }}" > "$RUNNER_TEMP/AuthKey.p8"
 
+      - name: Inject build-time configuration
+        run: |
+          # Compile-time constants: custom INFOPLIST_KEY_ injection proved unreliable
+          # for non-Apple keys, so release builds carry secrets as Swift constants.
+          # The repo copy of this file holds empty strings; git never sees this write.
+          cat > Reclock/Services/InjectedSecrets.swift <<EOF
+          enum InjectedSecrets {
+              static let aeroDataBoxKey = "${AERODATABOX_KEY}"
+              static let googleClientID = "${GOOGLE_CLIENT_ID}"
+          }
+          EOF
+
       - name: Archive (unsigned)
         run: |
           set -o pipefail
@@ -78,6 +90,20 @@ jobs:
       # an unsigned archive carries none, and capabilities would silently vanish
       # (cini build 6 shipped without Sign in with Apple exactly this way). Ad-hoc
       # sign with our entitlements first so the distribution re-sign preserves them.
+      - name: Verify build-time configuration made it into the binary
+        run: |
+          APP="$RUNNER_TEMP/Reclock.xcarchive/Products/Applications/Reclock.app"
+          if [ -n "$AERODATABOX_KEY" ]; then
+            if strings "$APP/Reclock" | grep -q -- "$AERODATABOX_KEY"; then
+              echo "Flight-lookup key baked into binary: yes"
+            else
+              echo "::error::AERODATABOX_KEY was provided but is missing from the binary"
+              exit 1
+            fi
+          else
+            echo "Flight-lookup key not configured; feature will hide."
+          fi
+
       - name: Stamp entitlements into the archive
         run: |
           APP="$RUNNER_TEMP/Reclock.xcarchive/Products/Applications/Reclock.app"
