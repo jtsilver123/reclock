@@ -7,6 +7,7 @@ struct TripDetailView: View {
     let trip: Trip
 
     @State private var showDelaySheet = false
+    @State private var calendarResult: Int??  // nil = idle, .some(nil) = denied, .some(n) = added
     @State private var showDeleteConfirm = false
     @State private var showSurvey = false
     @State private var editingSegment: FlightSegment?
@@ -141,6 +142,21 @@ struct TripDetailView: View {
 
             Section {
                 Button {
+                    Task {
+                        guard let plan = model.plan(for: currentTrip) else { return }
+                        let requests = PlanCalendarEvents.requests(
+                            trip: currentTrip, plan: plan, now: model.deps.now()
+                        )
+                        let count = await model.deps.calendarExporter.export(
+                            requests, tripID: currentTrip.id
+                        )
+                        if count != nil { Haptics.success() }
+                        calendarResult = .some(count)
+                    }
+                } label: {
+                    Label("Add plan to my calendar", systemImage: "calendar.badge.plus")
+                }
+                Button {
                     showDelaySheet = true
                 } label: {
                     Label("My flight changed / was delayed", systemImage: "clock.badge.exclamationmark")
@@ -176,6 +192,21 @@ struct TripDetailView: View {
         }
         .navigationTitle(currentTrip.name)
         .navigationBarTitleDisplayMode(.inline)
+        .alert(
+            calendarResult == .some(nil) ? "Calendar access is off" : "Added to your calendar",
+            isPresented: Binding(
+                get: { calendarResult != nil },
+                set: { if !$0 { calendarResult = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if calendarResult == .some(nil) {
+                Text("Allow calendar access for Reclock in iOS Settings, then try again.")
+            } else {
+                Text("\(calendarResult?.flatMap { $0 } ?? 0) key moments are on your calendar, marked Free with no alerts — Reclock still handles the reminders. Adding again after a plan change replaces them.")
+            }
+        }
         .sheet(isPresented: $showDelaySheet) {
             ReportDelayView(trip: currentTrip)
                 .presentationDetents([.medium, .large])

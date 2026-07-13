@@ -10,6 +10,7 @@ struct Dependencies {
     let validator: PlanValidator
     let notifications: NotificationScheduling
     let calendarImporter: CalendarImporting
+    let calendarExporter: CalendarExporting
     let sleepProvider: SleepDataProvider
     let analytics: AnalyticsClient
     let airports: AirportDirectory
@@ -43,6 +44,7 @@ struct Dependencies {
             validator: PlanValidator(configuration: configuration),
             notifications: ProcessInfo.isUITest ? NoOpNotificationScheduler() : LocalNotificationScheduler(),
             calendarImporter: ProcessInfo.isUITest ? MockCalendarImporter() : EventKitCalendarImporter(),
+            calendarExporter: ProcessInfo.isUITest ? MockCalendarExporter() : EventKitCalendarExporter(),
             sleepProvider: sleepProvider,
             analytics: NoOpAnalyticsClient(),
             airports: .bundled,
@@ -88,6 +90,7 @@ struct Dependencies {
             validator: PlanValidator(),
             notifications: NoOpNotificationScheduler(),
             calendarImporter: MockCalendarImporter(),
+            calendarExporter: MockCalendarExporter(),
             sleepProvider: UnavailableSleepDataProvider(),
             analytics: NoOpAnalyticsClient(),
             airports: .bundled,

@@ -345,7 +345,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Reclock scans your calendar on this device to find flight events you choose to import. Nothing from your calendar is uploaded or stored except the flights you confirm.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Reclock scans your calendar on this device to find flights you choose to import, and can add your plan’"’"’s key moments as events. Nothing from your calendar is uploaded or stored except the flights you confirm.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Reclock can read your recent sleep timing to make setup easier. Your sleep data stays on your device.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Reclock never writes to Health. Only read access to sleep is ever requested, and only if you opt in.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Used once, only when you tap \"Estimate from my location\", to compute the drive time to your departure airport. Your location is never stored.";
@@ -378,7 +378,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Reclock scans your calendar on this device to find flight events you choose to import. Nothing from your calendar is uploaded or stored except the flights you confirm.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Reclock scans your calendar on this device to find flights you choose to import, and can add your plan’"’"’s key moments as events. Nothing from your calendar is uploaded or stored except the flights you confirm.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Reclock can read your recent sleep timing to make setup easier. Your sleep data stays on your device.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Reclock never writes to Health. Only read access to sleep is ever requested, and only if you opt in.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Used once, only when you tap \"Estimate from my location\", to compute the drive time to your departure airport. Your location is never stored.";

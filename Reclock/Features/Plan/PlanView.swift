@@ -150,6 +150,9 @@ private struct PlanContent: View {
                                     .padding(.horizontal, Theme.Space.m)
                             }
 
+                            ZoneModeChip(displayMode: $displayMode, trip: trip)
+                                .padding(.horizontal, Theme.Space.m)
+
                             ForEach(PlanDays.groupedPhases(plan: plan, filter: priorityFilter)) { group in
                                 Section {
                                     ForEach(group.days) { entry in
@@ -218,6 +221,44 @@ private struct PlanContent: View {
             }
             await model.checkForKudos(trip: trip)
         }
+    }
+}
+
+// MARK: - Zone mode chip
+
+/// Says out loud which clock the plan below is written in — and switches it.
+private struct ZoneModeChip: View {
+    @Binding var displayMode: TimeDisplayMode
+    let trip: Trip
+
+    private var text: String {
+        displayMode == .home
+            ? "Times in \(TimeFormat.zoneCity(trip.homeZone.resolved)) — home time"
+            : "Times in \(TimeFormat.zoneCity(trip.destinationZone.resolved)) time"
+    }
+
+    var body: some View {
+        Menu {
+            Picker("Time zone", selection: $displayMode) {
+                Text("Destination time").tag(TimeDisplayMode.destination)
+                Text("Home time").tag(TimeDisplayMode.home)
+                Text("Both").tag(TimeDisplayMode.dual)
+            }
+        } label: {
+            HStack(spacing: Theme.Space.xs) {
+                Image(systemName: "globe")
+                    .font(.caption.weight(.semibold))
+                Text(text)
+                    .font(.caption.weight(.semibold))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+            }
+            .foregroundStyle(Theme.accentDeep)
+            .padding(.horizontal, Theme.Space.m)
+            .padding(.vertical, 7)
+            .background(Theme.accent.opacity(0.12), in: Capsule())
+        }
+        .accessibilityLabel("Plan time zone: \(text). Tap to change.")
     }
 }
 

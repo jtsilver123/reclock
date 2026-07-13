@@ -250,3 +250,14 @@ Three organic layers keep gradients from feeling machine-made:
   destination's local hour: dawn gold, day blue, dusk lavender, night navy.
 
 The assistant lives in a floating night-sky orb, bottom right on every tab.
+
+## Calendar export & the zone chip (2026-07)
+
+"Add plan to my calendar" (Trip detail) writes every non-optional upcoming
+step as a calendar event — emoji-titled, marked Free, no alarms, stamped with
+the step's own time zone. It rides the full calendar access the flight
+importer already asks for; exported event IDs are remembered per trip so
+re-exporting after a plan change replaces instead of duplicates.
+
+The Plan tab now says which clock it's speaking: a tappable "Times in Tokyo
+time" chip above the day list, doubling as the zone switcher.
