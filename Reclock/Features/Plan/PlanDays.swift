@@ -153,8 +153,7 @@ struct PlanPhaseHeader: View {
                 .foregroundStyle(Theme.accentDeep)
                 .accessibilityHidden(true)
             Text(phase.displayName)
-                .font(.title3.weight(.bold))
-                .fontDesign(.rounded)
+                .font(Theme.display(20, black: false))
                 .foregroundStyle(Theme.textPrimary)
         }
         .padding(.horizontal, Theme.Space.m)

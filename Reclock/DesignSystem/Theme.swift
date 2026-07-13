@@ -196,6 +196,121 @@ enum Theme {
                     dark: UIColor(red: 0.60, green: 0.61, blue: 0.66, alpha: 1))
         }
     }
+
+    // MARK: Brand type
+
+    /// The brand display face: Fraunces, a warm soft serif (SIL OFL, bundled).
+    /// Used for big, human moments — titles, the wordmark, airport codes — never
+    /// for UI labels or numbers. Falls back to New York if registration ever fails.
+    static func display(_ size: CGFloat, black: Bool = true) -> Font {
+        if BrandFont.available {
+            return .custom(black ? BrandFont.black : BrandFont.semiBold, size: size)
+        }
+        return .system(size: size, weight: black ? .black : .semibold, design: .serif)
+    }
+}
+
+/// Bundled font registration facts, checked once.
+enum BrandFont {
+    static let black = "Fraunces-Black"
+    static let semiBold = "Fraunces-SemiBold"
+    static let available: Bool = UIFont(name: black, size: 12) != nil
+}
+
+// MARK: - Grain
+
+/// A whisper of film grain over gradients so they read as printed, not rendered.
+private struct GrainOverlay: ViewModifier {
+    var opacity: Double
+    var cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content.overlay(
+            Image("Grain")
+                .resizable(resizingMode: .tile)
+                .opacity(opacity)
+                .blendMode(.softLight)
+                .allowsHitTesting(false)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .accessibilityHidden(true)
+        )
+    }
+}
+
+extension View {
+    /// Film grain for sky-gradient surfaces. Keep it barely there.
+    func grain(_ opacity: Double = 0.5, cornerRadius: CGFloat = Theme.Radius.card) -> some View {
+        modifier(GrainOverlay(opacity: opacity, cornerRadius: cornerRadius))
+    }
+}
+
+// MARK: - Living sky
+
+/// A slow glow drifting behind a gradient card — sun behind thin cloud. Subtle
+/// enough that nobody notices it directly; they just feel the card is alive.
+private struct LivingSky: ViewModifier {
+    var cornerRadius: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var drift = false
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.clear)
+                    .overlay(alignment: .topTrailing) {
+                        Circle()
+                            .fill(Color.white.opacity(reduceMotion ? 0 : 0.10))
+                            .frame(width: 190, height: 190)
+                            .blur(radius: 38)
+                            .offset(x: drift ? 46 : -36, y: drift ? -26 : 30)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
+                    drift = true
+                }
+            }
+    }
+}
+
+extension View {
+    /// The drifting-light treatment for sky-gradient cards.
+    func livingSky(cornerRadius: CGFloat = Theme.Radius.card) -> some View {
+        modifier(LivingSky(cornerRadius: cornerRadius))
+    }
+}
+
+// MARK: - Ambient horizon
+
+/// A faint wash of the destination's sky at the top of a screen — dawn gold, day
+/// blue, dusk lavender, night navy. The app quietly keeps the traveler's target
+/// time of day in the air.
+struct AmbientHorizon: View {
+    let zone: TimeZone
+    let now: Date
+
+    private var tint: Color {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = zone
+        let hour = cal.component(.hour, from: now)
+        switch hour {
+        case 5..<9:   return Theme.accent.opacity(0.16)                            // dawn
+        case 9..<17:  return Color(red: 0.45, green: 0.65, blue: 0.90).opacity(0.10) // day
+        case 17..<21: return Color(red: 0.62, green: 0.48, blue: 0.72).opacity(0.12) // dusk
+        default:      return Color(red: 0.16, green: 0.22, blue: 0.45).opacity(0.12) // night
+        }
+    }
+
+    var body: some View {
+        LinearGradient(colors: [tint, tint.opacity(0)], startPoint: .top, endPoint: .bottom)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
 }
 
 // MARK: - Time formatting

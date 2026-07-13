@@ -48,6 +48,12 @@ struct MainTabs: View {
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
         }
         .tint(Theme.accent)
+        // The assistant floats above everything, always within thumb's reach.
+        .overlay(alignment: .bottomTrailing) {
+            AssistantFAB()
+                .padding(.trailing, Theme.Space.m)
+                .padding(.bottom, 70)
+        }
         // Celebrations belong to the whole app, not one tab.
         .overlay(alignment: .top) {
             if let celebration = model.celebration {

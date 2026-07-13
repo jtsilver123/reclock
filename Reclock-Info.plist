@@ -4,6 +4,15 @@
 <dict>
 	<!-- Merged with the generated Info.plist (GENERATE_INFOPLIST_FILE stays YES).
 	     Only keys that build settings can't express live here. -->
+	<!-- Brand display face (SIL OFL). Both path forms listed so registration survives
+	     either flat or folder-preserving resource copies; misses are ignored. -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fraunces-Black.ttf</string>
+		<string>Fraunces-SemiBold.ttf</string>
+		<string>Fonts/Fraunces-Black.ttf</string>
+		<string>Fonts/Fraunces-SemiBold.ttf</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

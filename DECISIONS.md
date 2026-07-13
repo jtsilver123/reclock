@@ -232,3 +232,21 @@ sheet. Restructured to one job per tab:
 Trip *switching* stays on the Plan tab (chip strip, only visible with 2+
 active trips) so new users never meet the concept. Celebration toasts moved
 to the tab container so they show on any tab.
+
+## The brand voice is a typeface and a texture (2026-07)
+
+Reclock's personality: **Fraunces** (SIL OFL, bundled, ~140KB) for display
+moments only — the wordmark, screen titles, phase banners, hero-card titles,
+airport codes. Body text, labels, and numbers stay San Francisco; countdowns
+stay monospaced rounded. If font registration ever fails, `Theme.display`
+falls back to New York so nothing breaks.
+
+Three organic layers keep gradients from feeling machine-made:
+- **Grain** — a tiled speckle at soft-light blend over every sky card and the
+  app icon. Printed, not rendered.
+- **Living sky** — a slow drifting glow behind gradient cards (8s ease,
+  disabled under Reduce Motion). Sun behind thin cloud.
+- **Ambient horizon** — a faint wash at the top of the Plan tab tinted by the
+  destination's local hour: dawn gold, day blue, dusk lavender, night navy.
+
+The assistant lives in a floating night-sky orb, bottom right on every tab.

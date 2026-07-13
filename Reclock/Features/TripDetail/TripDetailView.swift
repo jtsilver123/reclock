@@ -23,16 +23,14 @@ struct TripDetailView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(currentTrip.origin)
-                            .font(.largeTitle.weight(.heavy))
-                            .fontDesign(.rounded)
+                            .font(Theme.display(33))
                         Image(systemName: "airplane")
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(Theme.accentDeep)
                             .accessibilityHidden(true)
                         Spacer()
                         Text(currentTrip.destination)
-                            .font(.largeTitle.weight(.heavy))
-                            .fontDesign(.rounded)
+                            .font(Theme.display(33))
                     }
                     if let plan = model.plan(for: currentTrip) {
                         HStack(spacing: Theme.Space.s) {

@@ -24,8 +24,11 @@ struct PlanView: View {
             .navigationTitle("Reclock")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    AssistantToolbarButton()
+                ToolbarItem(placement: .principal) {
+                    Text("Reclock")
+                        .font(Theme.display(21))
+                        .foregroundStyle(Theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                 }
             }
             .sheet(isPresented: $showAddTrip) {
@@ -54,8 +57,7 @@ private struct EmptyPlanState: View {
         ScrollView {
             VStack(spacing: Theme.Space.l) {
                 Text("Feel local when you land")
-                    .font(.largeTitle.weight(.bold))
-                    .fontDesign(.rounded)
+                    .font(Theme.display(34))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Theme.textPrimary)
                     .padding(.top, Theme.Space.xl)
@@ -94,6 +96,10 @@ private struct EmptyPlanState: View {
                 Spacer()
             }
             .padding(Theme.Space.m)
+        }
+        .background(alignment: .top) {
+            AmbientHorizon(zone: .current, now: Date())
+                .frame(height: 280)
         }
     }
 }

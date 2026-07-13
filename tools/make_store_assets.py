@@ -153,7 +153,27 @@ def make_icon(path, size=1024):
     img = Image.composite(cream_layer, img, band)
     draw = ImageDraw.Draw(img)
 
+    # Dawn blush: warmth rising from the horizon into the night sky.
+    blush = Image.new("L", (W, W), 0)
+    bd2 = ImageDraw.Draw(blush)
+    fade = int(W * 0.26)
+    for i in range(fade):
+        alpha = int(64 * (1 - i / fade))
+        bd2.line([0, horizon - i, W, horizon - i], fill=alpha)
+    blush = blush.filter(ImageFilter.GaussianBlur(radius=W * 0.012))
+    warm = Image.blend(img, Image.new("RGB", (W, W), (255, 168, 64)), 0.5)
+    img = Image.composite(warm, img, blush)
+
     img = img.resize((size, size), Image.LANCZOS)
+
+    # Film grain, applied at final resolution — printed, not rendered.
+    from PIL import ImageChops
+    rng_grain = random.Random(11)
+    amp = 13
+    noise = Image.new("L", (size, size))
+    noise.putdata([128 + rng_grain.randint(-amp, amp) for _ in range(size * size)])
+    img = ImageChops.soft_light(img, Image.merge("RGB", (noise, noise, noise)))
+
     img.save(path, "PNG")
     print("icon ->", path)
 

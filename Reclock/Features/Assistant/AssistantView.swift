@@ -94,8 +94,7 @@ struct AssistantView: View {
                 .frame(width: 52, height: 52)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Your plan, on tap")
-                        .font(.headline)
-                        .fontDesign(.rounded)
+                        .font(Theme.display(17, black: false))
                         .foregroundStyle(Theme.textPrimary)
                     Text("Ask why a step exists, or tell me what's not working — I can adjust the plan for real. Everything stays on this phone.")
                         .font(.footnote)
@@ -207,8 +206,9 @@ private struct FlowChips: View {
     }
 }
 
-/// Home-toolbar entry point: visible only where the on-device model exists.
-struct AssistantToolbarButton: View {
+/// The assistant's home: a small night-sky orb floating bottom-right on every tab,
+/// always within thumb's reach. Appears only where the on-device model exists.
+struct AssistantFAB: View {
     @Environment(AppModel.self) private var model
     @State private var showAssistant = false
 
@@ -219,8 +219,19 @@ struct AssistantToolbarButton: View {
                 showAssistant = true
             } label: {
                 Image(systemName: "sparkles")
-                    .accessibilityLabel("Ask Reclock")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 56, height: 56)
+                    .background(
+                        Circle()
+                            .fill(Theme.quietSky)
+                            .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
+                    )
+                    .grain(0.5, cornerRadius: 28)
             }
+            .buttonStyle(PressableCardStyle())
+            .breathing()
+            .accessibilityLabel("Ask Reclock")
             .sheet(isPresented: $showAssistant) {
                 AssistantView(trip: trip)
                     .presentationDetents([.large])
@@ -231,8 +242,8 @@ struct AssistantToolbarButton: View {
 
 #else
 
-/// Older toolchain: no assistant, no button.
-struct AssistantToolbarButton: View {
+/// Older toolchain: no assistant, no orb.
+struct AssistantFAB: View {
     var body: some View { EmptyView() }
 }
 

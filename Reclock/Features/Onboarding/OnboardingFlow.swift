@@ -62,7 +62,7 @@ struct OnboardingFlow: View {
             Spacer()
             BreathingSymbol(systemName: "sun.and.horizon.fill", size: 64)
             Text("Feel local when you land")
-                .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                .font(Theme.display(36))
                 .multilineTextAlignment(.center)
             Text("Your flights become a plan for sleep, light, and caffeine.")
                 .font(.body)
@@ -255,7 +255,7 @@ struct OnboardingFlow: View {
                 .symbolEffect(.bounce, value: step)
                 .accessibilityHidden(true)
             Text("You're set")
-                .font(.largeTitle.weight(.bold))
+                .font(Theme.display(32))
             Text("Add your first trip and the plan appears instantly — no account, no payment, nothing to unlock.")
                 .font(.body)
                 .foregroundStyle(Theme.textSecondary)
@@ -344,7 +344,7 @@ private struct OnboardingScreen<Content: View>: View {
                             .accessibilityHidden(true)
                         }
                         Text(title)
-                            .font(.title.weight(.bold))
+                            .font(Theme.display(26))
                             .multilineTextAlignment(.center)
                         if let subtitle {
                             Text(subtitle)

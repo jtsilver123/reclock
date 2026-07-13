@@ -531,7 +531,7 @@ struct SectionHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.title3.weight(.bold))
+                .font(Theme.display(19, black: false))
                 .foregroundStyle(Theme.textPrimary)
             if let subtitle {
                 Text(subtitle)

@@ -28,8 +28,7 @@ struct ActionDetailView: View {
                         }
                     }
                     Text(action.title)
-                        .font(.title.weight(.bold))
-                        .fontDesign(.rounded)
+                        .font(Theme.display(30))
                         .foregroundStyle(Color.white)
                     Text("\(TimeFormat.range(action.window, zone: zone)) · \(TimeFormat.zoneCity(zone)) time")
                         .font(.subheadline.weight(.semibold).monospacedDigit())
@@ -41,6 +40,8 @@ struct ActionDetailView: View {
                     RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                         .fill(Theme.sky(for: action.type))
                 )
+                .grain()
+                .livingSky()
 
                 Text(action.instruction)
                     .font(.body)

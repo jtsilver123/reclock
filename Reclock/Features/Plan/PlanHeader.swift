@@ -60,7 +60,12 @@ struct PlanPinnedHeader: View {
         .padding(.horizontal, Theme.Space.m)
         .padding(.top, Theme.Space.xs)
         .padding(.bottom, Theme.Space.s)
-        .background(Theme.background)
+        .background {
+            ZStack {
+                Theme.background
+                AmbientHorizon(zone: trip.destinationZone.resolved, now: now)
+            }
+        }
         .overlay(alignment: .bottom) {
             // Content scrolling past reads as sliding under the frozen block.
             LinearGradient(
@@ -137,8 +142,7 @@ struct CompactNowCard: View {
                 HeroGlyph(systemName: action.type.symbolName, size: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(action.title)
-                        .font(.title3.weight(.bold))
-                        .fontDesign(.rounded)
+                        .font(Theme.display(19))
                         .foregroundStyle(Color.white)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
@@ -162,6 +166,8 @@ struct CompactNowCard: View {
                     )
                     .shadow(color: Theme.skyColors(for: action.type).last?.opacity(0.35) ?? .clear, radius: 12, y: 5)
             )
+            .grain()
+            .livingSky()
         }
         .buttonStyle(PressableCardStyle())
         .overlay(alignment: .trailing) {
@@ -223,8 +229,7 @@ struct CompactQuietCard: View {
             HeroGlyph(systemName: next == nil ? "checkmark.seal.fill" : "moon.stars.fill", size: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Nothing to do right now")
-                    .font(.title3.weight(.bold))
-                    .fontDesign(.rounded)
+                    .font(Theme.display(19))
                     .foregroundStyle(Color.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
@@ -261,6 +266,8 @@ struct CompactQuietCard: View {
                 .fill(Theme.quietSky)
                 .shadow(color: .black.opacity(0.15), radius: 12, y: 5)
         )
+        .grain()
+        .livingSky()
         .accessibilityElement(children: .combine)
     }
 }
