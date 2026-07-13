@@ -239,23 +239,25 @@ private struct TripListRow: View {
             }
             Spacer(minLength: Theme.Space.s)
 
-            // Who's on this plan — or the door to inviting someone.
+            // Who's on this plan — or the door to inviting someone. A tap gesture,
+            // not a Button: a lone borderless button inside a NavigationLink row
+            // swallows taps meant for the whole row.
             if trip.status != .completed {
-                Button(action: onBuddies) {
-                    HStack(spacing: 3) {
-                        Image(systemName: trip.sharedPlanCode == nil ? "person.badge.plus" : "person.2.fill")
-                            .font(.footnote.weight(.semibold))
-                        if let buddyCount, trip.sharedPlanCode != nil {
-                            Text("\(buddyCount)")
-                                .font(.caption.weight(.bold).monospacedDigit())
-                        }
+                HStack(spacing: 3) {
+                    Image(systemName: trip.sharedPlanCode == nil ? "person.badge.plus" : "person.2.fill")
+                        .font(.footnote.weight(.semibold))
+                    if let buddyCount, trip.sharedPlanCode != nil {
+                        Text("\(buddyCount)")
+                            .font(.caption.weight(.bold).monospacedDigit())
                     }
-                    .foregroundStyle(Theme.accentDeep)
-                    .padding(.horizontal, Theme.Space.s)
-                    .frame(height: 30)
-                    .background(Theme.accent.opacity(0.14), in: Capsule())
                 }
-                .buttonStyle(.borderless)
+                .foregroundStyle(Theme.accentDeep)
+                .padding(.horizontal, Theme.Space.s)
+                .frame(height: 30)
+                .background(Theme.accent.opacity(0.14), in: Capsule())
+                .contentShape(Capsule())
+                .onTapGesture { onBuddies() }
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(trip.sharedPlanCode == nil
                     ? "Invite a friend to this trip"
                     : "Travel buddies\(buddyCount.map { ": \($0) on this plan" } ?? "")")
