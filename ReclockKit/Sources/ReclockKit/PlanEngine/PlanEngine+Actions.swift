@@ -168,7 +168,7 @@ extension PlanEngine {
                     displayZone: context.zoneTimeline.zone(at: window.start),
                     priority: .mustDo,
                     impactScore: 88,
-                    title: "Stay awake until bedtime",
+                    title: "Hold out for bedtime",
                     instruction: "This stretch is the hard part — your body is lobbying for sleep. Stay busy, stay upright, stay social. Bed comes at the time shown, not before.",
                     explanation: "Crashing early tonight locks in your old time zone and usually means a 3 AM wide-awake stare at the ceiling. Making it to a sensible local bedtime is the single biggest win of arrival day.",
                     alternative: "Fading badly? A 20-minute nap now beats an accidental 3-hour crash — set an alarm.",
@@ -195,7 +195,7 @@ extension PlanEngine {
                         displayZone: context.zoneTimeline.zone(at: nap.start),
                         priority: .helpful,
                         impactScore: 50,
-                        title: "Optional recovery nap — \(Int(cfg.maxNapMinutes)) minutes max",
+                        title: "Power nap, \(Int(cfg.maxNapMinutes)) minutes tops",
                         instruction: "If you're struggling, one short nap now. Set an alarm for \(Int(cfg.maxNapMinutes)) minutes — longer drops you into deep sleep and steals from tonight.",
                         explanation: "Last night was short. A brief nap takes the edge off without shifting your clock or wrecking tonight's sleep, as long as it ends early enough.",
                         alternative: "Can't nap? Ten minutes sitting quietly with eyes closed still helps.",
@@ -225,7 +225,7 @@ extension PlanEngine {
                         displayZone: context.zoneTimeline.zone(at: window.start),
                         priority: .optional,
                         impactScore: 30,
-                        title: "Caffeine works for you until the cutoff",
+                        title: "Coffee's on your side",
                         instruction: "Coffee and tea are on your side in this window — use them to stay alert, especially through the afternoon dip.",
                         explanation: "Caffeine can't move your body clock, but it papers over sleepiness while the clock catches up. The trick is stopping early enough that it can't touch tonight's sleep.",
                         notificationEnabled: false,
@@ -242,7 +242,7 @@ extension PlanEngine {
                     displayZone: context.zoneTimeline.zone(at: cutoff),
                     priority: .helpful,
                     impactScore: 55,
-                    title: "Last caffeine of the day",
+                    title: "Last call for caffeine",
                     instruction: "This is last call — after this, water, decaf, or herbal tea. Caffeine lingers for 8–10 hours and tonight's sleep is doing real work.",
                     explanation: "Half the caffeine you drink is still active ~5 hours later. Stopping well before bed keeps it from cutting into the deep sleep that moves your clock.",
                     dayIndex: dayIndex,
@@ -285,7 +285,7 @@ extension PlanEngine {
                         displayZone: context.zoneTimeline.zone(at: time),
                         priority: .optional,
                         impactScore: 40,
-                        title: "Optional: melatonin reminder",
+                        title: "Melatonin, if you use it",
                         instruction: "If you've chosen to use melatonin, early evening (a few hours before your shifted bedtime) is when it best supports an earlier clock — not just at lights-out.",
                         explanation: "Taken well before bed, melatonin acts as a timing signal that complements your light plan. It's entirely optional — the plan works without it. \(SafetyCopy.melatoninDisclaimer)",
                         notificationEnabled: profile.notifications.includeOptionalActions,
@@ -557,7 +557,7 @@ extension PlanEngine {
             let instruction: String
             let explanation: String
             if anchored {
-                title = "Sleep (home time)"
+                title = "Sleep on home time"
                 instruction = "You're staying on home time this trip, so keep to this window even though the local clock disagrees. Blackout curtains and an eye mask are your friends."
                 explanation = "For a stay this short, fully adapting would cost more than it pays back — you'd just have to shift back again. Holding your home rhythm keeps you sharp for the trip and intact when you return."
             } else if adapted {
@@ -777,8 +777,8 @@ extension PlanEngine {
     ) -> PlanAction {
         let evening = direction == .delay
         let title = outdoor
-            ? (evening ? "Get bright light this evening" : "Get outside into bright light")
-            : (evening ? "Keep your evening bright" : "Get bright indoor light")
+            ? (evening ? "Soak up the evening light" : "Chase the daylight")
+            : (evening ? "Keep your evening bright" : "Find your brightest spot")
         let instruction: String
         if outdoor {
             instruction = evening
@@ -826,7 +826,7 @@ extension PlanEngine {
             displayZone: context.zoneTimeline.zone(at: window.start),
             priority: isArrival ? .mustDo : .helpful,
             impactScore: isArrival ? 82 : 60,
-            title: "Keep light low for now",
+            title: "Sunglasses time",
             instruction: "Sunglasses outside, brim down, shady side of the street. Indoors, stay away from bright windows until this window ends.",
             explanation: direction == .advance
                 ? "Bright light right now lands on the wrong side of your body's low point and would push your clock later — undoing last night's progress. After this window, light flips to your side."

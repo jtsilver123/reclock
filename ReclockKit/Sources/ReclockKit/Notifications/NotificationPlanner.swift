@@ -109,7 +109,7 @@ public struct NotificationPlanner: Sendable {
             // Lead-up only; a notification *at* bedtime would fire mid-wind-down.
             return [make(.reminder,
                          at: action.window.start.adding(minutes: -30),
-                         title: "Sleep window in 30 minutes",
+                         title: "Bed in 30 minutes",
                          body: "Start heading for bed — tonight's window is \(action.title == "Sleep on the flight" ? "on the flight" : "coming up").")]
         case .nap:
             return [make(.start, at: action.window.start,
@@ -121,19 +121,19 @@ public struct NotificationPlanner: Sendable {
                          body: "Now through the next couple of hours is your light window — it's the strongest lever you have.")]
         case .avoidLight:
             return [make(.start, at: action.window.start,
-                         title: "Keep light low",
-                         body: "Sunglasses time — bright light right now would push your clock the wrong way.")]
+                         title: "Sunglasses time",
+                         body: "Bright light right now would push your clock the wrong way — keep things dim for a bit.")]
         case .stayAwake:
             return [make(.start, at: action.window.start,
                          title: "Push through to bedtime",
                          body: "The hard part starts now. Stay busy and upright — bed comes at the planned time.")]
         case .caffeineCutoff:
             return [make(.cutoff, at: action.window.start,
-                         title: "Last caffeine of the day",
+                         title: "Last call for caffeine",
                          body: "After this, switch to water or decaf so tonight's sleep can do its job.")]
         case .melatoninOptional:
             return [make(.reminder, at: action.window.start,
-                         title: "Optional melatonin window",
+                         title: "Melatonin window, if you're using it",
                          body: "If you've chosen to use it, now is the time that supports your shift.")]
         case .windDown:
             return [make(.start, at: action.window.start,

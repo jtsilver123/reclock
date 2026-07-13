@@ -210,7 +210,7 @@ struct OnboardingFlow: View {
 
     private var preferences: some View {
         OnboardingScreen(
-            title: "Last choices",
+            title: "A few last things",
             subtitle: "Everything here can change later in Settings.",
             primaryLabel: "Continue",
             primaryAction: { step = 5 }
