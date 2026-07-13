@@ -52,28 +52,47 @@ enum PlanAssistant {
         return lines.joined(separator: "\n")
     }
 
-    @MainActor
-    static func makeSession(trip: Trip, model: AppModel) -> LanguageModelSession {
-        let instructions = """
-        You are Reclock's plan assistant — a calm, warm travel companion who knows \
-        circadian science but talks like a well-traveled friend. Keep answers to a \
-        few sentences. Ground every answer in the plan context provided. This is \
-        general wellness guidance, never medical advice; if asked about medication \
-        or health conditions, suggest talking to a clinician.
+    /// What each tool should be called in the transcript while it runs.
+    static func toolLabel(_ name: String) -> (text: String, symbol: String) {
+        switch name {
+        case "setPlanIntensity": ("Adjusting plan intensity", "slider.horizontal.3")
+        case "setPreTripStartDays": ("Moving the pre-trip start", "calendar.badge.clock")
+        case "markPlanAction": ("Updating a step", "checkmark.circle")
+        default: ("Working on the plan", "wrench.and.screwdriver")
+        }
+    }
 
-        When the traveler asks to CHANGE something (gentler plan, start earlier, \
-        can't do a step), use the tools — then confirm what changed in one line \
-        using the tool's result. Never invent plan times; rely on the context and \
-        tool outputs.
+    @MainActor
+    static func makeSession(
+        trip: Trip,
+        model: AppModel,
+        onTool: @escaping @Sendable (String) async -> Void = { _ in }
+    ) -> LanguageModelSession {
+        let instructions = """
+        You are Reclock's plan assistant: a calm, seasoned traveler who knows \
+        circadian science cold.
+
+        Voice: text like a trusted friend — warm, plain, direct. One to three \
+        short sentences, never more. No lists, no headers, no emoji, no filler \
+        like "great question" — just the answer. Say times plainly ("bed by \
+        22:30, Tokyo time").
+
+        Ground everything in the plan context below; never invent times. This is \
+        general wellness guidance, never medical advice — for medication or \
+        health conditions, point to a clinician in one kind sentence.
+
+        When the traveler wants a change (gentler plan, start earlier, can't do \
+        a step), call a tool, then confirm what changed in one line using the \
+        tool's result.
 
         Current plan:
         \(context(trip: trip, model: model))
         """
         return LanguageModelSession(
             tools: [
-                SetIntensityTool(model: model, tripID: trip.id),
-                SetPreTripStartTool(model: model, tripID: trip.id),
-                MarkActionTool(model: model, tripID: trip.id),
+                SetIntensityTool(model: model, tripID: trip.id, onTool: onTool),
+                SetPreTripStartTool(model: model, tripID: trip.id, onTool: onTool),
+                MarkActionTool(model: model, tripID: trip.id, onTool: onTool),
             ],
             instructions: instructions
         )
@@ -109,6 +128,7 @@ enum PlanAssistant {
 struct SetIntensityTool: Tool {
     let model: AppModel
     let tripID: UUID
+    let onTool: @Sendable (String) async -> Void
 
     let name = "setPlanIntensity"
     let description = """
@@ -123,6 +143,7 @@ struct SetIntensityTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
+        await onTool("setPlanIntensity")
         let summary: String = await MainActor.run {
             guard var trip = model.state.trips.first(where: { $0.id == tripID }) else {
                 return "Trip not found."
@@ -147,6 +168,7 @@ struct SetIntensityTool: Tool {
 struct SetPreTripStartTool: Tool {
     let model: AppModel
     let tripID: UUID
+    let onTool: @Sendable (String) async -> Void
 
     let name = "setPreTripStartDays"
     let description = """
@@ -162,6 +184,7 @@ struct SetPreTripStartTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
+        await onTool("setPreTripStartDays")
         let summary: String = await MainActor.run {
             guard var trip = model.state.trips.first(where: { $0.id == tripID }) else {
                 return "Trip not found."
@@ -181,6 +204,7 @@ struct SetPreTripStartTool: Tool {
 struct MarkActionTool: Tool {
     let model: AppModel
     let tripID: UUID
+    let onTool: @Sendable (String) async -> Void
 
     let name = "markPlanAction"
     let description = """
@@ -197,6 +221,7 @@ struct MarkActionTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
+        await onTool("markPlanAction")
         let result: String = await MainActor.run {
             guard let trip = model.state.trips.first(where: { $0.id == tripID }),
                   let plan = model.plan(for: trip) else { return "Trip not found." }

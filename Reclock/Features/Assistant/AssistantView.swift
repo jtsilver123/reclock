@@ -13,9 +13,11 @@ struct AssistantView: View {
     let trip: Trip
 
     struct Message: Identifiable, Equatable {
+        enum Kind: Equatable { case user, assistant, tool }
         let id = UUID()
-        var isUser: Bool
+        var kind: Kind
         var text: String
+        var isUser: Bool { kind == .user }
     }
 
     @State private var session: LanguageModelSession?
@@ -43,7 +45,7 @@ struct AssistantView: View {
                                 bubble(message)
                                     .id(message.id)
                             }
-                            if isThinking && messages.last?.isUser == true {
+                            if isThinking && messages.last?.kind != .assistant {
                                 HStack(spacing: Theme.Space.s) {
                                     ProgressView()
                                     Text("Thinking…")
@@ -76,7 +78,12 @@ struct AssistantView: View {
             }
             .onAppear {
                 if session == nil {
-                    session = PlanAssistant.makeSession(trip: trip, model: model)
+                    session = PlanAssistant.makeSession(trip: trip, model: model) { toolName in
+                        await MainActor.run {
+                            Haptics.selection()
+                            messages.append(Message(kind: .tool, text: toolName))
+                        }
+                    }
                 }
             }
         }
@@ -111,19 +118,38 @@ struct AssistantView: View {
         }
     }
 
+    @ViewBuilder
     private func bubble(_ message: Message) -> some View {
-        HStack {
-            if message.isUser { Spacer(minLength: Theme.Space.xl) }
-            Text(message.text)
-                .font(.callout)
-                .foregroundStyle(message.isUser ? Theme.ink : Theme.textPrimary)
-                .padding(.horizontal, Theme.Space.m)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(message.isUser ? Theme.accent : Theme.surface)
-                )
-            if !message.isUser { Spacer(minLength: Theme.Space.xl) }
+        switch message.kind {
+        case .tool:
+            // The work is visible: a quiet chip naming the tool while it runs.
+            let label = PlanAssistant.toolLabel(message.text)
+            HStack(spacing: Theme.Space.xs) {
+                Image(systemName: label.symbol)
+                    .font(.caption2.weight(.semibold))
+                Text(label.text)
+                    .font(.caption.weight(.medium))
+            }
+            .foregroundStyle(Theme.accentDeep)
+            .padding(.horizontal, Theme.Space.m)
+            .padding(.vertical, 5)
+            .background(Theme.accent.opacity(0.12), in: Capsule())
+            .frame(maxWidth: .infinity, alignment: .center)
+            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+        case .user, .assistant:
+            HStack {
+                if message.isUser { Spacer(minLength: Theme.Space.xl) }
+                Text(message.text)
+                    .font(.callout)
+                    .foregroundStyle(message.isUser ? Theme.ink : Theme.textPrimary)
+                    .padding(.horizontal, Theme.Space.m)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(message.isUser ? Theme.accent : Theme.surface)
+                    )
+                if !message.isUser { Spacer(minLength: Theme.Space.xl) }
+            }
         }
     }
 
@@ -155,7 +181,7 @@ struct AssistantView: View {
         guard !text.isEmpty, let session, !isThinking else { return }
         input = ""
         Haptics.soft()
-        messages.append(Message(isUser: true, text: text))
+        messages.append(Message(kind: .user, text: text))
         isThinking = true
         defer { isThinking = false }
         do {
@@ -166,14 +192,14 @@ struct AssistantView: View {
                 if let index = assistantIndex {
                     messages[index].text = content
                 } else {
-                    messages.append(Message(isUser: false, text: content))
+                    messages.append(Message(kind: .assistant, text: content))
                     assistantIndex = messages.count - 1
                 }
             }
             Haptics.soft()
         } catch {
             messages.append(Message(
-                isUser: false,
+                kind: .assistant,
                 text: "I couldn't think that one through — mind trying again?"
             ))
         }
