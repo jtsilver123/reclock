@@ -18,8 +18,10 @@ on:
 
 jobs:
   upload:
+    # macos-26 ships Xcode 26: App Store Connect rejects uploads built with an
+    # older SDK (hard requirement since spring 2026 — run 3 failed exactly there).
     name: Archive & upload to TestFlight
-    runs-on: macos-15
+    runs-on: macos-26
     env:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
