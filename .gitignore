@@ -27,3 +27,4 @@ Secrets.xcconfig
 # CI artifacts
 *.xcresult
 test-output/
+__pycache__/
