@@ -193,39 +193,28 @@ private struct TripHomeContent: View {
                     }
                     .animation(Theme.Anim.spring, value: context.current.first?.id)
 
-                    // Today at a glance: one strip of color, no words.
+                    // The rest of today, exactly like the timeline draws it: capsule
+                    // tracks against an hour rail. No lists, no section headers.
                     if let plan,
                        let today = plan.days.first(where: {
                            $0.dayStart <= now && now < $0.dayStart.addingTimeInterval(86_400)
                        }) {
-                        DayRibbon(
-                            actions: plan.actions(onDay: today.index),
-                            dayStart: today.dayStart,
-                            now: now
-                        )
-                        .padding(.horizontal, Theme.Space.xs)
-                    }
-
-                    if context.current.count > 1 {
-                        ForEach(context.current.dropFirst()) { action in
-                            NavigationLink(value: action) {
-                                ActionRow(action: action)
-                            }
-                            .buttonStyle(.plain)
+                        let todayActions = plan.actions(onDay: today.index)
+                        let laneActions = todayActions.filter { DayTracks.laneTypes.contains($0.type) }
+                        let moments = todayActions.filter { !DayTracks.laneTypes.contains($0.type) }
+                        if !laneActions.isEmpty {
+                            DayColumn(
+                                actions: laneActions,
+                                labelZone: today.zone.resolved,
+                                now: now,
+                                hourHeight: 24
+                            )
+                        }
+                        if !moments.isEmpty {
+                            MomentsRow(moments: moments, zone: today.zone.resolved)
+                                .padding(.horizontal, -Theme.Space.m)
                         }
                     }
-
-                    if !context.next.isEmpty {
-                        SectionHeader(title: "Next")
-                        ForEach(context.next) { action in
-                            NavigationLink(value: action) {
-                                ActionRow(action: action)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-
-                    TonightCard(context: context)
 
                     NavigationLink {
                         TripDetailView(trip: trip)
@@ -337,11 +326,6 @@ private struct HomeHeader: View {
                 .font(.title2.weight(.bold))
                 .foregroundStyle(Theme.textPrimary)
             HStack(spacing: Theme.Space.s) {
-                ClockChip(
-                    title: "Home",
-                    zone: trip.homeZone.resolved,
-                    now: now
-                )
                 ClockChip(
                     title: TimeFormat.zoneCity(trip.destinationZone.resolved),
                     zone: trip.destinationZone.resolved,
