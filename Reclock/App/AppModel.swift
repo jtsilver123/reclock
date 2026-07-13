@@ -14,7 +14,9 @@ final class AppModel {
     let auth = AuthManager()
     let sync = SyncService()
 
-    private(set) var state = AppState()
+    // Internal (not private(set)): AppModel+Sharing funnels mutations through
+    // the same persist path from its own file.
+    var state = AppState()
     private(set) var isLoaded = false
     /// Non-fatal problems surfaced to the user (plan regeneration failure, etc.).
     var activeAlert: AppAlert?
@@ -53,7 +55,7 @@ final class AppModel {
         }
     }
 
-    private func persist() async {
+    func persist() async {
         do {
             try await deps.store.save(state)
         } catch {
@@ -491,7 +493,7 @@ final class AppModel {
     /// The blunt-but-correct tool for cross-trip changes (deletion, sample exit,
     /// reminders re-enabled): per-trip cancellation can't distinguish trips, and a
     /// missing reminder is worse than a rebuilt one.
-    private func rescheduleAllNotifications() async {
+    func rescheduleAllNotifications() async {
         await deps.notifications.cancelEverything()
         guard let profile = state.profile, profile.notifications.enabled else { return }
         let planner = NotificationPlanner(configuration: PlanEngineConfiguration())
