@@ -21,18 +21,23 @@ struct PlanPinnedHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Text("\(trip.origin) → \(trip.destination)")
-                    .font(.headline.weight(.heavy))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(1)
-                if !context.dayLabel.isEmpty {
-                    Text(context.dayLabel)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.textSecondary)
+            HStack(alignment: .center, spacing: Theme.Space.s) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("\(trip.origin) → \(trip.destination)")
+                        .font(.headline.weight(.heavy))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if !context.dayLabel.isEmpty {
+                        Text(context.dayLabel)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.textSecondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
                 }
+                .layoutPriority(1)
                 Spacer(minLength: Theme.Space.s)
                 ClockChip(
                     title: TimeFormat.zoneCity(trip.destinationZone.resolved),
@@ -225,19 +230,25 @@ struct CompactQuietCard: View {
     }
 
     private func quietBody(next: PlanAction?) -> some View {
-        HStack(spacing: Theme.Space.m) {
+        // A ticking countdown only earns its width inside a day; beyond that the
+        // subtitle carries the when and the title keeps the whole line.
+        let isSoon = next.map { $0.window.start.timeIntervalSince(now) < 24 * 3600 } ?? false
+        return HStack(spacing: Theme.Space.m) {
             HeroGlyph(systemName: next == nil ? "checkmark.seal.fill" : "moon.stars.fill", size: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Nothing to do right now")
                     .font(Theme.display(19))
                     .foregroundStyle(Color.white)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(0.75)
                 if let next {
-                    Text("Next: \(next.title.lowercased())")
+                    let zone = next.displayZone.resolved
+                    Text(isSoon
+                         ? "Next: \(next.title.lowercased())"
+                         : "Next: \(next.title.lowercased()) · \(TimeFormat.dayDate(next.window.start, zone: zone)), \(TimeFormat.time(next.window.start, zone: zone))")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(Color.white.opacity(0.8))
-                        .lineLimit(1)
+                        .lineLimit(2)
                 } else {
                     Text("You're through the plan. Enjoy the trip.")
                         .font(.footnote)
@@ -246,7 +257,7 @@ struct CompactQuietCard: View {
                 }
             }
             Spacer(minLength: 0)
-            if let next {
+            if let next, isSoon {
                 VStack(alignment: .trailing, spacing: 0) {
                     Text(TimeFormat.countdown(to: next.window.start, from: now))
                         .font(.system(size: 22, weight: .bold, design: .rounded).monospacedDigit())
@@ -257,6 +268,7 @@ struct CompactQuietCard: View {
                         .font(.caption2.weight(.medium).monospacedDigit())
                         .foregroundStyle(Color.white.opacity(0.7))
                 }
+                .layoutPriority(1)
             }
         }
         .padding(Theme.Space.m)
