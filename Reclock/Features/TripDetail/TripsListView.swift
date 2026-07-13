@@ -7,6 +7,7 @@ struct TripsListView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showAddTrip = false
     @State private var pendingDelete: Trip?
+    @State private var showClearPast = false
 
     var body: some View {
         NavigationStack {
@@ -18,32 +19,31 @@ struct TripsListView: View {
                         description: Text("Add your first trip and the plan appears instantly.")
                     )
                 } else {
-                    Section {
-                        ForEach(sortedTrips) { trip in
-                            TripListRow(
-                                trip: trip,
-                                isFocused: model.activeTrip?.id == trip.id,
-                                isAutomaticChoice: model.automaticTrip?.id == trip.id
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                Task {
-                                    // Selecting the automatic choice clears the pin.
-                                    let id = model.automaticTrip?.id == trip.id ? nil : trip.id
-                                    await model.selectTrip(id)
-                                    dismiss()
-                                }
+                    if !currentTrips.isEmpty {
+                        Section {
+                            ForEach(currentTrips) { trip in
+                                tripRow(trip)
                             }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    pendingDelete = trip
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+                        } footer: {
+                            Text("Tap a trip to focus Today and Timeline on it. Reclock follows your current or next trip automatically unless you choose one.")
                         }
-                    } footer: {
-                        Text("Tap a trip to focus Today and Timeline on it. Reclock follows your current or next trip automatically unless you choose one.")
+                    }
+                    if !pastTrips.isEmpty {
+                        Section {
+                            ForEach(pastTrips) { trip in
+                                tripRow(trip)
+                                    .opacity(0.6)
+                            }
+                            Button(role: .destructive) {
+                                showClearPast = true
+                            } label: {
+                                Label("Clear all past trips", systemImage: "trash")
+                            }
+                        } header: {
+                            Text("Past trips")
+                        } footer: {
+                            Text("Finished trips keep their plans for reference. Clearing removes them — and their reminders — for good.")
+                        }
                     }
                 }
             }
@@ -66,6 +66,21 @@ struct TripsListView: View {
                 AddTripFlow()
             }
             .confirmationDialog(
+                "Clear \(pastTrips.count) past trip\(pastTrips.count == 1 ? "" : "s")?",
+                isPresented: $showClearPast,
+                titleVisibility: .visible
+            ) {
+                Button("Clear past trips", role: .destructive) {
+                    Task {
+                        for trip in pastTrips {
+                            await model.deleteTrip(trip)
+                        }
+                    }
+                }
+            } message: {
+                Text("Removes finished trips, their plans, and any leftover reminders. There's no undo.")
+            }
+            .confirmationDialog(
                 "Delete \(pendingDelete?.name ?? "trip")?",
                 isPresented: Binding(
                     get: { pendingDelete != nil },
@@ -86,6 +101,34 @@ struct TripsListView: View {
     private var sortedTrips: [Trip] {
         model.state.trips.sorted {
             ($0.firstDeparture ?? .distantPast) > ($1.firstDeparture ?? .distantPast)
+        }
+    }
+
+    private var currentTrips: [Trip] { sortedTrips.filter { $0.status != .completed } }
+    private var pastTrips: [Trip] { sortedTrips.filter { $0.status == .completed } }
+
+    @ViewBuilder
+    private func tripRow(_ trip: Trip) -> some View {
+        TripListRow(
+            trip: trip,
+            isFocused: model.activeTrip?.id == trip.id,
+            isAutomaticChoice: model.automaticTrip?.id == trip.id
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Task {
+                // Selecting the automatic choice clears the pin.
+                let id = model.automaticTrip?.id == trip.id ? nil : trip.id
+                await model.selectTrip(id)
+                dismiss()
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                pendingDelete = trip
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
 }

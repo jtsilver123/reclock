@@ -21,6 +21,10 @@ struct PlanTimelineView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Theme.Space.m, pinnedViews: [.sectionHeaders]) {
+                    // Which trip this plan belongs to — and the switcher, same as Home.
+                    TripStrip(focusedID: trip.id, now: model.deps.now())
+                        .padding(.horizontal, Theme.Space.m)
+
                     ForEach(groupedPhases) { group in
                         Section {
                             ForEach(group.days) { entry in
@@ -48,7 +52,7 @@ struct PlanTimelineView: View {
             }
         }
         .background(Theme.background)
-        .navigationTitle("Timeline")
+        .navigationTitle("\(trip.origin) → \(trip.destination)")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -195,12 +199,25 @@ private struct DayBlock: View {
         actions.filter { !DayTracks.laneTypes.contains($0.type) }
     }
 
+    /// A day whose 24 hours are fully behind us reads as history, not homework.
+    private var isPast: Bool {
+        day.dayStart.addingTimeInterval(24 * 3600) <= now
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
                 Text(day.label)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
+                if isPast {
+                    Text("Past")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .padding(.horizontal, Theme.Space.s)
+                        .padding(.vertical, 2)
+                        .background(Theme.surfaceSecondary, in: Capsule())
+                }
                 Spacer()
                 if abs(day.cumulativeShiftHours) > 0.1 {
                     Text(shiftLabel)
@@ -231,6 +248,7 @@ private struct DayBlock: View {
                 MomentsRow(moments: moments, zone: labelZone)
             }
         }
+        .opacity(isPast ? 0.55 : 1)
     }
 
     private var labelZone: TimeZone {
