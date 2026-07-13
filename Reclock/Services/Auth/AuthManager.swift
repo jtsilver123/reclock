@@ -83,8 +83,10 @@ final class AuthManager {
         }
     }
 
-    /// Google is offered only when a client ID ships in the build.
-    var googleAvailable: Bool { GoogleAuthConfig.clientID != nil }
+    /// Google sign-in is switched off for now — Apple only. The rest of the Google
+    /// code stays dormant; flip this back to `GoogleAuthConfig.clientID != nil` to
+    /// re-enable it once a client ID ships in the build.
+    var googleAvailable: Bool { false }
 
     /// Full Google PKCE dance → Supabase session. Returns true on success.
     func signInWithGoogle() async -> Bool {
