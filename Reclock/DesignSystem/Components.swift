@@ -357,6 +357,55 @@ struct BreathingSymbol: View {
     }
 }
 
+// MARK: - How it works
+
+/// The whole product in three glyphs and nine words.
+struct HowItWorksRow: View {
+    private struct Step: Identifiable {
+        let id: Int
+        let symbol: String
+        let label: String
+        let tint: Color
+    }
+
+    private var steps: [Step] {
+        [
+            Step(id: 0, symbol: "airplane", label: "Add a flight", tint: Theme.accent),
+            Step(id: 1, symbol: "sun.max.fill", label: "Get your plan", tint: Theme.tint(for: .seekLight)),
+            Step(id: 2, symbol: "bell.badge.fill", label: "Follow the nudges", tint: Theme.tint(for: .sleep)),
+        ]
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Space.xs) {
+            ForEach(steps) { step in
+                if step.id > 0 {
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Theme.textSecondary.opacity(0.6))
+                        .accessibilityHidden(true)
+                }
+                VStack(spacing: Theme.Space.s) {
+                    ZStack {
+                        Circle().fill(step.tint.opacity(0.15))
+                        Image(systemName: step.symbol)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(step.tint)
+                    }
+                    .frame(width: 52, height: 52)
+                    Text(step.label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("How it works: add a flight, get your plan, follow the nudges")
+    }
+}
+
 // MARK: - Section header
 
 struct SectionHeader: View {

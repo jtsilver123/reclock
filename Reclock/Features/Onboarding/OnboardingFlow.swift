@@ -70,10 +70,16 @@ struct OnboardingFlow: View {
             Text("Feel local when you land")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
                 .multilineTextAlignment(.center)
-            Text("Reclock turns your flights into a practical plan for sleep, light, and caffeine — built around your real life, updated when travel changes.\n\nFree. Private. Works offline.")
+            Text("Your flights become a plan for sleep, light, and caffeine.")
                 .font(.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            HowItWorksRow()
+                .padding(.vertical, Theme.Space.m)
+            Text("Free · Private · Works offline")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.textSecondary)
             Spacer()
         }
     }

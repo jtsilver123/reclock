@@ -20,44 +20,88 @@ struct AddTripFlow: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            List {
-                Section {
+            ScrollView {
+                VStack(spacing: Theme.Space.m) {
+                    Text("Where's your flight?")
+                        .font(.title2.weight(.bold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(Theme.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, Theme.Space.s)
+
+                    // The zero-typing path gets the hero treatment.
                     Button {
                         model.deps.analytics.track(.importMethodSelected(method: "calendar"))
                         path.append(.calendarImport)
                     } label: {
-                        ImportOptionRow(
-                            icon: "calendar.badge.checkmark",
-                            title: "Import from Calendar",
-                            subtitle: "Finds flights that Flighty, TripIt, or airline emails put in your calendar. Scanning happens on this device only."
+                        HStack(spacing: Theme.Space.m) {
+                            ZStack {
+                                Circle().fill(Color.white.opacity(0.18))
+                                Image(systemName: "calendar.badge.checkmark")
+                                    .font(.system(size: 26, weight: .semibold))
+                                    .foregroundStyle(Color.white)
+                            }
+                            .frame(width: 56, height: 56)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("From your calendar")
+                                    .font(.title3.weight(.bold))
+                                    .fontDesign(.rounded)
+                                    .foregroundStyle(Color.white)
+                                Text("We spot the flights already on your phone. No typing.")
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.white.opacity(0.85))
+                                    .multilineTextAlignment(.leading)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Color.white.opacity(0.8))
+                        }
+                        .padding(Theme.Space.m)
+                        .background(
+                            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                                .fill(Theme.sky(for: .leaveForAirport))
+                                .shadow(color: .black.opacity(0.18), radius: 12, y: 5)
                         )
                     }
+                    .buttonStyle(.plain)
+
                     if lookupAvailable {
                         Button {
                             model.deps.analytics.track(.importMethodSelected(method: "flight_number"))
                             path.append(.flightLookup)
                         } label: {
-                            ImportOptionRow(
-                                icon: "number.square",
-                                title: "Search by flight number",
-                                subtitle: "Type “AY 16” and a date — airports and times fill themselves in."
+                            ImportOptionCard(
+                                icon: "number.square.fill",
+                                tint: Theme.tint(for: .seekLight),
+                                title: "By flight number",
+                                subtitle: "Type AY 16 and a date — we fill in the rest."
                             )
                         }
+                        .buttonStyle(.plain)
                     }
                     Button {
                         model.deps.analytics.track(.importMethodSelected(method: "manual"))
                         path.append(.manualEntry)
                     } label: {
-                        ImportOptionRow(
-                            icon: "keyboard",
-                            title: "Enter it myself",
-                            subtitle: "Airports and times — arrival is pre-estimated from the route."
+                        ImportOptionCard(
+                            icon: "keyboard.fill",
+                            tint: Theme.tint(for: .sleep),
+                            title: "Type it in",
+                            subtitle: "Two airports, two times. About a minute."
                         )
                     }
-                } footer: {
-                    Text("Reclock never uploads your calendar. Detected events are shown to you before anything is saved.")
+                    .buttonStyle(.plain)
+
+                    Label("Nothing leaves your phone. You approve every flight before it's saved.", systemImage: "lock.fill")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, Theme.Space.s)
                 }
+                .padding(Theme.Space.m)
             }
+            .background(Theme.background)
             .navigationTitle("Add a trip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -79,28 +123,40 @@ struct AddTripFlow: View {
     }
 }
 
-private struct ImportOptionRow: View {
+private struct ImportOptionCard: View {
     let icon: String
+    let tint: Color
     let title: String
     let subtitle: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.m) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(Theme.accent)
-                .frame(width: 34)
-                .accessibilityHidden(true)
+        HStack(spacing: Theme.Space.m) {
+            ZStack {
+                Circle().fill(tint.opacity(0.15))
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(tint)
+            }
+            .frame(width: 50, height: 50)
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)
+                    .fontDesign(.rounded)
                     .foregroundStyle(Theme.textPrimary)
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.leading)
             }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.textSecondary)
+                .accessibilityHidden(true)
         }
-        .padding(.vertical, 4)
+        .padding(Theme.Space.m)
+        .card()
     }
 }
 
@@ -299,7 +355,8 @@ private struct DetectedFlightRow: View {
                     .accessibilityLabel(isSelected ? "Selected" : "Not selected")
                 VStack(alignment: .leading, spacing: 2) {
                     Text(routeText)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.headline.weight(.heavy))
+                        .fontDesign(.rounded)
                         .foregroundStyle(Theme.textPrimary)
                     Text(flight.sourceTitle)
                         .font(.caption)
