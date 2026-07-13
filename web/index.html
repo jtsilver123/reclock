@@ -1,43 +1,323 @@
 <!DOCTYPE html>
 <html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reclock — Support</title>
-<meta property="og:title" content="Reclock — beat jet lag">
-<meta property="og:description" content="Your flights become a plan for sleep, light, and caffeine.">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reclock — feel local when you land</title>
+<meta name="description" content="Reclock turns your flights into a simple day-by-day plan for sleep, light, and caffeine, so you beat jet lag and feel local when you land. Free, private, works offline.">
+<meta property="og:title" content="Reclock — feel local when you land">
+<meta property="og:description" content="Your flights become a plan for sleep, light, and caffeine. Free, private, works offline.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jtsilver123.github.io/reclock/">
 <meta property="og:image" content="https://jtsilver123.github.io/reclock/invite/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#FCB812">
+<link rel="icon" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&display=swap" rel="stylesheet">
 <style>
-  :root{--marigold:#FCB812;--ink:#332A10;--bg:#F5F2EC;--text:#1F2229;--gray:#6B6D75;--night:#2A3566;}
-  *{box-sizing:border-box;margin:0;}
-  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.65;}
-  .wrap{max-width:680px;margin:0 auto;padding:48px 22px 80px;}
-  .sun{width:64px;height:64px;border-radius:50%;background:var(--marigold);display:flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:18px;box-shadow:0 10px 26px rgba(252,184,18,.35);}
-  h1{font-size:34px;font-weight:800;margin:8px 0 6px;}
-  h2{font-size:20px;font-weight:800;margin:34px 0 8px;}
-  p,li{color:var(--text);font-size:16px;}
-  .muted{color:var(--gray);}
-  a{color:#8a5f02;font-weight:600;}
-  .card{background:#fff;border-radius:16px;padding:18px 20px;margin:14px 0;}
-  footer{margin-top:48px;font-size:13px;color:var(--gray);}
-</style></head>
-<body><div class="wrap">
-  <div class="sun">✈️</div>
-  <h1>Reclock</h1>
-  <p class="muted">Your flights become a plan for sleep, light, and caffeine — so you feel local when you land.</p>
+  :root{
+    --marigold:#FCB812; --marigold-deep:#A66C02;
+    --ink:#33290F; --cream:#F6F3EC; --surface:#FFFFFF;
+    --text:#1E2129; --muted:#65676F; --line:#E7E2D7;
+    --night-1:#141a34; --night-2:#20264a; --dusk:#3a447a;
+    --dawn-1:#f6a531; --dawn-2:#e2632a;
+    --radius:22px; --radius-s:14px;
+    --maxw:1080px;
+    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --cream:#0d1017; --surface:#161a22; --text:#ECECEF; --muted:#9A9CA6;
+      --line:#262b36;
+    }
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth; -webkit-text-size-adjust:100%;}
+  body{
+    background:var(--cream); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .serif{font-family:"Fraunces",Georgia,serif;}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 22px;}
+  a{color:var(--marigold-deep); text-decoration:none; font-weight:600;}
+  @media (prefers-color-scheme: dark){ a{color:#F4C24B;} }
+  a:hover{text-decoration:underline;}
+  h1,h2,h3{font-family:"Fraunces",Georgia,serif; font-weight:900; line-height:1.05; letter-spacing:-0.01em;}
+  .eyebrow{font-size:13px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--marigold-deep);}
+  @media (prefers-color-scheme: dark){ .eyebrow{color:#F4C24B;} }
 
-  <h2>Support</h2>
-  <div class="card"><p><b>Something not working, or an idea?</b><br>
-  Open an issue on <a href="https://github.com/jtsilver123/reclock/issues">GitHub</a> — it goes straight to the maker.</p></div>
-  <div class="card"><p><b>Common questions</b></p>
-  <ul>
-    <li><b>Do I need an account?</b> No. Everything works on-device. Signing in is optional and only adds backup &amp; travel buddies.</li>
-    <li><b>Does it work offline?</b> Yes — plans and reminders work in airplane mode.</li>
-    <li><b>How do I delete my data?</b> Settings → Delete all data (device) and Settings → Delete account &amp; backup (server, if you signed in).</li>
-    <li><b>Flight number search finds nothing?</b> Double-check the date — codeshares resolve to the operating airline automatically.</li>
-  </ul></div>
+  /* Buttons */
+  .btn{
+    display:inline-flex; align-items:center; gap:9px; font-weight:700; font-size:16px;
+    padding:15px 26px; border-radius:100px; transition:transform .15s ease, box-shadow .2s ease; cursor:pointer; border:0;
+  }
+  .btn:hover{text-decoration:none; transform:translateY(-2px);}
+  .btn-primary{background:var(--marigold); color:var(--ink); box-shadow:0 10px 28px rgba(252,184,18,.4);}
+  .btn-ghost{background:rgba(255,255,255,.12); color:#fff; border:1.5px solid rgba(255,255,255,.35);}
+  .btn-dark{background:var(--ink); color:#fff;}
 
-  <h2>Privacy</h2>
-  <p>Short version: no account required, nothing leaves your phone unless you opt in.
-  The full policy lives at <a href="/reclock/privacy/">reclock privacy</a>.</p>
+  /* Nav */
+  nav{position:sticky; top:0; z-index:50; backdrop-filter:saturate(140%) blur(12px);
+      background:color-mix(in srgb, var(--cream) 82%, transparent); border-bottom:1px solid var(--line);}
+  nav .wrap{display:flex; align-items:center; justify-content:space-between; height:64px;}
+  .brand{display:flex; align-items:center; gap:10px; font-family:"Fraunces",serif; font-weight:900; font-size:22px; color:var(--text);}
+  .brand img{width:30px; height:30px; border-radius:8px;}
+  .nav-cta{font-size:15px; padding:10px 18px;}
+  .nav-links{display:flex; gap:26px; align-items:center;}
+  .nav-links a.plain{color:var(--muted); font-weight:600; font-size:15px;}
+  @media (max-width:720px){ .nav-links a.plain{display:none;} }
 
-  <footer>Reclock · general wellness guidance for travel, not medical advice.</footer>
-</div></body></html>
+  /* Hero */
+  .hero{position:relative; color:#fff; text-align:center; overflow:hidden;
+    background:linear-gradient(180deg,var(--night-1) 0%, var(--night-2) 46%, #52407a 74%, var(--dawn-2) 100%);}
+  .hero::after{content:""; position:absolute; inset:0; background-image:var(--grain); mix-blend-mode:soft-light; opacity:.6; pointer-events:none;}
+  .hero .wrap{position:relative; z-index:2; padding:74px 22px 90px;}
+  .stars{position:absolute; inset:0; z-index:1; pointer-events:none;}
+  .sunclock{width:118px; height:118px; margin:0 auto 26px; display:block; filter:drop-shadow(0 12px 30px rgba(252,184,18,.45));}
+  .hero h1{font-size:clamp(42px, 8vw, 78px); margin-bottom:18px;}
+  .hero p.lede{font-size:clamp(18px,2.4vw,23px); max-width:620px; margin:0 auto 34px; color:rgba(255,255,255,.85); line-height:1.5;}
+  .hero-cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+  .trust{margin-top:26px; font-size:14px; font-weight:600; color:rgba(255,255,255,.7); letter-spacing:.02em;}
+  .trust b{color:#fff;}
+
+  /* Section scaffolding */
+  section{padding:84px 0;}
+  .section-head{text-align:center; max-width:640px; margin:0 auto 52px;}
+  .section-head h2{font-size:clamp(30px,4.4vw,46px); margin:12px 0 14px;}
+  .section-head p{font-size:18px; color:var(--muted);}
+
+  /* Steps */
+  .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:22px;}
+  .step{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:30px 26px;}
+  .step .n{font-family:"Fraunces",serif; font-weight:900; font-size:15px; color:var(--marigold-deep);}
+  .step h3{font-size:22px; margin:12px 0 8px;}
+  .step p{color:var(--muted); font-size:15.5px;}
+  .glyph{width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:26px; background:rgba(252,184,18,.16); margin-bottom:6px;}
+
+  /* Showcase */
+  .showcase{background:linear-gradient(180deg, transparent, rgba(252,184,18,.06));}
+  .shots{display:flex; gap:22px; overflow-x:auto; padding:8px 4px 20px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;}
+  .shot{flex:0 0 auto; width:250px; scroll-snap-align:center; text-align:center;}
+  .shot img{width:100%; border-radius:26px; box-shadow:0 24px 50px rgba(30,26,10,.22); border:1px solid var(--line);}
+  .shot p{margin-top:16px; font-weight:600; font-size:15px; color:var(--muted);}
+  @media (min-width:900px){ .shots{justify-content:center; overflow:visible; flex-wrap:wrap;} }
+
+  /* Features */
+  .features{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  .feature{padding:26px; border-radius:var(--radius); background:var(--surface); border:1px solid var(--line);}
+  .feature .fi{font-size:28px; margin-bottom:12px; display:block;}
+  .feature h3{font-size:19px; margin-bottom:7px;}
+  .feature p{color:var(--muted); font-size:15px;}
+
+  /* Dark band (privacy) */
+  .band{position:relative; color:#fff; overflow:hidden;
+    background:linear-gradient(135deg,var(--night-1),var(--dusk));}
+  .band::after{content:""; position:absolute; inset:0; background-image:var(--grain); mix-blend-mode:soft-light; opacity:.5;}
+  .band .wrap{position:relative; z-index:2; padding:84px 22px;}
+  .band h2{font-size:clamp(28px,4.2vw,42px); color:#fff; margin-bottom:16px;}
+  .band p{color:rgba(255,255,255,.82); font-size:18px; max-width:640px;}
+  .privacy-points{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:40px;}
+  .pp{background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); border-radius:var(--radius-s); padding:22px;}
+  .pp b{display:block; font-family:"Fraunces",serif; font-size:18px; margin-bottom:5px;}
+  .pp span{color:rgba(255,255,255,.72); font-size:14.5px;}
+
+  /* CTA */
+  .final{position:relative; text-align:center; overflow:hidden;
+    background:linear-gradient(180deg, var(--dawn-1), var(--dawn-2));}
+  .final::after{content:""; position:absolute; inset:0; background-image:var(--grain); mix-blend-mode:soft-light; opacity:.55;}
+  .final .wrap{position:relative; z-index:2; padding:88px 22px;}
+  .final h2{font-size:clamp(32px,5vw,52px); color:#fff; margin-bottom:16px;}
+  .final p{color:rgba(255,255,255,.92); font-size:19px; margin-bottom:32px;}
+
+  /* Support / FAQ */
+  .faq{max-width:760px; margin:0 auto;}
+  details{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-s); padding:2px 20px; margin-bottom:12px;}
+  summary{font-weight:700; font-size:16.5px; padding:16px 0; cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px;}
+  summary::-webkit-details-marker{display:none;}
+  summary::after{content:"+"; font-size:22px; color:var(--marigold-deep); font-weight:700;}
+  details[open] summary::after{content:"\2013";}
+  details p{color:var(--muted); padding:0 0 18px; font-size:15.5px;}
+
+  /* Footer */
+  footer{background:var(--ink); color:#e9e2cf; padding:52px 0 40px;}
+  footer .wrap{display:flex; flex-wrap:wrap; gap:24px; justify-content:space-between; align-items:center;}
+  footer .brand{color:#fff;}
+  footer a{color:#f4d79a;}
+  footer .links{display:flex; gap:24px; font-size:15px; flex-wrap:wrap;}
+  footer .fine{width:100%; border-top:1px solid rgba(255,255,255,.12); margin-top:26px; padding-top:22px; color:#b7ad92; font-size:13px; line-height:1.6;}
+
+  @media (max-width:760px){
+    section{padding:60px 0;}
+    .steps,.features,.privacy-points{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="assets/icon.png" alt="Reclock"> Reclock</a>
+    <div class="nav-links">
+      <a class="plain" href="#how">How it works</a>
+      <a class="plain" href="#features">Features</a>
+      <a class="plain" href="#privacy">Privacy</a>
+      <a class="btn btn-dark nav-cta" href="#get">Get the app</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <svg class="stars" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g fill="#eef0fb">
+      <circle cx="120" cy="70" r="1.6"/><circle cx="300" cy="50" r="1.2"/><circle cx="470" cy="90" r="1.8"/>
+      <circle cx="640" cy="46" r="1.3"/><circle cx="820" cy="80" r="1.7"/><circle cx="910" cy="140" r="1.2"/>
+      <circle cx="210" cy="150" r="1.3"/><circle cx="560" cy="130" r="1.5"/><circle cx="720" cy="170" r="1.2"/>
+      <circle cx="80" cy="200" r="1.4"/><circle cx="390" cy="180" r="1.2"/><circle cx="880" cy="210" r="1.5"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <!-- Sun-clock: the brand mark, matching the app icon -->
+    <svg class="sunclock" viewBox="0 0 120 120" aria-hidden="true">
+      <g fill="none">
+        <circle cx="60" cy="60" r="30" fill="#FCB812"/>
+        <g stroke="#FCB812" stroke-width="6" stroke-linecap="round">
+          <line x1="60" y1="10" x2="60" y2="20"/><line x1="60" y1="100" x2="60" y2="110"/>
+          <line x1="10" y1="60" x2="20" y2="60"/><line x1="100" y1="60" x2="110" y2="60"/>
+          <line x1="25" y1="25" x2="32" y2="32"/><line x1="88" y1="88" x2="95" y2="95"/>
+          <line x1="95" y1="25" x2="88" y2="32"/><line x1="32" y1="88" x2="25" y2="95"/>
+        </g>
+        <g stroke="#33290F" stroke-width="5" stroke-linecap="round">
+          <line x1="60" y1="60" x2="47" y2="49"/><line x1="60" y1="60" x2="74" y2="66"/>
+        </g>
+        <circle cx="60" cy="60" r="4" fill="#33290F"/>
+      </g>
+    </svg>
+    <h1 class="serif">Feel local<br>when you land.</h1>
+    <p class="lede">Reclock turns your flights into a simple, day-by-day plan for sleep, light, and caffeine — the three things that actually move your body clock. Jet lag, handled before you take off.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#get">Get Reclock</a>
+      <a class="btn btn-ghost" href="#how">See how it works</a>
+    </div>
+    <p class="trust"><b>Free</b> &nbsp;·&nbsp; <b>Private by default</b> &nbsp;·&nbsp; <b>Works offline</b></p>
+  </div>
+</header>
+
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">How it works</span>
+      <h2 class="serif">Three taps from flight to plan.</h2>
+      <p>No spreadsheets, no complicated settings. Add your trip and the plan appears instantly.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="glyph">🛫</div>
+        <div class="n">STEP 1</div>
+        <h3 class="serif">Add your flight</h3>
+        <p>Type a flight number or your route. Reclock knows the time zones, the red-eye, and the layover.</p>
+      </div>
+      <div class="step">
+        <div class="glyph">🌗</div>
+        <div class="n">STEP 2</div>
+        <h3 class="serif">Get your plan</h3>
+        <p>A day-by-day timeline of when to seek light, avoid it, sleep, nap, and stop the coffee — tuned to your body.</p>
+      </div>
+      <div class="step">
+        <div class="glyph">🔔</div>
+        <div class="n">STEP 3</div>
+        <h3 class="serif">Follow the nudges</h3>
+        <p>Gentle reminders arrive at exactly the right moment — even in airplane mode. Just do the next thing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="showcase">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">A day, in color</span>
+      <h2 class="serif">Big and visual. A glance is enough.</h2>
+      <p>The whole plan reads like a sky — sunrise to deep night — so you always know what to do right now.</p>
+    </div>
+    <div class="shots">
+      <figure class="shot"><img src="assets/screens/01.png" alt="Reclock home screen showing the current step" loading="lazy"><p>What to do, right now</p></figure>
+      <figure class="shot"><img src="assets/screens/02.png" alt="The day-by-day plan as colored timelines" loading="lazy"><p>Your whole plan, at a glance</p></figure>
+      <figure class="shot"><img src="assets/screens/04.png" alt="The plan adapting to a flight delay" loading="lazy"><p>Adapts when plans change</p></figure>
+      <figure class="shot"><img src="assets/screens/05.png" alt="Travel buddies sharing a plan" loading="lazy"><p>Bring your travel buddies</p></figure>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">What's inside</span>
+      <h2 class="serif">Small app. Serious science.</h2>
+    </div>
+    <div class="features">
+      <div class="feature"><span class="fi">🌅</span><h3 class="serif">Light, timed right</h3><p>The strongest lever on your body clock — Reclock tells you exactly when to chase daylight and when to hide from it.</p></div>
+      <div class="feature"><span class="fi">🛏️</span><h3 class="serif">Sleep &amp; nap windows</h3><p>Built around your real sleep, your chronotype, and whether you can actually sleep on a plane.</p></div>
+      <div class="feature"><span class="fi">☕</span><h3 class="serif">Caffeine cutoffs</h3><p>Know your last useful coffee — and when a strategic one helps instead of hurts.</p></div>
+      <div class="feature"><span class="fi">✨</span><h3 class="serif">On-device assistant</h3><p>Ask why a step exists or nudge the plan gentler — powered by Apple Intelligence, entirely on your phone.</p></div>
+      <div class="feature"><span class="fi">📅</span><h3 class="serif">Add to Calendar</h3><p>Drop the key moments into your calendar so everyone you travel with knows the plan too.</p></div>
+      <div class="feature"><span class="fi">👋</span><h3 class="serif">Travel buddies</h3><p>Share a plan, see each other's checkmarks, and send a little kudos when someone nails their bedtime.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="privacy">
+  <div class="wrap">
+    <span class="eyebrow" style="color:#F4C24B;">Privacy</span>
+    <h2 class="serif">Private by the design, not the fine print.</h2>
+    <p>Reclock runs entirely on your phone. Your flights, your sleep, the AI — none of it needs an account, and none of it leaves your device unless you choose to turn on backup.</p>
+    <div class="privacy-points">
+      <div class="pp"><b>No account required</b><span>Open the app, add a trip, get a plan. That's it.</span></div>
+      <div class="pp"><b>Works in airplane mode</b><span>Everything is computed on-device — no signal needed.</span></div>
+      <div class="pp"><b>Optional encrypted backup</b><span>Sign in with Apple to sync across devices. Delete it any time.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="get">
+  <div class="wrap">
+    <h2 class="serif">Land like you never left.</h2>
+    <p>Reclock is in beta now, and free.</p>
+    <!-- Swap href for the public TestFlight / App Store link when available. -->
+    <a class="btn btn-dark" href="https://github.com/jtsilver123/reclock" style="font-size:17px;">Join the beta →</a>
+  </div>
+</section>
+
+<section id="support">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Support</span>
+      <h2 class="serif">Questions, answered.</h2>
+    </div>
+    <div class="faq">
+      <details><summary>Do I need an account?</summary><p>No. Everything works on-device with no sign-in. Signing in with Apple is optional and only adds encrypted backup and travel buddies.</p></details>
+      <details><summary>Does it really work offline?</summary><p>Yes. Your plan and its reminders are generated and scheduled on your phone, so they fire even in airplane mode at 38,000 feet.</p></details>
+      <details><summary>Is this medical advice?</summary><p>No — Reclock offers general wellness guidance for travel, grounded in circadian science. If you have a sleep disorder or health condition, talk to a clinician.</p></details>
+      <details><summary>Flight-number search finds nothing?</summary><p>Double-check the departure date. Codeshares resolve to the operating airline automatically, so search by the flight you're actually on.</p></details>
+      <details><summary>How do I delete my data?</summary><p>Settings → Delete all data wipes the device. If you signed in, Settings → Delete account &amp; backup removes the server copy permanently, too.</p></details>
+      <details><summary>Something's broken or you have an idea?</summary><p>Open an issue on <a href="https://github.com/jtsilver123/reclock/issues">GitHub</a> — it goes straight to the maker.</p></details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand"><img src="assets/icon.png" alt="" style="width:28px;height:28px;border-radius:7px;"> Reclock</div>
+    <div class="links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="/reclock/privacy/">Privacy</a>
+      <a href="#support">Support</a>
+    </div>
+    <div class="fine">Reclock offers general wellness guidance for travel, not medical advice. If you have a sleep disorder or health condition, talk to a clinician. © 2026 · Made with care for people who cross time zones.</div>
+  </div>
+</footer>
+
+</body></html>
