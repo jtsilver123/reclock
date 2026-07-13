@@ -57,13 +57,7 @@ struct OnboardingFlow: View {
     private var welcome: some View {
         OnboardingScreen(
             primaryLabel: "Add my trip",
-            primaryAction: { step = 1 },
-            secondaryLabel: "See an example first",
-            secondaryAction: {
-                Task {
-                    await model.seedDemoData()
-                }
-            }
+            primaryAction: { step = 1 }
         ) {
             Spacer()
             BreathingSymbol(systemName: "sun.and.horizon.fill", size: 64)

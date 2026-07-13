@@ -117,12 +117,6 @@ private struct EmptyHome: View {
 
                 HowItWorksRow()
                     .padding(.vertical, Theme.Space.s)
-
-                Button("See an example") {
-                    Task { await model.seedDemoData() }
-                }
-                .buttonStyle(SecondaryButtonStyle())
-                .padding(.horizontal, Theme.Space.xl)
                 Spacer()
             }
             .padding(Theme.Space.m)
