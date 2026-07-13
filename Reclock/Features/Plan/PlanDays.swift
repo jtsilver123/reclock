@@ -160,7 +160,7 @@ struct PlanDayBlock: View {
     private var shiftLabel: String {
         let value = day.cumulativeShiftHours
         let formatted = String(format: "%.1f", abs(value)).replacingOccurrences(of: ".0", with: "")
-        return value > 0 ? "\(formatted)h earlier" : "\(formatted)h later"
+        return value > 0 ? "bed \(formatted)h earlier" : "bed \(formatted)h later"
     }
 }
 

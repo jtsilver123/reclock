@@ -11,6 +11,22 @@ enum DayTracks {
     static let laneTypes: Set<ActionType> = [
         .seekLight, .avoidLight, .sleep, .nap, .windDown, .stayAwake, .caffeineOK, .caffeineCutoff,
     ]
+
+    /// One readable word per pill, so the timeline explains itself.
+    static func shortLabel(for type: ActionType) -> String {
+        switch type {
+        case .sleep: "Sleep"
+        case .nap: "Nap"
+        case .windDown: "Wind down"
+        case .seekLight: "Light"
+        case .avoidLight: "Dim"
+        case .stayAwake: "Stay up"
+        case .caffeineOK: "Coffee OK"
+        case .caffeineCutoff: "No coffee"
+        case .melatoninOptional: "Melatonin"
+        default: ""
+        }
+    }
 }
 
 // MARK: - Vertical pill tracks (the day as parallel capsules against an hour rail)
@@ -188,6 +204,14 @@ struct TrackCapsule: View {
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(tint)
                     }
+                }
+                if height >= 84 {
+                    Text(DayTracks.shortLabel(for: cap.action.type))
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(cap.outlined ? tint : Color.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .padding(.horizontal, 2)
                 }
                 if height >= 64 {
                     Text(durationText)

@@ -112,6 +112,7 @@ private struct PlanContent: View {
     let plan: JetLagPlan
 
     @State private var notificationsPending = false
+    @AppStorage("planPrimerDismissed") private var planPrimerDismissed = false
 
     var body: some View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
@@ -146,6 +147,15 @@ private struct PlanContent: View {
                             if trip.status == .completed && !model.hasSurvey(for: trip) {
                                 SurveyPromptCard(trip: trip)
                                     .padding(.horizontal, Theme.Space.m)
+                            }
+
+                            if !planPrimerDismissed && !ProcessInfo.isUITest {
+                                PlanPrimerCard {
+                                    Haptics.selection()
+                                    withAnimation(Theme.Anim.spring) { planPrimerDismissed = true }
+                                }
+                                .padding(.horizontal, Theme.Space.m)
+                                .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             }
 
                             let zoneChanges = PlanDays.zoneChangeDayIDs(plan: plan)
@@ -198,6 +208,62 @@ private struct PlanContent: View {
                 notificationsPending = !(await model.deps.notifications.permissionGranted())
             }
             await model.checkForKudos(trip: trip)
+        }
+    }
+}
+
+// MARK: - First-time primer
+
+/// One-time, three-line decoder for the pill timeline. Dismisses forever on "Got it".
+private struct PlanPrimerCard: View {
+    var onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Your plan, at a glance")
+                .font(Theme.display(19, black: false))
+                .foregroundStyle(Theme.textPrimary)
+
+            primerRow(text: "A filled pill is a do — it covers the exact window, in local time.") {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Theme.solidTint(for: .sleep))
+                    .frame(width: 16, height: 34)
+            }
+            primerRow(text: "An outlined pill is an avoid — like coffee after the cutoff.") {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(Theme.tint(for: .caffeineCutoff), lineWidth: 1.5)
+                    .frame(width: 16, height: 34)
+                    .overlay(
+                        Image(systemName: "line.diagonal")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Theme.tint(for: .caffeineCutoff))
+                    )
+            }
+            primerRow(text: "Tap any step to see why it helps.") {
+                Image(systemName: "hand.tap.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.accentDeep)
+                    .frame(width: 16, height: 34)
+            }
+
+            Button("Got it", action: onDismiss)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.accentDeep)
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+        .accessibilityElement(children: .combine)
+    }
+
+    private func primerRow(text: String, @ViewBuilder glyph: () -> some View) -> some View {
+        HStack(spacing: Theme.Space.m) {
+            glyph()
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
