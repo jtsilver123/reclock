@@ -149,12 +149,14 @@ struct SettingsView: View {
                 Button {
                     Task {
                         await model.backUpNow()
+                        Haptics.success()
                     }
                 } label: {
                     Label(
                         model.sync.lastBackupDescription.map { "Back up now (last: \($0))" } ?? "Back up now",
                         systemImage: "icloud.and.arrow.up"
                     )
+                    .animation(Theme.Anim.gentle, value: model.sync.lastBackupDescription)
                 }
                 Button("Sign out") {
                     Task { await model.auth.signOut() }

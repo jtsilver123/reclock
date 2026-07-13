@@ -168,15 +168,18 @@ struct TripDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showDelaySheet) {
             ReportDelayView(trip: currentTrip)
+                .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showSurvey) {
             PostTripSurveyView(trip: currentTrip)
         }
         .sheet(item: $editingSegment) { segment in
             SegmentEditSheet(trip: currentTrip, segment: segment)
+                .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showAddCommitment) {
             CommitmentFormView(trip: currentTrip, existing: nil)
+                .presentationDetents([.medium, .large])
         }
         .sheet(item: $editingCommitment) { commitment in
             CommitmentFormView(trip: currentTrip, existing: commitment)
@@ -403,6 +406,7 @@ struct ReportDelayView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Update plan") {
                         guard let segment = selectedSegment else { return }
+                        Haptics.success()
                         Task {
                             await model.reportDelay(
                                 trip: trip,

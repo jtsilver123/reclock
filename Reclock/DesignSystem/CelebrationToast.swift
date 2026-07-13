@@ -7,14 +7,32 @@ import ReclockKit
 struct CelebrationEvent: Equatable, Identifiable {
     let id: UUID
     let type: ActionType
+    /// Overrides the per-type line for product moments (plan ready, kudos, joined).
+    var customLine: String?
+    var symbol: String = "checkmark.circle.fill"
 
-    init(id: UUID = UUID(), type: ActionType) {
+    init(id: UUID = UUID(), type: ActionType, customLine: String? = nil, symbol: String = "checkmark.circle.fill") {
         self.id = id
         self.type = type
+        self.customLine = customLine
+        self.symbol = symbol
+    }
+
+    static func planReady(destination: String) -> CelebrationEvent {
+        CelebrationEvent(type: .checkIn, customLine: "Plan ready — feel local in \(destination).", symbol: "sparkles")
+    }
+
+    static func joinedPlan() -> CelebrationEvent {
+        CelebrationEvent(type: .checkIn, customLine: "You're in — fly it together.", symbol: "person.2.fill")
+    }
+
+    static func kudos(from name: String, emoji: String) -> CelebrationEvent {
+        CelebrationEvent(type: .checkIn, customLine: "\(emoji) \(name) sent you kudos!", symbol: "hands.clap.fill")
     }
 
     /// Copy is deterministic by action type so the voice stays consistent.
     var line: String {
+        if let customLine { return customLine }
         switch type {
         case .seekLight: "Light logged — the strongest lever, pulled."
         case .avoidLight: "Clock protected. The sun can wait."
@@ -37,8 +55,8 @@ struct CelebrationToast: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.s) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+            Image(systemName: event.symbol)
+                .foregroundStyle(event.customLine == nil ? Color.green : Theme.accentDeep)
                 .symbolEffect(.bounce, value: event.id)
             Text(event.line)
                 .font(.footnote.weight(.semibold))

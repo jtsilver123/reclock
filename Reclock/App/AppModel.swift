@@ -273,6 +273,7 @@ final class AppModel {
                 shiftHours: delta,
                 intensity: trip.intensity.rawValue
             ))
+            celebration = .planReady(destination: stamped.destination)
             return true
         } catch {
             activeAlert = AppAlert(

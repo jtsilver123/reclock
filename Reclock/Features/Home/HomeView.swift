@@ -13,10 +13,14 @@ struct HomeView: View {
             Group {
                 if let trip = model.activeTrip, model.plan(for: trip) != nil {
                     TripHomeContent(trip: trip)
+                        .id(trip.id)
+                        .transition(.opacity.combined(with: .scale(scale: 0.985)))
                 } else {
                     EmptyHome(showAddTrip: $showAddTrip)
+                        .transition(.opacity)
                 }
             }
+            .animation(Theme.Anim.spring, value: model.activeTrip?.id)
             .overlay(alignment: .top) {
                 if let celebration = model.celebration {
                     CelebrationToast(event: celebration)
@@ -111,9 +115,10 @@ private struct EmptyHome: View {
                             .shadow(color: Theme.accent.opacity(0.45), radius: 20, y: 8)
                     )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableCardStyle())
                 .accessibilityLabel("Add my trip")
                 .padding(.vertical, Theme.Space.l)
+                .breathing()
 
                 HowItWorksRow()
                     .padding(.vertical, Theme.Space.s)
@@ -215,7 +220,7 @@ private struct TripHomeContent: View {
                     } label: {
                         TripSummaryRow(trip: trip, plan: model.plan(for: trip), progress: context.progress)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableCardStyle())
                     .accessibilityIdentifier("home.tripCard")
                 }
                 .padding(Theme.Space.m)

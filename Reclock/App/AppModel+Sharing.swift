@@ -85,6 +85,7 @@ extension AppModel {
             return false
         }
         deps.analytics.track(.importMethodSelected(method: "share_joined"))
+        celebration = .joinedPlan()
         return true
     }
 
@@ -163,7 +164,7 @@ extension AppModel {
             code: code, since: since, session: session
         ), let newest = received.first else { return }
         UserDefaults.standard.set(newest.createdAt, forKey: key)
-        lastChangeMessages = received.prefix(3).map { "\($0.emoji) \($0.fromName) sent you kudos!" }
+        celebration = .kudos(from: newest.fromName, emoji: newest.emoji)
     }
 
     // MARK: Invite plumbing

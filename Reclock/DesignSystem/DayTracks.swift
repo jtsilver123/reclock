@@ -125,7 +125,7 @@ struct DayColumn: View {
                     NavigationLink(value: cap.action) {
                         TrackCapsule(cap: cap, height: height, width: laneWidth - 10)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableCardStyle())
                     .offset(x: railWidth + laneWidth * CGFloat(cap.lane) + 5, y: y)
                 }
 
@@ -238,7 +238,7 @@ struct MomentsRow: View {
                                 .foregroundStyle(Theme.textSecondary)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableCardStyle())
                     .accessibilityLabel("\(action.title) at \(TimeFormat.time(action.window.start, zone: zone))")
                 }
             }

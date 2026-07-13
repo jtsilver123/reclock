@@ -37,6 +37,7 @@ struct ReclockApp: App {
                     NavigationStack {
                         JoinPlanView(prefilledCode: pending.code)
                     }
+                    .presentationDetents([.medium, .large])
                 }
         }
     }

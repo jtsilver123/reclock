@@ -334,6 +334,17 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
+/// Card-sized tappables squeeze slightly under the finger — the whole app feels
+/// physical without a single extra word. Replaces .plain on big buttons/links.
+struct PressableCardStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(Theme.Anim.springQuick, value: configuration.isPressed)
+    }
+}
+
 /// A symbol that gently breathes — the app's welcome heartbeat. Respects Reduce Motion.
 struct BreathingSymbol: View {
     let systemName: String
@@ -489,6 +500,26 @@ struct HowItWorksRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("How it works: add a flight, get your plan, follow the nudges")
     }
+}
+
+/// Gentle scale breathing for hero CTAs. Reduce Motion turns it off.
+private struct BreathingModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var inhale = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(reduceMotion ? 1 : (inhale ? 1.025 : 1))
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 2.8).repeatForever(autoreverses: true),
+                value: inhale
+            )
+            .onAppear { inhale = true }
+    }
+}
+
+extension View {
+    func breathing() -> some View { modifier(BreathingModifier()) }
 }
 
 // MARK: - Section header

@@ -228,7 +228,10 @@ private struct SegmentEditor: View {
         if lookupAvailable {
             Picker("How do you want to add it?", selection: Binding(
                 get: { effectiveMode },
-                set: { mode = $0 }
+                set: { newMode in
+                    Haptics.selection()
+                    withAnimation(Theme.Anim.spring) { mode = newMode }
+                }
             )) {
                 ForEach(EntryMode.allCases, id: \.self) { m in
                     Text(m.rawValue).tag(m)

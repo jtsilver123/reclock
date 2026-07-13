@@ -65,7 +65,7 @@ struct AddTripFlow: View {
                                 .shadow(color: .black.opacity(0.18), radius: 12, y: 5)
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableCardStyle())
 
                     if lookupAvailable {
                         Button {
@@ -79,7 +79,7 @@ struct AddTripFlow: View {
                                 subtitle: "Type AY 16 and a date — we fill in the rest."
                             )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressableCardStyle())
                     }
                     Button {
                         model.deps.analytics.track(.importMethodSelected(method: "manual"))
@@ -92,7 +92,7 @@ struct AddTripFlow: View {
                             subtitle: "Two airports, two times. About a minute."
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableCardStyle())
 
                     Button {
                         model.deps.analytics.track(.importMethodSelected(method: "join_shared"))
@@ -105,7 +105,7 @@ struct AddTripFlow: View {
                             subtitle: "Got an invite code? Fly it together."
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableCardStyle())
 
                     Label("Nothing leaves your phone. You approve every flight before it's saved.", systemImage: "lock.fill")
                         .font(.caption)
