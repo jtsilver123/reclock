@@ -80,31 +80,40 @@ private struct EmptyHome: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Space.l) {
-                VStack(spacing: Theme.Space.l) {
-                    HeroGlyph(systemName: "sun.and.horizon.fill", size: 104)
-                        .padding(.top, Theme.Space.xl)
-                    Text("Feel local when you land")
-                        .font(.largeTitle.weight(.bold))
-                        .fontDesign(.rounded)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(Color.white)
-                    Text("Your trip becomes a plan for sleep, light, and caffeine. Free, private, offline.")
-                        .font(.subheadline)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(Color.white.opacity(0.85))
-                        .padding(.horizontal, Theme.Space.l)
-                    Button("Add my trip") { showAddTrip = true }
-                        .buttonStyle(OnGradientPrimaryButtonStyle())
-                        .padding(.horizontal, Theme.Space.xl)
-                        .padding(.bottom, Theme.Space.xl)
+                Text("Feel local when you land")
+                    .font(.largeTitle.weight(.bold))
+                    .fontDesign(.rounded)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding(.top, Theme.Space.xl)
+                Text("Your trip becomes a plan for sleep, light, and caffeine.")
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal, Theme.Space.xl)
+
+                // The one thing to do, drawn as the one big thing on screen.
+                Button {
+                    showAddTrip = true
+                } label: {
+                    VStack(spacing: Theme.Space.s) {
+                        Image(systemName: "airplane.departure")
+                            .font(.system(size: 44, weight: .semibold))
+                        Text("Add my trip")
+                            .font(.title3.weight(.bold))
+                            .fontDesign(.rounded)
+                    }
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 216, height: 216)
+                    .background(
+                        Circle()
+                            .fill(Theme.accent)
+                            .shadow(color: Theme.accent.opacity(0.45), radius: 20, y: 8)
+                    )
                 }
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(Theme.sky(for: .seekLight))
-                        .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
-                )
-                .padding(.top, Theme.Space.m)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add my trip")
+                .padding(.vertical, Theme.Space.l)
 
                 HowItWorksRow()
                     .padding(.vertical, Theme.Space.s)
@@ -248,7 +257,7 @@ private struct SampleModeBanner: View {
     var body: some View {
         HStack(spacing: Theme.Space.s) {
             Image(systemName: "sparkles")
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.accentDeep)
                 .accessibilityHidden(true)
             Text("This is a sample trip")
                 .font(.footnote.weight(.semibold))
@@ -258,7 +267,7 @@ private struct SampleModeBanner: View {
                 Task { await model.exitSampleMode() }
             }
             .font(.footnote.weight(.semibold))
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(Theme.accentDeep)
         }
         .padding(.horizontal, Theme.Space.m)
         .padding(.vertical, Theme.Space.s)
@@ -293,7 +302,7 @@ private struct NotificationNudge: View {
                     }
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.accentDeep)
             } else {
                 Button("Turn on reminders") {
                     Task {
@@ -305,7 +314,7 @@ private struct NotificationNudge: View {
                     }
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.accentDeep)
             }
         }
         .padding(Theme.Space.m)
@@ -371,7 +380,7 @@ private struct SurveyPromptCard: View {
                 .foregroundStyle(Theme.textSecondary)
             Button("Quick check-in") { showSurvey = true }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.accentDeep)
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -399,7 +408,7 @@ private struct ChangeBanner: View {
                 model.lastChangeMessages = []
             }
             .font(.footnote.weight(.semibold))
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(Theme.accentDeep)
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -595,7 +604,7 @@ private struct TripChip: View {
                 isFocused ? AnyShapeStyle(Theme.accent) : AnyShapeStyle(Theme.surface),
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
-            .foregroundStyle(isFocused ? Color.white : Theme.textPrimary)
+            .foregroundStyle(isFocused ? Theme.ink : Theme.textPrimary)
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(isFocused ? Color.clear : Theme.surfaceSecondary, lineWidth: 1)
@@ -641,7 +650,7 @@ private struct TripSummaryRow: View {
                         .frame(width: x + 4, height: 4)
                     Image(systemName: "airplane")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(Theme.accentDeep)
                         .offset(x: x)
                         .animation(Theme.Anim.spring, value: x)
                 }

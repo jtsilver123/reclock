@@ -53,7 +53,7 @@ struct PostTripSurveyView: View {
                                 Spacer()
                                 if unrealistic.contains(type) {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(Theme.accent)
+                                        .foregroundStyle(Theme.accentDeep)
                                 }
                             }
                         }

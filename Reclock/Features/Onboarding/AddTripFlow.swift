@@ -185,7 +185,7 @@ struct CalendarImportView: View {
                     Spacer()
                     Image(systemName: "calendar.badge.checkmark")
                         .font(.system(size: 48))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(Theme.accentDeep)
                         .accessibilityHidden(true)
                     Text("Scan your calendar for flights")
                         .font(.title2.weight(.bold))
@@ -226,7 +226,7 @@ struct CalendarImportView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(Theme.ink)
                     }
                 }
                 .padding(Theme.Space.l)
@@ -277,7 +277,7 @@ struct CalendarImportView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(Theme.ink)
                 }
             }
             .padding(Theme.Space.l)

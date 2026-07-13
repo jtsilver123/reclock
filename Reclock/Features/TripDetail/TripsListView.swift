@@ -118,7 +118,7 @@ private struct TripListRow: View {
                 .foregroundStyle(Theme.textSecondary)
             if isFocused {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.accentDeep)
                     .accessibilityLabel("Currently shown on Today")
             }
         }

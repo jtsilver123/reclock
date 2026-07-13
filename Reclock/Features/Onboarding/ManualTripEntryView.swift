@@ -295,7 +295,7 @@ struct AirportField: View {
                         HStack {
                             Text(airport.iata)
                                 .font(.subheadline.weight(.bold).monospaced())
-                                .foregroundStyle(Theme.accent)
+                                .foregroundStyle(Theme.accentDeep)
                             VStack(alignment: .leading) {
                                 Text(airport.city)
                                     .font(.subheadline)

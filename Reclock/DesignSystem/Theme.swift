@@ -41,8 +41,28 @@ enum Theme {
         })
     }
 
-    /// Deep dusk blue — brand anchor, calm and night-friendly.
+    /// Marigold — the sun is the brand. Always pair with `ink` for text on top;
+    /// white on this yellow fails contrast.
     static let accent = dynamic(
+        light: UIColor(red: 0.99, green: 0.72, blue: 0.07, alpha: 1),
+        dark: UIColor(red: 1.00, green: 0.76, blue: 0.16, alpha: 1)
+    )
+
+    /// Near-black warm ink for text/glyphs sitting on the marigold accent.
+    static let ink = dynamic(
+        light: UIColor(red: 0.20, green: 0.16, blue: 0.06, alpha: 1),
+        dark: UIColor(red: 0.16, green: 0.13, blue: 0.05, alpha: 1)
+    )
+
+    /// Burnt amber for small interactive TEXT on the cream background — pure marigold
+    /// belongs to big shapes only; at caption sizes it fails contrast.
+    static let accentDeep = dynamic(
+        light: UIColor(red: 0.65, green: 0.42, blue: 0.02, alpha: 1),
+        dark: UIColor(red: 1.00, green: 0.78, blue: 0.28, alpha: 1)
+    )
+
+    /// Deep dusk blue — the night half of the identity (rings, sleep chrome).
+    static let dusk = dynamic(
         light: UIColor(red: 0.22, green: 0.32, blue: 0.65, alpha: 1),
         dark: UIColor(red: 0.62, green: 0.70, blue: 1.00, alpha: 1)
     )

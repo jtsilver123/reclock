@@ -313,7 +313,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .foregroundStyle(Color.white)
+            .foregroundStyle(Theme.ink)
             .opacity(configuration.isPressed ? 0.9 : 1)
             .scaleEffect(configuration.isPressed ? 0.965 : 1)
             .animation(Theme.Anim.springQuick, value: configuration.isPressed)
