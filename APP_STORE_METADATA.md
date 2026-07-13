@@ -12,6 +12,20 @@
 | Price | Free (no IAP) |
 | Age rating | 4+ (no objectionable content; wellness guidance with clear non-medical framing) |
 
+## Screenshots & icon (generated, ready to upload)
+
+`python3 tools/make_store_assets.py` regenerates everything:
+
+- **Icon** — `Reclock/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`
+  (ships inside the build automatically; nothing to upload).
+- **Screenshots** — `store/screenshots/01…06.png`, 1320×2868 (6.9"). App Store
+  Connect accepts this single size for every iPhone slot. Upload in numeric order;
+  each panel's headline doubles as its caption:
+  1. Feel local when you land · 2. Your day, drawn in color · 3. Add a flight in
+  seconds · 4. Flight delayed? Plan adapts · 5. Beat jet lag together · 6. Private
+  by default.
+- **Link preview** — `web/invite/og.png` for the invite page.
+
 ## Promotional text (170 chars max)
 
 > Automatically turn your flights into a practical plan for sleep, sunlight, caffeine,
