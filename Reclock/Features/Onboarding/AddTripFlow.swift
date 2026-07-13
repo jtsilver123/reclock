@@ -10,6 +10,7 @@ struct AddTripFlow: View {
         case calendarImport
         case flightLookup
         case manualEntry
+        case joinShared
     }
 
     @State private var path: [Route] = []
@@ -93,6 +94,19 @@ struct AddTripFlow: View {
                     }
                     .buttonStyle(.plain)
 
+                    Button {
+                        model.deps.analytics.track(.importMethodSelected(method: "join_shared"))
+                        path.append(.joinShared)
+                    } label: {
+                        ImportOptionCard(
+                            icon: "person.2.fill",
+                            tint: Theme.tint(for: .melatoninOptional),
+                            title: "Join a friend's trip",
+                            subtitle: "Got an invite code? Fly it together."
+                        )
+                    }
+                    .buttonStyle(.plain)
+
                     Label("Nothing leaves your phone. You approve every flight before it's saved.", systemImage: "lock.fill")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
@@ -117,6 +131,8 @@ struct AddTripFlow: View {
                     FlightLookupView(onFinished: { dismiss() })
                 case .manualEntry:
                     ManualTripEntryView(onFinished: { dismiss() })
+                case .joinShared:
+                    JoinPlanView(onFinished: { dismiss() })
                 }
             }
         }

@@ -228,6 +228,7 @@ private struct TripHomeContent: View {
             if let profile = model.profile, profile.notifications.enabled {
                 notificationsPending = !(await model.deps.notifications.permissionGranted())
             }
+            await model.checkForKudos(trip: trip)
         }
     }
 }

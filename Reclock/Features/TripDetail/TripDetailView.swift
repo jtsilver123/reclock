@@ -42,6 +42,8 @@ struct TripDetailView: View {
                     .foregroundStyle(Theme.textSecondary)
             }
 
+            TravelBuddiesSection(trip: currentTrip)
+
             Section {
                 ForEach(currentTrip.segments) { segment in
                     Button {

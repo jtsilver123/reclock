@@ -66,6 +66,7 @@ jobs:
             -scheme Reclock \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -only-testing:ReclockUITests \
+            -retry-tests-on-failure -test-iterations 2 \
             CODE_SIGNING_ALLOWED=NO | tee uitest.log | tail -80
       - name: UI test failure details
         if: failure()

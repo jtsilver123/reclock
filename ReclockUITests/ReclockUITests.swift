@@ -145,7 +145,10 @@ final class ReclockUITests: XCTestCase {
         let app = launchSeeded()
         app.tabBars.buttons["Settings"].tap()
 
-        XCTAssertTrue(app.staticTexts["Everything stays on this device"].waitForExistence(timeout: 8))
+        // Backup & sync sits above privacy; the label needs scrolling into existence.
+        let privacyLabel = app.staticTexts["Everything stays on this device"]
+        scrollTo(privacyLabel, in: app, maxSwipes: 9)
+        XCTAssertTrue(privacyLabel.waitForExistence(timeout: 8))
         // Privacy rows sit below the fold; List rows materialize on scroll.
         let export = app.buttons["Export my data (JSON)"]
         // Backup & sync section sits above privacy now — allow a couple more swipes.

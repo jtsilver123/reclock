@@ -25,6 +25,8 @@ final class AppModel {
     var shouldPresentAddTrip = false
     /// Transient acknowledgment after completing a step; Home shows it for ~2s.
     var celebration: CelebrationEvent?
+    /// A join code arriving via reclock://join?c=… — RootView presents the join sheet.
+    var pendingJoinCode: PendingJoinCode?
 
     init(dependencies: Dependencies) {
         self.deps = dependencies
@@ -367,6 +369,7 @@ final class AppModel {
         plan.actions[index].completion = completion
         replacePlan(plan)
         await persist()
+        mirrorProgress(action: action, completion: completion, trip: trip)
 
         switch completion {
         case .done:

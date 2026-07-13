@@ -176,7 +176,7 @@ struct SupabaseAuthClient: Sendable {
 
     // MARK: Plumbing
 
-    private func decorate(_ request: inout URLRequest, bearer: String?) {
+    func decorate(_ request: inout URLRequest, bearer: String?) {
         request.setValue(SupabaseConfig.publishableKey, forHTTPHeaderField: "apikey")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let bearer {
@@ -184,7 +184,7 @@ struct SupabaseAuthClient: Sendable {
         }
     }
 
-    private static func expectOK(_ response: URLResponse, data: Data) throws {
+    static func expectOK(_ response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else { return }
         guard (200..<300).contains(http.statusCode) else {
             let message = String(data: data, encoding: .utf8) ?? ""

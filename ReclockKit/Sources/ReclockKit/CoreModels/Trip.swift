@@ -28,6 +28,11 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
     public var createdAt: Date
     public var lastRecalculatedAt: Date?
     public var protocolVersion: String
+    /// Set when this trip is shared with travel buddies (nil = private trip).
+    /// The code doubles as the invite capability; older payloads decode to nil.
+    public var sharedPlanCode: String?
+    /// True on the device that created the share (drives owner-only UI).
+    public var isSharedPlanOwner: Bool?
 
     public init(
         id: UUID = UUID(),
@@ -46,7 +51,9 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
         importSource: ImportSource = .manual,
         createdAt: Date = Date(timeIntervalSince1970: 0),
         lastRecalculatedAt: Date? = nil,
-        protocolVersion: String = ProtocolVersion.current.description
+        protocolVersion: String = ProtocolVersion.current.description,
+        sharedPlanCode: String? = nil,
+        isSharedPlanOwner: Bool? = nil
     ) {
         self.id = id
         self.name = name
@@ -65,6 +72,8 @@ public struct Trip: Codable, Hashable, Sendable, Identifiable {
         self.createdAt = createdAt
         self.lastRecalculatedAt = lastRecalculatedAt
         self.protocolVersion = protocolVersion
+        self.sharedPlanCode = sharedPlanCode
+        self.isSharedPlanOwner = isSharedPlanOwner
     }
 
     /// Segments that fly away from home, before the longest stay.
