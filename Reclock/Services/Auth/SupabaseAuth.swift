@@ -78,6 +78,14 @@ struct SupabaseAuthClient: Sendable {
         return try await tokenRequest(query: "grant_type=id_token", body: body)
     }
 
+    /// Exchanges a Google identity token (from the PKCE flow) for a Supabase session.
+    func signInWithGoogle(idToken: String, nonce: String) async throws -> AuthSession {
+        try await tokenRequest(
+            query: "grant_type=id_token",
+            body: ["provider": "google", "id_token": idToken, "nonce": nonce]
+        )
+    }
+
     func refresh(_ session: AuthSession) async throws -> AuthSession {
         try await tokenRequest(
             query: "grant_type=refresh_token",

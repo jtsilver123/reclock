@@ -37,6 +37,18 @@ struct JoinPlanView: View {
                     .frame(height: 44)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
+                        if model.auth.googleAvailable {
+                        GoogleSignInButton {
+                            Task {
+                                if await model.auth.signInWithGoogle() {
+                                        Haptics.success()
+                                        await model.handleSignedIn()
+                                }
+                            }
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                    }
                 }
             } else {
                 Section {

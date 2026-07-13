@@ -179,6 +179,18 @@ struct SettingsView: View {
                 .frame(height: 44)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
+                if model.auth.googleAvailable {
+                    GoogleSignInButton {
+                        Task {
+                            if await model.auth.signInWithGoogle() {
+                                Haptics.success()
+                                await model.handleSignedIn()
+                            }
+                        }
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
                 if let error = model.auth.lastError {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .font(.caption)

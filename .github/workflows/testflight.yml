@@ -29,6 +29,8 @@ jobs:
       BUNDLE_ID: ${{ vars.RECLOCK_BUNDLE_ID != '' && vars.RECLOCK_BUNDLE_ID || 'app.reclock.ios' }}
       # Optional: flight-number lookup. Empty → the feature hides itself in the app.
       AERODATABOX_KEY: ${{ secrets.RECLOCK_AERODATABOX_KEY }}
+      # Optional: Google sign-in (iOS OAuth client ID). Empty → Apple-only.
+      GOOGLE_CLIENT_ID: ${{ secrets.RECLOCK_GOOGLE_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v5
 
@@ -69,6 +71,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             INFOPLIST_KEY_ReclockAeroDataBoxKey="$AERODATABOX_KEY" \
+            INFOPLIST_KEY_ReclockGoogleClientID="$GOOGLE_CLIENT_ID" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       # The export re-sign derives entitlements from what the app already carries —

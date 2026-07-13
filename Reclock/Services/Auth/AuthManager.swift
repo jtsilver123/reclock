@@ -83,6 +83,31 @@ final class AuthManager {
         }
     }
 
+    /// Google is offered only when a client ID ships in the build.
+    var googleAvailable: Bool { GoogleAuthConfig.clientID != nil }
+
+    /// Full Google PKCE dance → Supabase session. Returns true on success.
+    func signInWithGoogle() async -> Bool {
+        lastError = nil
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            let coordinator = GoogleSignInCoordinator()
+            let result = try await coordinator.signIn()
+            let session = try await client.signInWithGoogle(
+                idToken: result.idToken, nonce: result.rawNonce
+            )
+            KeychainStore.save(session)
+            state = .signedIn(session)
+            return true
+        } catch GoogleSignInError.cancelled {
+            return false
+        } catch {
+            lastError = "Google sign-in didn't go through. Try again in a moment."
+            return false
+        }
+    }
+
     func signOut() async {
         if case .signedIn(let session) = state {
             await client.signOut(session)

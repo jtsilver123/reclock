@@ -152,6 +152,12 @@ One-time setup still needed from the account owner:
 2. **App ID capability:** developer.apple.com → Identifiers → `app.reclock.ios` →
    check **Sign In with Apple** → Save (profiles regenerate automatically on the
    next CI build).
+3. **Google (optional):** Google Cloud Console → APIs & Services → Credentials →
+   Create OAuth client ID → type **iOS**, bundle `app.reclock.ios`. Then
+   (a) repo secret `RECLOCK_GOOGLE_CLIENT_ID` = the client ID, and
+   (b) Supabase dashboard → Authentication → Google → enable and add the same
+   client ID to **Authorized Client IDs**. Without the secret the Google button
+   simply never appears (Apple-only).
 
 ## Credentials still required (account owner)
 
