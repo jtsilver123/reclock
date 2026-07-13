@@ -4,12 +4,6 @@ import ReclockKit
 /// Grouping logic for the scrolling day-by-day plan on the Plan tab. The ForEach over
 /// these groups lives directly in PlanContent's LazyVStack so phase headers pin.
 enum PlanDays {
-    enum PriorityFilter: String, CaseIterable, Identifiable {
-        case all = "All"
-        case essential = "Essentials"
-        var id: String { rawValue }
-    }
-
     struct DayEntry: Identifiable {
         var day: PlanDay
         var actions: [PlanAction]
@@ -22,13 +16,10 @@ enum PlanDays {
         var id: String { "\(phase.rawValue)-\(days.first?.day.index ?? 0)" }
     }
 
-    static func groupedPhases(plan: JetLagPlan, filter: PriorityFilter) -> [PhaseGroup] {
+    static func groupedPhases(plan: JetLagPlan) -> [PhaseGroup] {
         var groups: [PhaseGroup] = []
         for day in plan.days.sorted(by: { $0.index < $1.index }) {
-            var actions = plan.actions(onDay: day.index)
-            if filter == .essential {
-                actions = actions.filter { $0.priority != .optional }
-            }
+            let actions = plan.actions(onDay: day.index)
             if actions.isEmpty && !(day.phase == .afterArrival || day.phase == .recovery) {
                 continue
             }
@@ -43,13 +34,52 @@ enum PlanDays {
     }
 
     /// The plan day containing "now" (else the first future day), for initial scroll.
-    static func currentDayID(plan: JetLagPlan, filter: PriorityFilter, now: Date) -> UUID? {
-        let days = groupedPhases(plan: plan, filter: filter).flatMap(\.days).map(\.day)
+    static func currentDayID(plan: JetLagPlan, now: Date) -> UUID? {
+        let days = groupedPhases(plan: plan).flatMap(\.days).map(\.day)
         let current = days.last { $0.dayStart <= now && now < $0.dayStart.addingTimeInterval(36 * 3600) }
         // Future day next; for a fully-past plan, land on the most recent day.
         let target = current ?? days.first { $0.dayStart > now } ?? days.last
         // Only jump when the target isn't already the first visible day.
         return target?.id == days.first?.id ? nil : target?.id
+    }
+
+    /// Rendered days where the wall clock changes (plus the first day) — the plan
+    /// announces its zone exactly when it matters and never asks the user to choose.
+    static func zoneChangeDayIDs(plan: JetLagPlan) -> Set<UUID> {
+        let days = groupedPhases(plan: plan).flatMap(\.days).map(\.day)
+        var ids: Set<UUID> = []
+        var lastZone: String?
+        for day in days {
+            if day.zone.identifier != lastZone {
+                ids.insert(day.id)
+                lastZone = day.zone.identifier
+            }
+        }
+        return ids
+    }
+}
+
+/// A quiet announcement that the plan's clock just changed ("Times now in Tokyo time").
+struct ZoneMarkerRow: View {
+    let zone: TimeZone
+    let isFirst: Bool
+
+    var body: some View {
+        HStack(spacing: Theme.Space.xs) {
+            Image(systemName: "globe")
+                .font(.caption2.weight(.semibold))
+                .accessibilityHidden(true)
+            Text(isFirst
+                 ? "Times in \(TimeFormat.zoneCity(zone)) time"
+                 : "Times now in \(TimeFormat.zoneCity(zone)) time")
+                .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(Theme.accentDeep)
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, 4)
+        .background(Theme.accent.opacity(0.12), in: Capsule())
+        .padding(.horizontal, Theme.Space.m)
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 
@@ -57,7 +87,6 @@ enum PlanDays {
 struct PlanDayBlock: View {
     let day: PlanDay
     let actions: [PlanAction]
-    let displayMode: TimeDisplayMode
     let trip: Trip
     let now: Date
 
@@ -123,8 +152,9 @@ struct PlanDayBlock: View {
         .opacity(isPast ? 0.55 : 1)
     }
 
+    /// The zone the traveler actually occupies this day — no mode to pick.
     private var labelZone: TimeZone {
-        displayMode == .home ? trip.homeZone.resolved : day.zone.resolved
+        day.zone.resolved
     }
 
     private var shiftLabel: String {

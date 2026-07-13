@@ -112,8 +112,6 @@ private struct PlanContent: View {
     let plan: JetLagPlan
 
     @State private var notificationsPending = false
-    @State private var displayMode: TimeDisplayMode = .destination
-    @State private var priorityFilter: PlanDays.PriorityFilter = .all
 
     var body: some View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
@@ -150,16 +148,21 @@ private struct PlanContent: View {
                                     .padding(.horizontal, Theme.Space.m)
                             }
 
-                            ZoneModeChip(displayMode: $displayMode, trip: trip)
-                                .padding(.horizontal, Theme.Space.m)
+                            let zoneChanges = PlanDays.zoneChangeDayIDs(plan: plan)
+                            let firstDayID = PlanDays.groupedPhases(plan: plan).first?.days.first?.id
 
-                            ForEach(PlanDays.groupedPhases(plan: plan, filter: priorityFilter)) { group in
+                            ForEach(PlanDays.groupedPhases(plan: plan)) { group in
                                 Section {
                                     ForEach(group.days) { entry in
+                                        if zoneChanges.contains(entry.day.id) {
+                                            ZoneMarkerRow(
+                                                zone: entry.day.zone.resolved,
+                                                isFirst: entry.day.id == firstDayID
+                                            )
+                                        }
                                         PlanDayBlock(
                                             day: entry.day,
                                             actions: entry.actions,
-                                            displayMode: displayMode,
                                             trip: trip,
                                             now: now
                                         )
@@ -177,9 +180,7 @@ private struct PlanContent: View {
                         // Mid-trip, the reader's day is what matters — not day 0 last
                         // week. A beat's delay lets the lazy rows realize first.
                         try? await Task.sleep(nanoseconds: 200_000_000)
-                        if let today = PlanDays.currentDayID(
-                            plan: plan, filter: priorityFilter, now: model.deps.now()
-                        ) {
+                        if let today = PlanDays.currentDayID(plan: plan, now: model.deps.now()) {
                             proxy.scrollTo(today, anchor: .top)
                         }
                     }
@@ -189,33 +190,8 @@ private struct PlanContent: View {
         .navigationDestination(for: PlanAction.self) { action in
             ActionDetailView(action: action, trip: trip)
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Time zone", selection: $displayMode) {
-                        Text("Destination time").tag(TimeDisplayMode.destination)
-                        Text("Home time").tag(TimeDisplayMode.home)
-                        Text("Both").tag(TimeDisplayMode.dual)
-                    }
-                    Picker("Show", selection: $priorityFilter) {
-                        ForEach(PlanDays.PriorityFilter.allCases) { filter in
-                            Text(filter.rawValue).tag(filter)
-                        }
-                    }
-                } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .accessibilityLabel("Plan options")
-                }
-            }
-        }
         .onAppear {
-            displayMode = model.state.settings.timeDisplay
             model.deps.analytics.track(.timelineViewed)
-        }
-        .onChange(of: displayMode) { _, newValue in
-            var settings = model.state.settings
-            settings.timeDisplay = newValue
-            Task { await model.updateSettings(settings) }
         }
         .task {
             if let profile = model.profile, profile.notifications.enabled {
@@ -223,44 +199,6 @@ private struct PlanContent: View {
             }
             await model.checkForKudos(trip: trip)
         }
-    }
-}
-
-// MARK: - Zone mode chip
-
-/// Says out loud which clock the plan below is written in — and switches it.
-private struct ZoneModeChip: View {
-    @Binding var displayMode: TimeDisplayMode
-    let trip: Trip
-
-    private var text: String {
-        displayMode == .home
-            ? "Times in \(TimeFormat.zoneCity(trip.homeZone.resolved)) — home time"
-            : "Times in \(TimeFormat.zoneCity(trip.destinationZone.resolved)) time"
-    }
-
-    var body: some View {
-        Menu {
-            Picker("Time zone", selection: $displayMode) {
-                Text("Destination time").tag(TimeDisplayMode.destination)
-                Text("Home time").tag(TimeDisplayMode.home)
-                Text("Both").tag(TimeDisplayMode.dual)
-            }
-        } label: {
-            HStack(spacing: Theme.Space.xs) {
-                Image(systemName: "globe")
-                    .font(.caption.weight(.semibold))
-                Text(text)
-                    .font(.caption.weight(.semibold))
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2.weight(.bold))
-            }
-            .foregroundStyle(Theme.accentDeep)
-            .padding(.horizontal, Theme.Space.m)
-            .padding(.vertical, 7)
-            .background(Theme.accent.opacity(0.12), in: Capsule())
-        }
-        .accessibilityLabel("Plan time zone: \(text). Tap to change.")
     }
 }
 
