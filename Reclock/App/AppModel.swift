@@ -27,6 +27,8 @@ final class AppModel {
     var shouldPresentAddTrip = false
     /// Transient acknowledgment after completing a step; Home shows it for ~2s.
     var celebration: CelebrationEvent?
+    /// A just-added trip awaiting its curtain-up moment on the Plan tab.
+    var planReveal: Trip?
     /// A join code arriving via reclock://join?c=… — RootView presents the join sheet.
     var pendingJoinCode: PendingJoinCode?
 
@@ -278,7 +280,7 @@ final class AppModel {
                 shiftHours: delta,
                 intensity: trip.intensity.rawValue
             ))
-            celebration = .planReady(destination: stamped.destination)
+            planReveal = stamped
             return true
         } catch {
             activeAlert = AppAlert(

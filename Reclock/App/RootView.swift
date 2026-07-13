@@ -38,14 +38,20 @@ struct MainTabs: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private enum Tab: Hashable { case plan, trips, settings }
+    @State private var selection: Tab = .plan
+
     var body: some View {
-        TabView {
+        TabView(selection: $selection) {
             PlanView()
                 .tabItem { Label("Plan", systemImage: "sun.horizon.fill") }
+                .tag(Tab.plan)
             TripsListView()
                 .tabItem { Label("Trips", systemImage: "airplane") }
+                .tag(Tab.trips)
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                .tag(Tab.settings)
         }
         .tint(Theme.accent)
         // The assistant floats above everything, always within thumb's reach.
@@ -63,6 +69,21 @@ struct MainTabs: View {
             }
         }
         .animation(Theme.Anim.spring, value: model.celebration)
+        // The curtain-up after adding a trip: sky, flight, confetti — then the plan.
+        .overlay {
+            if let trip = model.planReveal {
+                PlanRevealView(trip: trip) {
+                    withAnimation(Theme.Anim.spring) { model.planReveal = nil }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                .zIndex(10)
+            }
+        }
+        .animation(Theme.Anim.spring, value: model.planReveal?.id)
+        .onChange(of: model.planReveal?.id) { _, id in
+            // The reveal ends on the plan itself, wherever the trip was added from.
+            if id != nil { selection = .plan }
+        }
         .task(id: model.celebration?.id) {
             guard model.celebration != nil else { return }
             try? await Task.sleep(nanoseconds: 2_200_000_000)
