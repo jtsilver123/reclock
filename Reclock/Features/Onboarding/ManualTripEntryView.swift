@@ -208,32 +208,86 @@ private struct SegmentEditor: View {
         draft.flightNumber.trimmingCharacters(in: .whitespaces)
     }
 
+    enum EntryMode: String, CaseIterable {
+        case flightNumber = "Flight number"
+        case manual = "Enter details"
+    }
+
+    /// nil until the user picks; defaults to the lighter path when lookup exists.
+    @State private var mode: EntryMode?
+
+    private var effectiveMode: EntryMode {
+        mode ?? (lookupAvailable ? .flightNumber : .manual)
+    }
+
+    private var filled: Bool {
+        draft.departureAirport != nil && draft.arrivalAirport != nil
+    }
+
     var body: some View {
-        TextField(
-            lookupAvailable
-                ? "Flight number (e.g. AA 8987)"
-                : "Flight number (optional — shown on your plan)",
-            text: $draft.flightNumber
-        )
-            .textInputAutocapitalization(.characters)
-            .autocorrectionDisabled()
-        if lookupAvailable && cleanedNumber.count >= 3 {
+        if lookupAvailable {
+            Picker("How do you want to add it?", selection: Binding(
+                get: { effectiveMode },
+                set: { mode = $0 }
+            )) {
+                ForEach(EntryMode.allCases, id: \.self) { m in
+                    Text(m.rawValue).tag(m)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+
+        if effectiveMode == .flightNumber {
+            // Just three things: number, date, go.
+            TextField("Flight number (e.g. AA 8987)", text: $draft.flightNumber)
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled()
+            DatePicker("Departure date", selection: $draft.departureDate, displayedComponents: [.date])
             Button {
                 Task { await fillFromFlightNumber() }
             } label: {
                 if isLookingUp {
                     ProgressView().frame(maxWidth: .infinity)
                 } else {
-                    Label("Fill everything from this flight", systemImage: "wand.and.stars")
+                    Label(filled ? "Look up again" : "Find my flight", systemImage: "magnifyingglass")
+                        .frame(maxWidth: .infinity)
                 }
             }
-            .disabled(isLookingUp)
+            .disabled(cleanedNumber.count < 3 || isLookingUp)
+            if let lookupNote {
+                Label(lookupNote, systemImage: lookupFailed ? "exclamationmark.triangle" : "checkmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(lookupFailed ? .orange : .green)
+            }
+            if filled {
+                // The filled-in flight, at a glance; tweak in the other tab if needed.
+                HStack {
+                    Text("\(draft.departureAirport?.iata ?? "?") → \(draft.arrivalAirport?.iata ?? "?")")
+                        .font(.title3.weight(.heavy))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(Theme.textPrimary)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(draft.departureDate.formatted(date: .abbreviated, time: .shortened))
+                        Text(draft.arrivalDate.formatted(date: .abbreviated, time: .shortened))
+                    }
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(Theme.textSecondary)
+                }
+                Button("Adjust details by hand") { mode = .manual }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.accentDeep)
+            } else if lookupFailed {
+                Button("Enter the details instead") { mode = .manual }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.accentDeep)
+            }
         }
-        if let lookupNote {
-            Label(lookupNote, systemImage: lookupFailed ? "exclamationmark.triangle" : "checkmark.circle")
-                .font(.caption2)
-                .foregroundStyle(lookupFailed ? .orange : Theme.textSecondary)
-        }
+
+        if effectiveMode == .manual {
+        TextField("Flight number (optional — shown on your plan)", text: $draft.flightNumber)
+            .textInputAutocapitalization(.characters)
+            .autocorrectionDisabled()
         AirportField(label: "From", selection: $draft.departureAirport)
         AirportField(label: "To", selection: $draft.arrivalAirport)
         DatePicker("Departs", selection: $draft.departureDate, displayedComponents: [.date, .hourAndMinute])
@@ -258,6 +312,7 @@ private struct SegmentEditor: View {
             Text("Times read as local: \(dep.iata) departs \(dep.zone.identifier), \(arr.iata) arrives \(arr.zone.identifier).")
                 .font(.caption2)
                 .foregroundStyle(Theme.textSecondary)
+        }
         }
     }
 
