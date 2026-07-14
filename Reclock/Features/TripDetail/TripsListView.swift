@@ -238,9 +238,15 @@ private struct TripListRow: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                Text(dateRange)
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
+                SwiftUI.TimelineView(.periodic(from: .now, by: 60)) { timeline in
+                    Text(trip.status == .completed
+                         ? dateRange
+                         : "\(dateRange) · \(TimeFormat.time(timeline.date, zone: trip.destinationZone.resolved)) there")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
             }
             Spacer(minLength: Theme.Space.s)
 

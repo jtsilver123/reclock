@@ -7,12 +7,25 @@ struct TripDetailView: View {
     let trip: Trip
 
     @State private var showDelaySheet = false
+    @State private var showGlobe = false
     @State private var calendarResult: Int??  // nil = idle, .some(nil) = denied, .some(n) = added
     @State private var showDeleteConfirm = false
     @State private var showSurvey = false
     @State private var editingSegment: FlightSegment?
     @State private var showAddCommitment = false
     @State private var editingCommitment: FixedCommitment?
+
+    /// Both endpoints with real coordinates — the globe needs them to place cities.
+    private var globeAirports: (origin: Airport, destination: Airport)? {
+        guard let depIata = currentTrip.segments.first?.departureAirport,
+              let arrIata = (currentTrip.outboundSegments.last ?? currentTrip.segments.last)?.arrivalAirport,
+              let origin = model.deps.airports.airport(iata: depIata),
+              let destination = model.deps.airports.airport(iata: arrIata),
+              origin.latitude != nil, origin.longitude != nil,
+              destination.latitude != nil, destination.longitude != nil
+        else { return nil }
+        return (origin, destination)
+    }
 
     private var currentTrip: Trip {
         model.state.trips.first { $0.id == trip.id } ?? trip
@@ -50,6 +63,22 @@ struct TripDetailView: View {
                     Label("Works fully offline once generated", systemImage: "airplane.circle")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
+                }
+                .overlay(alignment: .topTrailing) {
+                    if globeAirports != nil {
+                        Button {
+                            Haptics.soft()
+                            showGlobe = true
+                        } label: {
+                            Image(systemName: "globe.americas.fill")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Theme.accentDeep)
+                                .frame(width: 36, height: 36)
+                                .background(Circle().fill(Theme.accent.opacity(0.15)))
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Globe view: route and daylight")
+                    }
                 }
             }
 
@@ -192,6 +221,11 @@ struct TripDetailView: View {
         }
         .navigationTitle(currentTrip.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showGlobe) {
+            if let pair = globeAirports {
+                TripGlobeView(trip: currentTrip, origin: pair.origin, destination: pair.destination)
+            }
+        }
         .alert(
             calendarResult == .some(nil) ? "Calendar access is off" : "Added to your calendar",
             isPresented: Binding(
