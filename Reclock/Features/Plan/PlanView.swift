@@ -6,6 +6,7 @@ import ReclockKit
 struct PlanView: View {
     @Environment(AppModel.self) private var model
     @State private var showAddTrip = false
+    @State private var adjustTrip: Trip?
 
     var body: some View {
         NavigationStack {
@@ -30,9 +31,24 @@ struct PlanView: View {
                         .foregroundStyle(Theme.textPrimary)
                         .accessibilityAddTraits(.isHeader)
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if let trip = model.activeTrip, model.plan(for: trip) != nil {
+                        Button {
+                            Haptics.soft()
+                            adjustTrip = trip
+                        } label: {
+                            Image(systemName: "slider.horizontal.3")
+                                .accessibilityLabel("Adjust plan")
+                        }
+                    }
+                }
             }
             .sheet(isPresented: $showAddTrip) {
                 AddTripFlow()
+            }
+            .sheet(item: $adjustTrip) { trip in
+                PlanAdjustSheet(trip: trip)
+                    .presentationDetents([.medium, .large])
             }
             .onAppear {
                 // "Add my trip" at the end of onboarding should do what it says.

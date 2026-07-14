@@ -1,31 +1,25 @@
 import SwiftUI
 import ReclockKit
 
-/// Search a flight by number: type "AY 16" + date, confirm, and the plan builds itself.
-/// Requires a schedule key (SETUP.md); without one this screen explains and hands off to
-/// manual entry with everything typed so far carried over.
+/// The one-shot path: type "AY 16" + a date, and the plan builds itself. A single
+/// match adds the trip immediately — no confirmation screen, no fields to edit —
+/// and hands straight over to the plan-reveal moment. Multiple matches (rare)
+/// take one pick, then build. Connections belong to "Type it in" or email paste.
 struct FlightLookupView: View {
     @Environment(AppModel.self) private var model
     var onFinished: () -> Void
-
-    struct FoundLeg: Identifiable {
-        let id = UUID()
-        var flight: ScheduledFlight
-    }
 
     @State private var flightNumber = ""
     @State private var date = Date().addingTimeInterval(3 * 86_400)
     @State private var isSearching = false
     @State private var searchError: String?
     @State private var results: [ScheduledFlight] = []
-    @State private var legs: [FoundLeg] = []
-    @State private var transferMinutes = 60
-    @State private var isCreating = false
-    @State private var addingAnotherLeg = false
+    @State private var buildingFlight: ScheduledFlight?
     @State private var buildError: String?
 
     private var provider: FlightScheduleProvider { model.deps.scheduleProvider }
     private var localOnly: Bool { model.state.settings.localOnlyMode }
+    private var isBusy: Bool { isSearching || buildingFlight != nil }
 
     var body: some View {
         Form {
@@ -33,18 +27,11 @@ struct FlightLookupView: View {
                 unavailableSection(reason: "Flight lookup isn't set up in this build.")
             } else if localOnly {
                 unavailableSection(reason: "Flight lookup is off while Local-only mode is on (Settings → Privacy).")
+            } else if let buildingFlight {
+                buildingSection(buildingFlight)
             } else {
-                legsSection
-                if !legs.isEmpty && !addingAnotherLeg {
-                    buildSection
-                }
-                if legs.isEmpty || addingAnotherLeg {
-                    searchSection
-                }
+                searchSection
                 resultsSection
-                if !legs.isEmpty && addingAnotherLeg {
-                    buildSection
-                }
             }
         }
         .navigationTitle("Flight number")
@@ -69,24 +56,29 @@ struct FlightLookupView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            .disabled(flightNumber.trimmingCharacters(in: .whitespaces).count < 3 || isSearching)
+            .disabled(flightNumber.trimmingCharacters(in: .whitespaces).count < 3 || isBusy)
             if let searchError {
                 Label(searchError, systemImage: "exclamationmark.triangle")
                     .font(.footnote)
                     .foregroundStyle(.orange)
             }
+            if let buildError {
+                Label(buildError, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+            }
         } footer: {
-            Text("Only the flight number and date are sent — never who you are.")
+            Text("One match and your plan builds itself. Connecting flights? Use Type it in, or paste the whole confirmation email. Only the flight number and date are sent — never who you are.")
         }
     }
 
     @ViewBuilder
     private var resultsSection: some View {
         if !results.isEmpty {
-            Section("Select your flight") {
+            Section("Which one is yours?") {
                 ForEach(results) { flight in
                     Button {
-                        accept(flight)
+                        Task { await build(flight) }
                     } label: {
                         ScheduledFlightRow(flight: flight)
                     }
@@ -95,67 +87,21 @@ struct FlightLookupView: View {
         }
     }
 
-    @ViewBuilder
-    private var legsSection: some View {
-        if !legs.isEmpty {
-            Section {
-                ForEach(legs) { leg in
-                    HStack(spacing: Theme.Space.s) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .accessibilityHidden(true)
-                        ScheduledFlightRow(flight: leg.flight)
-                    }
-                }
-                .onDelete { legs.remove(atOffsets: $0) }
-            } header: {
-                Text(legs.count == 1 ? "Your flight" : "Your flights")
-            } footer: {
-                Text("Swipe a flight to remove it.")
-            }
-        }
-    }
-
-    private var buildSection: some View {
+    /// The brief beat between "found it" and the curtain-up: the flight, confirmed.
+    private func buildingSection(_ flight: ScheduledFlight) -> some View {
         Section {
-            Button {
-                Task { await buildTrip() }
-            } label: {
-                if isCreating {
-                    ProgressView().frame(maxWidth: .infinity)
-                } else {
-                    Text("Build my plan")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                }
+            HStack(spacing: Theme.Space.s) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .accessibilityHidden(true)
+                ScheduledFlightRow(flight: flight)
             }
-            .disabled(isCreating)
-            if let buildError {
-                Label(buildError, systemImage: "exclamationmark.triangle")
-                    .font(.footnote)
-                    .foregroundStyle(.orange)
-            }
-            Button {
-                Haptics.selection()
-                withAnimation(Theme.Anim.spring) { addingAnotherLeg = true }
-            } label: {
-                Label("Add return or connecting flight", systemImage: "plus")
-                    .font(.subheadline)
-            }
-            DisclosureGroup {
-                TransferTimeRow(
-                    minutes: $transferMinutes,
-                    departureAirport: legs.first.flatMap {
-                        model.deps.airports.airport(iata: $0.flight.departureAirport)
-                    }
-                )
-            } label: {
-                Text("Getting to the airport · \(transferMinutes) min")
-                    .font(.subheadline)
+            HStack(spacing: Theme.Space.s) {
+                ProgressView()
+                Text("Building your plan…")
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
             }
-        } footer: {
-            Text("Everything else — intensity, start day — can be tuned any time in trip settings.")
         }
     }
 
@@ -178,6 +124,7 @@ struct FlightLookupView: View {
     private func search() async {
         isSearching = true
         searchError = nil
+        buildError = nil
         defer { isSearching = false }
         do {
             let homeZone = model.profile?.homeZone.resolved ?? .current
@@ -187,8 +134,8 @@ struct FlightLookupView: View {
                 homeZone: homeZone
             )
             if found.count == 1, let only = found.first {
-                // One match: it's your flight. No extra tap.
-                accept(only)
+                // It found your flight. That IS the confirmation — build.
+                await build(only)
             } else {
                 results = found
             }
@@ -206,36 +153,29 @@ struct FlightLookupView: View {
         }
     }
 
-    private func accept(_ flight: ScheduledFlight) {
+    private func build(_ flight: ScheduledFlight) async {
         Haptics.success()
         withAnimation(Theme.Anim.spring) {
-            legs.append(FoundLeg(flight: flight))
+            buildingFlight = flight
             results = []
-            flightNumber = ""
-            addingAnotherLeg = false
         }
-    }
-
-    private func buildTrip() async {
-        isCreating = true
-        buildError = nil
-        defer { isCreating = false }
-        let segments = legs.map { $0.flight.segment() }
         guard let trip = TripAssembler.makeTrip(
-            segments: segments,
+            segments: [flight.segment()],
             homeZone: model.profile?.homeZone ?? ZoneID(TimeZone.current.identifier),
             airports: model.deps.airports,
-            airportTransferMinutes: transferMinutes,
+            airportTransferMinutes: 60,
             importSource: .flightNumber
         ) else {
-            buildError = "These flights don't line up as one trip — check the dates and order."
+            withAnimation(Theme.Anim.spring) { buildingFlight = nil }
+            buildError = "That flight couldn't become a trip — try entering it manually."
             return
         }
         if await model.addTrip(trip) {
-            Haptics.success()
+            // The plan-reveal takes it from here.
             onFinished()
         } else {
-            buildError = "Couldn't build the plan from these flights. Check the trip makes sense time-wise, or try manual entry."
+            withAnimation(Theme.Anim.spring) { buildingFlight = nil }
+            buildError = "Couldn't build the plan for that flight. Try manual entry."
         }
     }
 }

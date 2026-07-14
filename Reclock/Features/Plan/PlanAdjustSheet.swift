@@ -1,0 +1,151 @@
+import SwiftUI
+import ReclockKit
+
+/// The Plan tab's tune-up sheet: the four things travelers actually adjust — sleep
+/// schedule, plan intensity, when shifting starts, and the drive to the airport.
+/// Every change rebuilds the plan and its reminders on the spot.
+struct PlanAdjustSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let trip: Trip
+
+    /// Live copy — edits land in the store, and this view re-reads them.
+    private var currentTrip: Trip {
+        model.state.trips.first { $0.id == trip.id } ?? trip
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    DatePicker("I usually sleep at", selection: bedtimeBinding, displayedComponents: .hourAndMinute)
+                    DatePicker("and wake at", selection: wakeBinding, displayedComponents: .hourAndMinute)
+                } header: {
+                    Text("Your sleep")
+                } footer: {
+                    Text("The anchor for every plan you build.")
+                }
+
+                Section {
+                    Picker("Intensity", selection: intensityBinding) {
+                        ForEach(PlanIntensity.allCases, id: \.self) { value in
+                            Text(value.displayName).tag(value)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Text(currentTrip.intensity.summary)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Picker("Start adjusting", selection: preTripBinding) {
+                        Text("Automatic").tag(-1)
+                        Text("On travel day").tag(0)
+                        Text("1 day before").tag(1)
+                        Text("2 days before").tag(2)
+                        Text("3 days before").tag(3)
+                        Text("4 days before").tag(4)
+                    }
+
+                    TransferTimeRow(
+                        minutes: transferBinding,
+                        departureAirport: departureAirport
+                    )
+                    Text("Door to terminal — sets your leave-by reminder and keeps sleep clear of the airport run.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                } header: {
+                    Text("This trip")
+                } footer: {
+                    Text("Every change rebuilds the plan and its reminders instantly.")
+                }
+            }
+            .navigationTitle("Adjust plan")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    // MARK: Bindings
+
+    private var departureAirport: Airport? {
+        currentTrip.segments.first.flatMap {
+            model.deps.airports.airport(iata: $0.departureAirport)
+        }
+    }
+
+    private func clockDate(_ clock: LocalClockTime) -> Date {
+        Calendar.current.date(
+            bySettingHour: clock.hour, minute: clock.minute, second: 0, of: Date()
+        ) ?? Date()
+    }
+
+    private func clock(from date: Date) -> LocalClockTime {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return LocalClockTime(hour: comps.hour ?? 23, minute: comps.minute ?? 0)
+    }
+
+    private var bedtimeBinding: Binding<Date> {
+        Binding(
+            get: { clockDate(model.profile?.typicalBedtime ?? LocalClockTime(hour: 23)) },
+            set: { newValue in
+                Task {
+                    guard var profile = model.profile else { return }
+                    profile.typicalBedtime = clock(from: newValue)
+                    await model.updateProfile(profile)
+                }
+            }
+        )
+    }
+
+    private var wakeBinding: Binding<Date> {
+        Binding(
+            get: { clockDate(model.profile?.typicalWakeTime ?? LocalClockTime(hour: 7)) },
+            set: { newValue in
+                Task {
+                    guard var profile = model.profile else { return }
+                    profile.typicalWakeTime = clock(from: newValue)
+                    await model.updateProfile(profile)
+                }
+            }
+        )
+    }
+
+    private var intensityBinding: Binding<PlanIntensity> {
+        Binding(
+            get: { currentTrip.intensity },
+            set: { newValue in
+                Haptics.selection()
+                var updated = currentTrip
+                updated.intensity = newValue
+                Task { await model.updateTrip(updated) }
+            }
+        )
+    }
+
+    private var preTripBinding: Binding<Int> {
+        Binding(
+            get: { currentTrip.preTripDaysOverride ?? -1 },
+            set: { newValue in
+                Haptics.selection()
+                var updated = currentTrip
+                updated.preTripDaysOverride = newValue < 0 ? nil : newValue
+                Task { await model.updateTrip(updated) }
+            }
+        )
+    }
+
+    private var transferBinding: Binding<Int> {
+        Binding(
+            get: { currentTrip.airportTransferMinutes ?? 60 },
+            set: { newValue in
+                var updated = currentTrip
+                updated.airportTransferMinutes = newValue
+                Task { await model.updateTrip(updated) }
+            }
+        )
+    }
+}
