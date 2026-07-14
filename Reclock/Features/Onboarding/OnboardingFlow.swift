@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 import ReclockKit
 
@@ -24,7 +25,7 @@ struct OnboardingFlow: View {
         Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date()) ?? Date()
     }
 
-    private let stepCount = 5
+    private let stepCount = 6
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,7 +42,8 @@ struct OnboardingFlow: View {
                 planeSleepStep.tag(2)
                 planStyle.tag(3)
                 preferences.tag(4)
-                finish.tag(5)
+                syncStep.tag(5)
+                finish.tag(6)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut(duration: Theme.Anim.standard), value: step)
@@ -240,6 +242,75 @@ struct OnboardingFlow: View {
             }
             .padding(Theme.Space.l)
             .card()
+        }
+    }
+
+    /// The one account moment, framed as exactly what it is: sync, nothing more.
+    /// Skipping is a first-class path; signing in on a reinstall restores old trips
+    /// before the user even lands in the app.
+    private var syncStep: some View {
+        ScrollView {
+            VStack(spacing: Theme.Space.l) {
+                Spacer(minLength: Theme.Space.xl)
+                ZStack {
+                    Circle().fill(Theme.accent.opacity(0.18))
+                    Image(systemName: "arrow.triangle.2.circlepath.icloud.fill")
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(Theme.accentDeep)
+                }
+                .frame(width: 76, height: 76)
+                .accessibilityHidden(true)
+
+                Text("Back up your plans")
+                    .font(Theme.display(28))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Text("Sign in and your trips quietly sync — a new phone picks up right where you left off. That's all sign-in does. Everything works without it.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                SignInWithAppleButton(.signIn) { request in
+                    model.auth.prepare(request)
+                } onCompletion: { result in
+                    Task {
+                        if await model.auth.complete(result) {
+                            Haptics.success()
+                            await model.handleSignedIn()
+                            step = 6
+                        }
+                    }
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 50)
+                .frame(maxWidth: 360)
+
+                if let error = model.auth.lastError {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+
+                Button("Skip for now") {
+                    Haptics.soft()
+                    step = 6
+                }
+                .buttonStyle(SecondaryButtonStyle())
+
+                Text("No emails from us · Delete anytime in Settings")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+            }
+            .padding(Theme.Space.l)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
+        }
+        .onAppear {
+            // Already signed in (rare mid-onboarding): nothing to offer.
+            if model.auth.isSignedIn { step = 6 }
         }
     }
 

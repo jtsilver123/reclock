@@ -42,6 +42,11 @@ final class ReclockUITests: XCTestCase {
             XCTAssertTrue(continueButton.waitForExistence(timeout: 12))
             continueButton.tap()
         }
+        // The optional sign-in step: sync-only, and skippable — the test skips.
+        let skip = app.buttons["Skip for now"].firstMatch
+        XCTAssertTrue(skip.waitForExistence(timeout: 12))
+        skip.tap()
+
         let finish = app.buttons["Add my trip"].firstMatch
         XCTAssertTrue(finish.waitForExistence(timeout: 12))
         finish.tap()
