@@ -18,9 +18,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                profileSection
+                preferencesSection
                 notificationSection
-                planningSection
                 backupSection
                 Section {
                     NavigationLink {
@@ -69,23 +68,23 @@ struct SettingsView: View {
     // MARK: Profile
 
     @ViewBuilder
-    private var profileSection: some View {
-        if let profile = model.profile {
-            Section {
-                NavigationLink {
+    private var preferencesSection: some View {
+        Section {
+            NavigationLink {
+                if let profile = model.profile {
                     ProfileEditorView(profile: profile)
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Sleep \(clockText(profile.typicalBedtime)) – \(clockText(profile.typicalWakeTime)) · \(profile.chronotype.displayName)")
-                            .font(.subheadline)
-                        Text("Plane sleep: \(profile.planeSleepAbility.displayName) · Pre-trip: \(profile.preTripAdjustment.displayName)")
-                            .font(.caption)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
                 }
-            } header: {
-                SettingsHeader(title: "Your sleep profile", symbol: "moon.stars.fill")
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sleep & plan preferences")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Sleep times, chronotype, caffeine, melatonin, default intensity")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
+        } footer: {
+            Text("Day-to-day tuning lives on the Plan tab — tap the sliders on any plan.")
         }
     }
 
@@ -121,45 +120,6 @@ struct SettingsView: View {
     }
 
     // MARK: Planning
-
-    private var planningSection: some View {
-        Section {
-            Toggle("Caffeine guidance", isOn: Binding(
-                get: { model.profile?.caffeine == .include },
-                set: { newValue in
-                    Task {
-                        guard var profile = model.profile else { return }
-                        profile.caffeine = newValue ? .include : .exclude
-                        await model.updateProfile(profile)
-                    }
-                }
-            ))
-            Toggle("Optional melatonin reminders", isOn: Binding(
-                get: { model.profile?.melatonin.remindersEnabled ?? false },
-                set: { newValue in
-                    Task {
-                        guard var profile = model.profile else { return }
-                        profile.melatonin = newValue ? .includeOptionalReminders : .exclude
-                        await model.updateProfile(profile)
-                    }
-                }
-            ))
-            Picker("Default plan intensity", selection: Binding(
-                get: { model.state.settings.defaultIntensity ?? .balanced },
-                set: { newValue in
-                    var settings = model.state.settings
-                    settings.defaultIntensity = newValue
-                    Task { await model.updateSettings(settings) }
-                }
-            )) {
-                ForEach(PlanIntensity.allCases, id: \.self) { value in
-                    Text(value.displayName).tag(value)
-                }
-            }
-        } header: {
-            SettingsHeader(title: "Planning", symbol: "slider.horizontal.3")
-        }
-    }
 
     // MARK: Backup & sync
 
@@ -442,6 +402,32 @@ struct ProfileEditorView: View {
                         Text($0.displayName).tag($0)
                     }
                 }
+            }
+            Section {
+                Toggle("Caffeine guidance", isOn: Binding(
+                    get: { profile.caffeine == .include },
+                    set: { profile.caffeine = $0 ? .include : .exclude }
+                ))
+                Toggle("Optional melatonin reminders", isOn: Binding(
+                    get: { profile.melatonin.remindersEnabled },
+                    set: { profile.melatonin = $0 ? .includeOptionalReminders : .exclude }
+                ))
+                Picker("Default plan intensity", selection: Binding(
+                    get: { model.state.settings.defaultIntensity ?? .balanced },
+                    set: { newValue in
+                        var settings = model.state.settings
+                        settings.defaultIntensity = newValue
+                        Task { await model.updateSettings(settings) }
+                    }
+                )) {
+                    ForEach(PlanIntensity.allCases, id: \.self) { value in
+                        Text(value.displayName).tag(value)
+                    }
+                }
+            } header: {
+                Text("Guidance & defaults")
+            } footer: {
+                Text("Melatonin steps appear only on nights your clock shifts earlier — typically eastward trips. New trips start from the default intensity.")
             }
             Section {
                 Button("Save changes") {
