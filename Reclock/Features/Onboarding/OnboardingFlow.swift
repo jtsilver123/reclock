@@ -16,7 +16,7 @@ struct OnboardingFlow: View {
     @State private var prioritizeSleepOverMeals = false
     @State private var willingness: PreTripAdjustmentWillingness = .small
     @State private var includeCaffeine = true
-    @State private var includeMelatonin = false
+    @State private var includeMelatonin = true
     @State private var wantsNotifications = true
     @State private var healthSuggestion: SleepPatternAnalyzer.Suggestion?
 

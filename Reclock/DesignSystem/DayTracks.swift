@@ -9,7 +9,8 @@ import ReclockKit
 /// "moment" chip). One source of truth for Home and the Timeline.
 enum DayTracks {
     static let laneTypes: Set<ActionType> = [
-        .seekLight, .avoidLight, .sleep, .nap, .windDown, .stayAwake, .caffeineOK, .caffeineCutoff,
+        .seekLight, .avoidLight, .sleep, .nap, .windDown, .stayAwake,
+        .caffeineOK, .caffeineCutoff, .melatoninOptional,
     ]
 
     /// One readable word per pill, so the timeline explains itself.
@@ -120,7 +121,7 @@ struct DayColumn: View {
             // The columns say what they are — no legend required.
             HStack(spacing: 0) {
                 Color.clear.frame(width: railWidth, height: 1)
-                ForEach(["Light", "Sleep", "Coffee"], id: \.self) { name in
+                ForEach(["Light", "Sleep", "Chemistry"], id: \.self) { name in
                     Text(name)
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
@@ -150,16 +151,19 @@ struct DayColumn: View {
                         .offset(x: 0, y: y - 7)
                 }
 
-                // Capsules.
-                ForEach(caps) { cap in
+                // Capsules. Hollow avoid-pills draw first so the melatonin dose
+                // nests visibly inside the no-coffee stretch — chemically true:
+                // the dose lands mid-abstention.
+                ForEach(caps.sorted { $0.outlined && !$1.outlined }) { cap in
                     let y = max(0, cap.window.start.timeIntervalSince(domainStart) / 3600 * hourHeight)
                     let rawHeight = cap.window.duration / 3600 * hourHeight
                     let height = min(max(44, rawHeight), totalHeight - y)
+                    let nested = cap.action.type == .melatoninOptional
                     NavigationLink(value: cap.action) {
-                        TrackCapsule(cap: cap, height: height, width: laneWidth - 10)
+                        TrackCapsule(cap: cap, height: height, width: laneWidth - (nested ? 26 : 10))
                     }
                     .buttonStyle(PressableCardStyle())
-                    .offset(x: railWidth + laneWidth * CGFloat(cap.lane) + 5, y: y)
+                    .offset(x: railWidth + laneWidth * CGFloat(cap.lane) + (nested ? 13 : 5), y: y)
                 }
 
                 // Now marker.
