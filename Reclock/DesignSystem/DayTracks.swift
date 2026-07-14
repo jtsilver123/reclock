@@ -13,6 +13,10 @@ enum DayTracks {
         .caffeineOK, .caffeineCutoff, .melatoninOptional,
     ]
 
+    /// Width of the hour-label rail. TrackModeBar (in the pinned phase header) uses
+    /// the same inset so its labels sit exactly over the columns below.
+    static let railWidth: CGFloat = 48
+
     /// One readable word per pill, so the timeline explains itself.
     static func shortLabel(for type: ActionType) -> String {
         switch type {
@@ -38,7 +42,7 @@ struct DayColumn: View {
     let now: Date
 
     var hourHeight: CGFloat = 30
-    private let railWidth: CGFloat = 48
+    private var railWidth: CGFloat { DayTracks.railWidth }
 
     struct Cap: Identifiable {
         let id: String
@@ -118,21 +122,9 @@ struct DayColumn: View {
     }
 
     var body: some View {
-        let totalHeight = CGFloat(totalHours) * hourHeight
-        VStack(spacing: 2) {
-            // The columns say what they are — no legend required.
-            HStack(spacing: 0) {
-                Color.clear.frame(width: railWidth, height: 1)
-                ForEach(["Stay awake", "Sleep"], id: \.self) { name in
-                    Text(name)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Theme.textSecondary)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .accessibilityHidden(true)
-            columnBody(totalHeight: totalHeight)
-        }
+        // The column labels live in the pinned phase header (TrackModeBar), so they
+        // stay on screen while any number of days scroll past underneath.
+        columnBody(totalHeight: CGFloat(totalHours) * hourHeight)
     }
 
     /// Same-mode pills that overlap in time share the column side-by-side;
@@ -179,6 +171,13 @@ struct DayColumn: View {
                         .offset(x: 0, y: y - 7)
                 }
 
+                // The seam between the two modes — continues the line the pinned
+                // labels start, so the columns read as columns at every scroll depth.
+                Rectangle()
+                    .fill(Theme.textSecondary.opacity(0.16))
+                    .frame(width: 1, height: totalHeight)
+                    .offset(x: railWidth + laneWidth - 0.5)
+
                 // Capsules, packed into their mode column.
                 ForEach(layout.caps) { placed in
                     let cap = placed.cap
@@ -221,6 +220,28 @@ struct DayColumn: View {
             .hour(.defaultDigits(amPM: .abbreviated))
         style.timeZone = labelZone
         return date.formatted(style).lowercased()
+    }
+}
+
+/// The two mode labels, frozen to their columns: this rides in the pinned phase
+/// header, so "Stay awake | Sleep" stays on screen while the days scroll beneath.
+/// Geometry mirrors DayColumn exactly — rail inset, then two equal halves.
+struct TrackModeBar: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            Color.clear
+                .frame(width: DayTracks.railWidth, height: 1)
+            Text("Stay awake")
+                .frame(maxWidth: .infinity)
+            Rectangle()
+                .fill(Theme.textSecondary.opacity(0.3))
+                .frame(width: 1, height: 12)
+            Text("Sleep")
+                .frame(maxWidth: .infinity)
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(Theme.textSecondary)
+        .accessibilityHidden(true)
     }
 }
 

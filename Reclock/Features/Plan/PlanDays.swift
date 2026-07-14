@@ -180,14 +180,20 @@ struct PlanPhaseHeader: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Space.s) {
-            Image(systemName: symbol)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(Theme.accentDeep)
-                .accessibilityHidden(true)
-            Text(phase.displayName)
-                .font(Theme.display(20, black: false))
-                .foregroundStyle(Theme.textPrimary)
+        VStack(spacing: Theme.Space.xs) {
+            HStack(spacing: Theme.Space.s) {
+                Image(systemName: symbol)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Theme.accentDeep)
+                    .accessibilityHidden(true)
+                Text(phase.displayName)
+                    .font(Theme.display(20, black: false))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Frozen to the columns: the mode labels pin with the phase header,
+            // aligned over the tracks scrolling underneath.
+            TrackModeBar()
         }
         .padding(.horizontal, Theme.Space.m)
         .padding(.vertical, Theme.Space.s)

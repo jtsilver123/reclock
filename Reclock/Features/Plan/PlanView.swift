@@ -12,7 +12,7 @@ struct PlanView: View {
         NavigationStack {
             Group {
                 if let trip = model.activeTrip, let plan = model.plan(for: trip) {
-                    PlanContent(trip: trip, plan: plan)
+                    PlanContent(trip: trip, plan: plan, onAdjust: { adjustTrip = trip })
                         .id(trip.id)
                         .transition(.opacity.combined(with: .scale(scale: 0.985)))
                 } else {
@@ -126,6 +126,7 @@ private struct PlanContent: View {
     @Environment(AppModel.self) private var model
     let trip: Trip
     let plan: JetLagPlan
+    let onAdjust: () -> Void
 
     @State private var notificationsPending = false
     @AppStorage("planPrimerDismissed") private var planPrimerDismissed = false
@@ -166,10 +167,14 @@ private struct PlanContent: View {
                             }
 
                             if !planPrimerDismissed && !ProcessInfo.isUITest {
-                                PlanPrimerCard {
-                                    Haptics.selection()
-                                    withAnimation(Theme.Anim.spring) { planPrimerDismissed = true }
-                                }
+                                PlanPrimerCard(
+                                    sleepText: assumedSleepText,
+                                    onAdjust: onAdjust,
+                                    onDismiss: {
+                                        Haptics.selection()
+                                        withAnimation(Theme.Anim.spring) { planPrimerDismissed = true }
+                                    }
+                                )
                                 .padding(.horizontal, Theme.Space.m)
                                 .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             }
@@ -226,12 +231,30 @@ private struct PlanContent: View {
             await model.checkForKudos(trip: trip)
         }
     }
+
+    /// Onboarding never asks about sleep anymore, so the primer says out loud what
+    /// the plan assumed — in the user's clock format.
+    private var assumedSleepText: String {
+        let bed = model.profile?.typicalBedtime ?? LocalClockTime(hour: 23, minute: 0)
+        let wake = model.profile?.typicalWakeTime ?? LocalClockTime(hour: 7, minute: 0)
+        return "\(clockText(bed)) – \(clockText(wake))"
+    }
+
+    private func clockText(_ clock: LocalClockTime) -> String {
+        let date = Calendar.current.date(
+            bySettingHour: clock.hour, minute: clock.minute, second: 0, of: Date()
+        ) ?? Date()
+        return date.formatted(date: .omitted, time: .shortened)
+    }
 }
 
 // MARK: - First-time primer
 
-/// One-time, three-line decoder for the pill timeline. Dismisses forever on "Got it".
+/// One-time decoder for the pill timeline — and, now that onboarding asks nothing,
+/// the plan's assumptions said out loud with the fix one tap away.
 private struct PlanPrimerCard: View {
+    let sleepText: String
+    var onAdjust: () -> Void
     var onDismiss: () -> Void
 
     var body: some View {
@@ -255,6 +278,12 @@ private struct PlanPrimerCard: View {
                             .foregroundStyle(Theme.tint(for: .caffeineCutoff))
                     )
             }
+            primerRow(text: "We assumed your usual sleep is \(sleepText). The sliders up top adjust that — plus intensity, head start, and melatonin.") {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.accentDeep)
+                    .frame(width: 16, height: 34)
+            }
             primerRow(text: "Tap any step to see why it helps.") {
                 Image(systemName: "hand.tap.fill")
                     .font(.system(size: 17, weight: .semibold))
@@ -262,9 +291,12 @@ private struct PlanPrimerCard: View {
                     .frame(width: 16, height: 34)
             }
 
-            Button("Got it", action: onDismiss)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.accentDeep)
+            HStack(spacing: Theme.Space.l) {
+                Button("Adjust my sleep", action: onAdjust)
+                Button("Looks right", action: onDismiss)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Theme.accentDeep)
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)

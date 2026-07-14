@@ -14,6 +14,9 @@
   (per-day zones, everything shown) and announces context passively.
 - Simplicity first: one-shot flows (flight code → plan), progressive disclosure,
   "a baby should be able to use it."
+- Onboarding asks nothing: welcome → optional sign-in (framed as backup only) →
+  straight into flight lookup. The plan assumes a typical sleeper; the Plan-tab
+  primer announces the assumptions and the Adjust sheet is the optional step 2.
 
 ## Build system facts (hard-won)
 - CI's Xcode compiles the FoundationModels stub path; only the TestFlight

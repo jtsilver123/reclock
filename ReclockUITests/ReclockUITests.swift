@@ -35,21 +35,12 @@ final class ReclockUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Feel local when you land"].waitForExistence(timeout: 10))
         app.buttons["Add my trip"].firstMatch.tap()
 
-        // Sleep basics → plane sleep → plan style → preferences → finish.
-        for _ in 0..<4 {
-            let continueButton = app.buttons["Continue"].firstMatch
-            // Generous: the first post-install run on a cold CI simulator can jank.
-            XCTAssertTrue(continueButton.waitForExistence(timeout: 12))
-            continueButton.tap()
-        }
-        // The optional sign-in step: sync-only, and skippable — the test skips.
+        // The only interstitial: optional sign-in, framed as backup. Skipping is a
+        // first-class path — and lands straight in the add-trip flow, no questionnaire.
         let skip = app.buttons["Skip for now"].firstMatch
+        // Generous: the first post-install run on a cold CI simulator can jank.
         XCTAssertTrue(skip.waitForExistence(timeout: 12))
         skip.tap()
-
-        let finish = app.buttons["Add my trip"].firstMatch
-        XCTAssertTrue(finish.waitForExistence(timeout: 12))
-        finish.tap()
 
         // "Add my trip" does what it says: the add-trip sheet opens immediately.
         XCTAssertTrue(app.navigationBars["Add a trip"].waitForExistence(timeout: 10))

@@ -21,10 +21,15 @@ struct PlanAdjustSheet: View {
                 Section {
                     DatePicker("I usually sleep at", selection: bedtimeBinding, displayedComponents: .hourAndMinute)
                     DatePicker("and wake at", selection: wakeBinding, displayedComponents: .hourAndMinute)
+                    Picker("Sleep on planes", selection: planeSleepBinding) {
+                        ForEach(PlaneSleepAbility.allCases, id: \.self) { ability in
+                            Text(ability.displayName).tag(ability)
+                        }
+                    }
                 } header: {
                     Text("Your sleep")
                 } footer: {
-                    Text("The anchor for every plan you build.")
+                    Text("The anchor for every plan — and how much in-flight sleep to count on.")
                 }
 
                 Section {
@@ -184,6 +189,27 @@ struct PlanAdjustSheet: View {
                 var updated = currentTrip
                 updated.recoveryDaysOverride = newValue < 0 ? nil : newValue
                 Task { await model.updateTrip(updated) }
+            }
+        )
+    }
+
+    private var planeSleepBinding: Binding<PlaneSleepAbility> {
+        Binding(
+            get: { model.profile?.planeSleepAbility ?? .sometimes },
+            set: { newValue in
+                Haptics.selection()
+                Task {
+                    guard var profile = model.profile else { return }
+                    profile.planeSleepAbility = newValue
+                    // Mirror the profile editor's contract: "never" means plan zero
+                    // in-flight sleep; coming back from it restores a usable stretch.
+                    if newValue == .never {
+                        profile.maxInFlightSleep = 0
+                    } else if profile.maxInFlightSleep < 3600 {
+                        profile.maxInFlightSleep = 4 * 3600
+                    }
+                    await model.updateProfile(profile)
+                }
             }
         )
     }
