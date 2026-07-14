@@ -122,7 +122,7 @@ struct AddTripFlow: View {
                     }
                     .buttonStyle(PressableCardStyle())
 
-                    Label("Nothing leaves your phone. You approve every flight before it's saved.", systemImage: "lock.fill")
+                    Label("Everything is read on your phone. Lookups send only a flight number and date — never who you are.", systemImage: "lock.fill")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -247,9 +247,16 @@ struct CalendarImportView: View {
                         .accessibilityHidden(true)
                     Text("Calendar access is optional")
                         .font(.title3.weight(.bold))
-                    Text("No problem — you can still enter your flight in under a minute. To allow access later, visit Settings → Privacy → Calendars.")
+                    Text("No problem — you can still enter your flight in under a minute. You can allow access any time in iOS Settings.")
                         .font(.callout)
                         .foregroundStyle(Theme.textSecondary)
+                    Button("Open iOS Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accentDeep)
                         .multilineTextAlignment(.center)
                     Spacer()
                     NavigationLink {
@@ -334,7 +341,7 @@ struct CalendarImportView: View {
                 } header: {
                     Text("Found \(flights.count) flight\(flights.count == 1 ? "" : "s")")
                 } footer: {
-                    Text("Only the flights you keep selected are imported. Incomplete detections can be finished manually.")
+                    Text("Only complete detections can be imported — add anything else with Type it in.")
                 }
                 Section {
                     if let importError {
@@ -408,7 +415,7 @@ private struct DetectedFlightRow: View {
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(2)
                     if !flight.isComplete {
-                        Label("Needs details — finish manually after import", systemImage: "exclamationmark.triangle")
+                        Label("Missing times — add this one with Type it in", systemImage: "exclamationmark.triangle")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     }

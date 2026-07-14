@@ -123,10 +123,10 @@ struct PlanDayBlock: View {
                 if abs(day.cumulativeShiftHours) > 0.1 {
                     Text(shiftLabel)
                         .font(.caption2.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(Theme.accentDeep)
                         .padding(.horizontal, Theme.Space.s)
                         .padding(.vertical, 2)
-                        .background(Theme.accent.opacity(0.35), in: Capsule())
+                        .background(Theme.accent.opacity(0.12), in: Capsule())
                 }
             }
             .padding(.horizontal, Theme.Space.m)

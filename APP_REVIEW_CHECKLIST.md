@@ -6,7 +6,7 @@ Walk top to bottom on a physical device before every submission. ☐ = verify ea
 
 - ☐ Fresh install: onboarding → add manual trip (JFK→HEL fixture data) → plan appears
   with Now/Next/Tonight populated.
-- ☐ "See an example" on first launch loads the demo landing-day trip.
+- ☐ First launch: welcome → "Skip and add my trip" lands in the add-trip sheet.
 - ☐ Calendar import: grant flow, detection list shows only flight-shaped events,
   deselect works, import builds a trip.
 - ☐ Calendar denied: friendly fallback screen; manual entry one tap away; re-enable

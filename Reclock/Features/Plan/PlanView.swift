@@ -303,6 +303,12 @@ private struct PlanPrimerCard: View {
                     .foregroundStyle(Theme.accentDeep)
                     .frame(width: 16, height: 34)
             }
+            primerRow(text: "The calendar button up top puts every remaining step on your calendar — and each event links back here.") {
+                Image(systemName: "calendar.badge.plus")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.accentDeep)
+                    .frame(width: 16, height: 34)
+            }
             primerRow(text: "Tap any step to see why it helps.") {
                 Image(systemName: "hand.tap.fill")
                     .font(.system(size: 17, weight: .semibold))

@@ -285,8 +285,8 @@ private struct TripListRow: View {
                 .font(.caption2.weight(.bold))
                 .padding(.horizontal, Theme.Space.s)
                 .padding(.vertical, 3)
-                .background(Theme.accent.opacity(0.4), in: Capsule())
-                .foregroundStyle(Theme.ink)
+                .background(Theme.accent.opacity(0.12), in: Capsule())
+                .foregroundStyle(Theme.accentDeep)
                 .accessibilityLabel("Currently shown on the Plan tab")
         } else {
             Text(statusText)

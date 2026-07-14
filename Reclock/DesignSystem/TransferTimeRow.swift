@@ -2,7 +2,7 @@ import SwiftUI
 import ReclockKit
 
 /// "Getting to the airport" control: preset menu + optional one-tap drive-time estimate
-/// from the user's current location (MapKit). Used in trip settings, manual entry, and
+/// from the user's current location (MapKit). Used in the Adjust sheet, manual entry, and
 /// flight lookup so the behavior is identical everywhere.
 struct TransferTimeRow: View {
     @Environment(AppModel.self) private var model

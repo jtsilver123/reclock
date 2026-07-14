@@ -14,6 +14,13 @@ struct PlanAdjustSheet: View {
     /// Any plan-affecting edit arms the "plan rebuilt" moment shown on close.
     @State private var touched = false
 
+    /// Every edit re-arms both the close celebration and Save-as-defaults —
+    /// otherwise the save button latches "Saved" and can't take a second value.
+    private func markEdited() {
+        touched = true
+        savedDefaults = false
+    }
+
     /// Live copy — edits land in the store, and this view re-reads them.
     private var currentTrip: Trip {
         model.state.trips.first { $0.id == trip.id } ?? trip
@@ -138,7 +145,7 @@ struct PlanAdjustSheet: View {
         Binding(
             get: { clockDate(model.profile?.typicalBedtime ?? LocalClockTime(hour: 23)) },
             set: { newValue in
-                touched = true
+                markEdited()
                 Task {
                     guard var profile = model.profile else { return }
                     profile.typicalBedtime = clock(from: newValue)
@@ -152,7 +159,7 @@ struct PlanAdjustSheet: View {
         Binding(
             get: { clockDate(model.profile?.typicalWakeTime ?? LocalClockTime(hour: 7)) },
             set: { newValue in
-                touched = true
+                markEdited()
                 Task {
                     guard var profile = model.profile else { return }
                     profile.typicalWakeTime = clock(from: newValue)
@@ -167,7 +174,7 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.intensity },
             set: { newValue in
                 Haptics.selection()
-                touched = true
+                markEdited()
                 var updated = currentTrip
                 updated.intensity = newValue
                 Task { await model.updateTrip(updated) }
@@ -180,7 +187,7 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.preTripDaysOverride ?? -1 },
             set: { newValue in
                 Haptics.selection()
-                touched = true
+                markEdited()
                 var updated = currentTrip
                 updated.preTripDaysOverride = newValue < 0 ? nil : newValue
                 Task { await model.updateTrip(updated) }
@@ -193,7 +200,7 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.recoveryDaysOverride ?? -1 },
             set: { newValue in
                 Haptics.selection()
-                touched = true
+                markEdited()
                 var updated = currentTrip
                 updated.recoveryDaysOverride = newValue < 0 ? nil : newValue
                 Task { await model.updateTrip(updated) }
@@ -226,7 +233,7 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.adaptationStrategy },
             set: { newValue in
                 Haptics.selection()
-                touched = true
+                markEdited()
                 var updated = currentTrip
                 updated.adaptationStrategy = newValue
                 Task { await model.updateTrip(updated) }
@@ -238,7 +245,7 @@ struct PlanAdjustSheet: View {
         Binding(
             get: { currentTrip.airportTransferMinutes ?? 60 },
             set: { newValue in
-                touched = true
+                markEdited()
                 var updated = currentTrip
                 updated.airportTransferMinutes = newValue
                 Task { await model.updateTrip(updated) }

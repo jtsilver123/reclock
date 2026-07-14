@@ -51,10 +51,10 @@ struct TripDetailView: View {
                         HStack(spacing: Theme.Space.s) {
                             Text(shiftDescription(plan))
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(Theme.ink)
+                                .foregroundStyle(Theme.accentDeep)
                                 .padding(.horizontal, Theme.Space.s)
                                 .padding(.vertical, 4)
-                                .background(Theme.accent.opacity(0.4), in: Capsule())
+                                .background(Theme.accent.opacity(0.12), in: Capsule())
                             Text(plan.strategySummary)
                                 .font(.footnote)
                                 .foregroundStyle(Theme.textSecondary)
@@ -244,7 +244,87 @@ struct TripDetailView: View {
         }
     }
 
-    /// -1 = automatic (derived from your profile), 0–4 = explicit days before departure.
+}
+
+// MARK: - Rows
+
+private struct CommitmentRow: View {
+    let commitment: FixedCommitment
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            Image(systemName: commitment.requiresAlertness ? "bolt.circle.fill" : "calendar.circle.fill")
+                .font(.title3)
+                .foregroundStyle(commitment.importance == .critical ? Theme.priorityColor(.mustDo) : Theme.accent)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(commitment.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(TimeFormat.range(commitment.window, zone: commitment.zone.resolved)
+                     + " · " + TimeFormat.dayDate(commitment.start, zone: commitment.zone.resolved))
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                if commitment.requiresAlertness {
+                    Text("Needs you sharp")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+            Spacer()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+private struct SegmentRow: View {
+    let segment: FlightSegment
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(segment.displayName)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if segment.status == .delayed {
+                    Text("Delayed")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.18), in: Capsule())
+                        .foregroundStyle(.orange)
+                }
+            }
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(TimeFormat.time(segment.departure, zone: segment.departureZone.resolved))
+                        .font(.callout.weight(.medium).monospacedDigit())
+                    Text(TimeFormat.dayDate(segment.departure, zone: segment.departureZone.resolved))
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                Image(systemName: "arrow.right")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .accessibilityLabel("to")
+                VStack(alignment: .leading) {
+                    Text(TimeFormat.time(segment.arrival, zone: segment.arrivalZone.resolved))
+                        .font(.callout.weight(.medium).monospacedDigit())
+                    Text(TimeFormat.dayDate(segment.arrival, zone: segment.arrivalZone.resolved))
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                Spacer()
+                Text(blockText)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+
     private var blockText: String {
         let hours = Int(segment.blockTime) / 3600
         let minutes = (Int(segment.blockTime) % 3600) / 60

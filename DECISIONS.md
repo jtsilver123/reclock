@@ -261,3 +261,22 @@ re-exporting after a plan change replaces instead of duplicates.
 
 The Plan tab now says which clock it's speaking: a tappable "Times in Tokyo
 time" chip above the day list, doubling as the zone switcher.
+
+## Superseded by the July product simplification (owner-directed)
+
+18. **Onboarding asks nothing (supersedes #16, #16b's onboarding half).** First run is
+    two screens — value prop, then optional Sign in with Apple framed purely as backup —
+    and drops straight into flight lookup. The plan assumes a typical sleeper; the
+    Plan-tab primer announces the assumption and offers the Adjust sheet, which is the
+    per-trip home of the head-start control ("Start adjusting", Automatic/0–4 days).
+19. **Melatonin reminders default ON (supersedes #12's opt-in half; owner call).**
+    Optional priority, advance-days emphasis, disclaimer, and no-dosage rules all stand.
+    Every melatonin step carries "turn off any time in Settings › Default preferences,"
+    and the toggle lives there. `melatoninForDelays` remains false.
+20. **Long-term traits live only in Settings › Default preferences.** The Adjust sheet
+    holds the sleep anchor (bed/wake) plus per-trip levers (intensity, head start,
+    recovery, strategy, transfer); chronotype, planes, caffeine, and melatonin do not
+    appear there. "Save these as my defaults" writes intensity + head start back.
+21. **"See an example" was retired with the questionnaire onboarding (supersedes #17).**
+    The demo trip now exists for dev fixtures and UI tests only; first-run goes straight
+    to a real flight.

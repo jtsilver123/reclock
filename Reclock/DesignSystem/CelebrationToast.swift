@@ -39,7 +39,7 @@ struct CelebrationEvent: Equatable, Identifiable {
     }
 
     static func kudos(from name: String, emoji: String) -> CelebrationEvent {
-        CelebrationEvent(type: .checkIn, customLine: "\(emoji) \(name) sent you kudos!", symbol: "hands.clap.fill")
+        CelebrationEvent(type: .checkIn, customLine: "\(emoji) \(name) sent you kudos.", symbol: "hands.clap.fill")
     }
 
     /// Copy is deterministic by action type so the voice stays consistent.

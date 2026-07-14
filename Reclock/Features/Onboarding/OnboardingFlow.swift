@@ -4,8 +4,9 @@ import ReclockKit
 
 /// First run, two screens, zero questions: what the app does, then an optional
 /// sign-in framed as backup — and straight into adding a flight. The plan assumes
-/// a typical sleeper (11 pm–7 am, melatonin reminders on) and announces exactly
-/// that on the Plan tab, where the Adjust sheet is the real "step 2".
+/// a typical sleeper (11 pm–7 am; optional melatonin reminders on, each step
+/// saying how to turn them off). The Plan-tab primer announces the sleep
+/// assumption, and the Adjust sheet is the real "step 2".
 struct OnboardingFlow: View {
     @Environment(AppModel.self) private var model
 
@@ -108,7 +109,7 @@ struct OnboardingFlow: View {
                         .foregroundStyle(.orange)
                 }
 
-                Button("Skip for now") {
+                Button("Skip and add my trip") {
                     Haptics.soft()
                     Task { await finish() }
                 }

@@ -74,7 +74,7 @@ struct PlanPinnedHeader: View {
         .overlay(alignment: .bottom) {
             // Content scrolling past reads as sliding under the frozen block.
             LinearGradient(
-                colors: [Theme.textPrimary.opacity(0.08), .clear],
+                colors: [Color.black.opacity(0.12), .clear],
                 startPoint: .top, endPoint: .bottom
             )
             .frame(height: 5)
@@ -244,8 +244,8 @@ struct CompactQuietCard: View {
                 if let next {
                     let zone = next.displayZone.resolved
                     Text(isSoon
-                         ? "Next: \(next.title.lowercased())"
-                         : "Next: \(next.title.lowercased()) · \(TimeFormat.dayDate(next.window.start, zone: zone)), \(TimeFormat.time(next.window.start, zone: zone))")
+                         ? "Next: \(next.title)"
+                         : "Next: \(next.title) · \(TimeFormat.dayDate(next.window.start, zone: zone)), \(TimeFormat.time(next.window.start, zone: zone))")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(Color.white.opacity(0.8))
                         .lineLimit(2)

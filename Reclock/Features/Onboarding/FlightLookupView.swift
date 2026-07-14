@@ -24,7 +24,7 @@ struct FlightLookupView: View {
     var body: some View {
         Form {
             if !provider.isConfigured {
-                unavailableSection(reason: "Flight lookup isn't set up in this build.")
+                unavailableSection(reason: "Flight lookup isn't available here — enter the flight manually instead.")
             } else if localOnly {
                 unavailableSection(reason: "Flight lookup is off while Local-only mode is on (Settings → Privacy).")
             } else if let buildingFlight {
@@ -66,6 +66,15 @@ struct FlightLookupView: View {
                 Label(buildError, systemImage: "exclamationmark.triangle")
                     .font(.footnote)
                     .foregroundStyle(.orange)
+            }
+            // Every error message ends "…enter it manually" — so the way to do
+            // that must be right here, not a back-navigation away.
+            if searchError != nil || buildError != nil {
+                NavigationLink {
+                    ManualTripEntryView(onFinished: onFinished)
+                } label: {
+                    Label("Type it in instead", systemImage: "keyboard")
+                }
             }
         } footer: {
             Text("One match and your plan builds itself. Connecting flights? Use Type it in, or paste the whole confirmation email. Only the flight number and date are sent — never who you are.")

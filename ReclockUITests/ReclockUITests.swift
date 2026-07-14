@@ -37,7 +37,7 @@ final class ReclockUITests: XCTestCase {
 
         // The only interstitial: optional sign-in, framed as backup. Skipping is a
         // first-class path — and lands straight in the add-trip flow, no questionnaire.
-        let skip = app.buttons["Skip for now"].firstMatch
+        let skip = app.buttons["Skip and add my trip"].firstMatch
         // Generous: the first post-install run on a cold CI simulator can jank.
         XCTAssertTrue(skip.waitForExistence(timeout: 12))
         skip.tap()

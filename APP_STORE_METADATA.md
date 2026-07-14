@@ -131,8 +131,10 @@ shots 1–5, shot 6 dark mode; status bar cleaned via `xcrun simctl status_bar o
 ## Review notes (App Review box)
 
 > Reclock is a free jet lag planning utility. No account, no server: all features work
-> locally. To see a full active-trip experience immediately: launch → "See an example"
-> on the first screen loads a demo trip placed on landing day. Calendar access is
+> locally. To see a full active-trip experience immediately: launch → skip the optional
+> sign-in → enter any real flight number (e.g. AY 16 tomorrow), or use "Type it in"
+> with JFK → HEL, departing tomorrow 6:30 PM New York time, arriving 9:50 AM the next
+> morning Helsinki time — the plan appears instantly. Calendar access is
 > optional (used only to detect flight events, on-device); notifications are optional;
 > the app is fully usable when both are denied. Wellness positioning: the app gives
 > general schedule suggestions (light/sleep/caffeine timing), never diagnoses or treats;

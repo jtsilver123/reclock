@@ -403,9 +403,11 @@ private struct QuietHoursEditor: View {
 
 // MARK: - Profile editor
 
+/// Every control writes through instantly — same contract as the Adjust sheet.
+/// The old "Save changes" button silently discarded edits from anyone who backed
+/// out without finding it.
 struct ProfileEditorView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     @State var profile: UserProfile
 
     @State private var bedtime = Date()
@@ -466,24 +468,9 @@ struct ProfileEditorView: View {
                     }
                 }
             } header: {
-                Text("Guidance & defaults")
+                Text("Caffeine, melatonin & intensity")
             } footer: {
-                Text("Melatonin steps appear only on nights your clock shifts earlier — typically eastward trips. New trips start from the default intensity.")
-            }
-            Section {
-                Button("Save changes") {
-                    Task {
-                        var updated = profile
-                        let bedComps = Calendar.current.dateComponents([.hour, .minute], from: bedtime)
-                        let wakeComps = Calendar.current.dateComponents([.hour, .minute], from: wakeTime)
-                        updated.typicalBedtime = LocalClockTime(hour: bedComps.hour ?? 23, minute: bedComps.minute ?? 0)
-                        updated.typicalWakeTime = LocalClockTime(hour: wakeComps.hour ?? 7, minute: wakeComps.minute ?? 0)
-                        await model.updateProfile(updated)
-                        dismiss()
-                    }
-                }
-            } footer: {
-                Text("Changing your profile rebuilds the plan for upcoming trips.")
+                Text("Melatonin steps appear only on nights your clock shifts earlier — typically eastward trips. New trips start from the default intensity. Every change applies instantly and rebuilds upcoming plans.")
             }
         }
         .navigationTitle("Default preferences")
@@ -496,6 +483,20 @@ struct ProfileEditorView: View {
                 bySettingHour: profile.typicalWakeTime.hour,
                 minute: profile.typicalWakeTime.minute, second: 0, of: Date()
             ) ?? Date()
+        }
+        .onChange(of: bedtime) { _, newValue in
+            let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+            profile.typicalBedtime = LocalClockTime(hour: comps.hour ?? 23, minute: comps.minute ?? 0)
+        }
+        .onChange(of: wakeTime) { _, newValue in
+            let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+            profile.typicalWakeTime = LocalClockTime(hour: comps.hour ?? 7, minute: comps.minute ?? 0)
+        }
+        .onChange(of: profile) { _, updated in
+            // The onAppear seeding round-trips identical values; only real edits
+            // reach the store (and rebuild plans).
+            guard updated != model.profile else { return }
+            Task { await model.updateProfile(updated) }
         }
     }
 }

@@ -138,14 +138,21 @@ struct DayColumn: View {
     private func packed() -> (caps: [PlacedCap], subCount: [Int: Int]) {
         var result: [PlacedCap] = []
         var laneEnds: [Int: [Date]] = [:]
+        // A pill is drawn at least 44 pt tall, so a short window occupies more
+        // vertical space than its time span. Pack against the drawn extent —
+        // otherwise the next pill in the column lands on top of the overflow.
+        let minVisualSpan = Double(44 / hourHeight) * 3600
+        func drawnEnd(_ cap: Cap) -> Date {
+            max(cap.window.end, cap.window.start.addingTimeInterval(minVisualSpan))
+        }
         for cap in caps.sorted(by: { $0.window.start < $1.window.start }) {
             var ends = laneEnds[cap.lane] ?? []
             if let free = ends.firstIndex(where: { $0 <= cap.window.start }) {
-                ends[free] = cap.window.end
+                ends[free] = drawnEnd(cap)
                 result.append(PlacedCap(cap: cap, sub: free))
             } else {
                 result.append(PlacedCap(cap: cap, sub: ends.count))
-                ends.append(cap.window.end)
+                ends.append(drawnEnd(cap))
             }
             laneEnds[cap.lane] = ends
         }

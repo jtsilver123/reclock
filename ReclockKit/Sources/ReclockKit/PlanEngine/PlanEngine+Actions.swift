@@ -289,6 +289,7 @@ extension PlanEngine {
                         instruction: "If you've chosen to use melatonin, early evening (a few hours before your shifted bedtime) is when it best supports an earlier clock — not just at lights-out.",
                         explanation: "Taken well before bed, melatonin acts as a timing signal that complements your light plan. It's entirely optional — the plan works without it. \(SafetyCopy.melatoninDisclaimer)",
                         notificationEnabled: profile.notifications.includeOptionalActions,
+                        adjustmentNote: "Optional — turn melatonin reminders off any time in Settings › Default preferences.",
                         dayIndex: dayIndex,
                         phase: day.phase,
                         confidence: .individual,

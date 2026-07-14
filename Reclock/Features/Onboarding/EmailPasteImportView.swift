@@ -205,7 +205,7 @@ struct EmailPasteImportView: View {
                     .foregroundStyle(Theme.textSecondary)
             }
         } footer: {
-            Text("Everything else — intensity, start day — can be tuned any time in trip settings.")
+            Text("Everything else — intensity, start day — can be tuned any time with Adjust on the Plan tab.")
         }
     }
 

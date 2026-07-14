@@ -107,7 +107,7 @@ struct TravelBuddiesSection: View {
                 )
             }
             if board.members.count == 1 {
-                Text("Just you so far — send the invite!")
+                Text("Just you so far — send the invite.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
             }

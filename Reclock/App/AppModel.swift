@@ -319,6 +319,9 @@ final class AppModel {
         state.trips.removeAll { $0.id == trip.id }
         state.plans.removeAll { $0.tripID == trip.id }
         state.setTravelerState(nil, forTrip: trip.id)
+        // Take the plan's events off the calendar too — a deleted trip must not
+        // leave orphans whose reclock:// links now lead nowhere.
+        _ = await deps.calendarExporter.removeAll(tripID: trip.id)
         if state.settings.selectedTripID == trip.id {
             state.settings.selectedTripID = nil
         }
@@ -472,7 +475,7 @@ final class AppModel {
         } catch {
             activeAlert = AppAlert(
                 title: "Couldn't update the plan",
-                message: "We kept your current plan. If a flight changed, check its new times in Trip settings."
+                message: "We kept your current plan. If a flight changed, correct its times on the trip page, under Flights."
             )
         }
     }

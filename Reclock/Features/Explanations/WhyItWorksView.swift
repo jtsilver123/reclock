@@ -40,8 +40,8 @@ struct WhyItWorksView: View {
                     Sleeping at the destination's night — even a shortened, imperfect \
                     version — sets the stage for every other signal. Reclock schedules \
                     realistic windows: it won't tell you to sleep through boarding, meal \
-                    service, or a wedding, and it caps in-flight sleep at what you told us \
-                    is actually possible for you.
+                    service, or a wedding, and it caps in-flight sleep at what's realistic \
+                    for you — tune that in Settings › Default preferences.
                     """
                 )
                 ExplainerBlock(
@@ -63,8 +63,8 @@ struct WhyItWorksView: View {
                     Melatonin is a timing signal, not a sleeping pill. Taken in the early \
                     evening it can support an eastward shift. But it affects people \
                     differently, product contents vary, and plenty of travelers adjust \
-                    fine without it. Reclock only mentions it if you opted in — and never \
-                    suggests a dose. Ask a clinician or pharmacist if you're unsure, \
+                    fine without it. Reclock's melatonin reminders are optional and easy to turn \
+                    off in Settings › Default preferences — and it never suggests a dose. Ask a clinician or pharmacist if you're unsure, \
                     take medication, are pregnant, or have a health condition.
                     """
                 )
