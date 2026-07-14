@@ -91,7 +91,7 @@ struct TripDetailView: View {
                     Label("Adjust plan (intensity, timing, transfer)", systemImage: "slider.horizontal.3")
                 }
                 Button {
-                    Task { await model.recalculate(trip: currentTrip, trigger: "manual") }
+                    Task { await model.recalculate(trip: currentTrip, trigger: "manual", presentation: .announce) }
                 } label: {
                     Label("Recalculate plan", systemImage: "arrow.triangle.2.circlepath")
                 }

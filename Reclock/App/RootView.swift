@@ -87,6 +87,21 @@ struct MainTabs: View {
             // The reveal ends on the plan itself, wherever the trip was added from.
             if id != nil { selection = .plan }
         }
+        // A deliberate replan re-computes on screen, then shows what moved.
+        .overlay {
+            if let update = model.planUpdate {
+                PlanUpdateView(update: update) {
+                    withAnimation(Theme.Anim.spring) { model.planUpdate = nil }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                .zIndex(11)
+            }
+        }
+        .animation(Theme.Anim.spring, value: model.planUpdate?.id)
+        .onChange(of: model.planUpdate?.id) { _, id in
+            // "See the plan" lands on the updated plan itself.
+            if id != nil { selection = .plan }
+        }
         .onChange(of: model.planTabRequest) { _, _ in
             // A calendar event's deep link: land on the plan it points at.
             selection = .plan

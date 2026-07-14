@@ -22,16 +22,8 @@ struct SettingsView: View {
                 preferencesSection
                 notificationSection
                 backupSection
-                Section {
-                    NavigationLink {
-                        WhyItWorksView()
-                    } label: {
-                        Label("Why light, sleep & caffeine timing work", systemImage: "questionmark.circle")
-                    }
-                } header: {
-                    SettingsHeader(title: "Understand the plan", symbol: "sparkles")
-                }
                 privacySection
+                dataSection
                 aboutSection
                 #if DEBUG
                 Section("Developer") {
@@ -119,8 +111,6 @@ struct SettingsView: View {
             SettingsHeader(title: "Notifications", symbol: "bell.badge.fill")
         }
     }
-
-    // MARK: Planning
 
     // MARK: Backup & sync
 
@@ -222,7 +212,7 @@ struct SettingsView: View {
         Section {
             Label("Everything stays on this device", systemImage: "iphone.and.arrow.forward")
                 .font(.subheadline)
-            Text("No account required — plans, reminders, and calendar scanning all run on-device and work in airplane mode. Optional sign-in adds an encrypted backup of your trips, nothing else. Anonymous usage analytics are OFF unless you turn them on.")
+            Text("No account required — plans, reminders, and calendar scanning all run on-device and work in airplane mode. Optional sign-in adds an encrypted backup of your trips, nothing else.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
             Toggle("Local-only mode", isOn: Binding(
@@ -244,6 +234,18 @@ struct SettingsView: View {
                     Task { await model.updateSettings(settings) }
                 }
             ))
+            Text("Off by default — never includes trip details, flights, or where you are.")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
+        } header: {
+            SettingsHeader(title: "Privacy", symbol: "lock.fill")
+        }
+    }
+
+    // MARK: Your data
+
+    private var dataSection: some View {
+        Section {
             Button {
                 Task {
                     if let data = await model.exportData() {
@@ -259,7 +261,7 @@ struct SettingsView: View {
             Button {
                 Task {
                     let count = await model.deps.calendarExporter.removeEverything()
-                    if let count { Haptics.soft() }
+                    if count != nil { Haptics.soft() }
                     calendarSweepResult = .some(count)
                 }
             } label: {
@@ -271,7 +273,7 @@ struct SettingsView: View {
                 Label("Delete all data", systemImage: "trash")
             }
         } header: {
-            SettingsHeader(title: "Privacy", symbol: "lock.fill")
+            SettingsHeader(title: "Your data", symbol: "tray.full.fill")
         } footer: {
             Text("Removing calendar events takes back everything Reclock ever added, across all trips — your own events are never touched.")
         }
@@ -299,28 +301,25 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            LabeledContent("Version", value: appVersion)
-            LabeledContent("Plan protocol", value: "v\(ProtocolVersion.current.description)")
+            NavigationLink {
+                WhyItWorksView()
+            } label: {
+                Label("Why light, sleep & caffeine timing work", systemImage: "questionmark.circle")
+            }
             Link(destination: URL(string: "https://jtsilver123.github.io/reclock/privacy/")!) {
                 Label("Privacy policy", systemImage: "hand.raised")
             }
             Link(destination: URL(string: "https://jtsilver123.github.io/reclock/")!) {
                 Label("Support", systemImage: "lifepreserver")
             }
+            LabeledContent("Version", value: appVersion)
+            LabeledContent("Plan protocol", value: "v\(ProtocolVersion.current.description)")
             Text("Reclock offers general wellness guidance for travel, not medical advice. If you have a sleep disorder or health condition, talk to a clinician.")
                 .font(.caption2)
                 .foregroundStyle(Theme.textSecondary)
         } header: {
             SettingsHeader(title: "About", symbol: "info.circle.fill")
         }
-    }
-
-    /// Locale-aware rendering of a stored clock time (12/24-hour follows the device).
-    private func clockText(_ clock: LocalClockTime) -> String {
-        let date = Calendar.current.date(
-            bySettingHour: clock.hour, minute: clock.minute, second: 0, of: Date()
-        ) ?? Date()
-        return date.formatted(date: .omitted, time: .shortened)
     }
 
     private var appVersion: String {

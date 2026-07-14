@@ -29,6 +29,9 @@ final class AppModel {
     var celebration: CelebrationEvent?
     /// A just-added trip awaiting its curtain-up moment on the Plan tab.
     var planReveal: Trip?
+    /// A deliberate replan (flight change, manual recalculate) awaiting its
+    /// "here's what changed" moment. Quiet replans use `lastChangeMessages` instead.
+    var planUpdate: PlanUpdate?
     /// A join code arriving via reclock://join?c=… — RootView presents the join sheet.
     var pendingJoinCode: PendingJoinCode?
     /// Bumped when a reclock://trip/… link lands so MainTabs jumps to the Plan tab.
@@ -472,6 +475,11 @@ final class AppModel {
 
     // MARK: - Replanning
 
+    /// How a replan announces itself: a full "here's what changed" moment for the
+    /// deliberate ones the user pressed a button for, or a quiet inline banner for
+    /// the automatic ones (a missed sleep, a tweaked slider) where a takeover intrudes.
+    enum ReplanPresentation { case announce, quiet }
+
     func reportDelay(trip: Trip, segmentID: UUID, newDeparture: Date, newArrival: Date) async {
         let updated = deps.coordinator.applyingDelay(
             to: trip, segmentID: segmentID, newDeparture: newDeparture, newArrival: newArrival
@@ -483,10 +491,10 @@ final class AppModel {
             let minutes = Int(newDeparture.timeIntervalSince(original.departure) / 60)
             deps.analytics.track(.flightDelayReported(delayMinutes: minutes))
         }
-        await recalculate(trip: updated, trigger: "delay_reported")
+        await recalculate(trip: updated, trigger: "delay_reported", presentation: .announce)
     }
 
-    func recalculate(trip: Trip, trigger: String) async {
+    func recalculate(trip: Trip, trigger: String, presentation: ReplanPresentation = .quiet) async {
         guard let profile = state.profile, let previous = plan(for: trip) else { return }
         let asOf = deps.now()
         let events = state.travelerState(forTrip: trip.id)?.events ?? []
@@ -499,7 +507,16 @@ final class AppModel {
                 trip: trip, profile: profile, previousPlan: previous, state: travelerState
             )
             replacePlan(result.plan)
-            lastChangeMessages = result.changeMessages
+            switch presentation {
+            case .announce:
+                planUpdate = PlanUpdate(
+                    tripID: trip.id,
+                    route: "\(trip.origin) → \(trip.destination)",
+                    changes: result.changeMessages
+                )
+            case .quiet:
+                lastChangeMessages = result.changeMessages
+            }
             if var t = state.trips.first(where: { $0.id == trip.id }),
                let index = state.trips.firstIndex(where: { $0.id == trip.id }) {
                 t.lastRecalculatedAt = asOf
@@ -649,4 +666,12 @@ struct AppAlert: Identifiable {
     let id = UUID()
     var title: String
     var message: String
+}
+
+/// A deliberate plan update awaiting its "here's what changed" moment.
+struct PlanUpdate: Identifiable {
+    let id = UUID()
+    var tripID: UUID
+    var route: String
+    var changes: [String]
 }
