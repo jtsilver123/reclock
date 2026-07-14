@@ -8,6 +8,7 @@ struct TripDetailView: View {
 
     @State private var showDelaySheet = false
     @State private var showGlobe = false
+    @State private var showAdjust = false
     @State private var calendarResult: Int??  // nil = idle, .some(nil) = denied, .some(n) = added
     @State private var showDeleteConfirm = false
     @State private var showSurvey = false
@@ -93,6 +94,11 @@ struct TripDetailView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                Button {
+                    showDelaySheet = true
+                } label: {
+                    Label("My flight changed / was delayed", systemImage: "clock.badge.exclamationmark")
+                }
             } header: {
                 Text("Flights")
             } footer: {
@@ -128,48 +134,25 @@ struct TripDetailView: View {
                      : "Sleep, naps, and light windows always route around these.")
             }
 
-            Section("Plan style") {
-                Picker("Intensity", selection: intensityBinding) {
-                    ForEach(PlanIntensity.allCases, id: \.self) { intensity in
-                        Text(intensity.displayName).tag(intensity)
-                    }
+            Section {
+                Button {
+                    Haptics.soft()
+                    showAdjust = true
+                } label: {
+                    Label("Adjust plan (intensity, timing, transfer)", systemImage: "slider.horizontal.3")
                 }
-                Text(currentTrip.intensity.summary)
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Picker("Start adjusting", selection: preTripBinding) {
-                    Text("Automatic").tag(-1)
-                    Text("On travel day").tag(0)
-                    Text("1 day before").tag(1)
-                    Text("2 days before").tag(2)
-                    Text("3 days before").tag(3)
-                    Text("4 days before").tag(4)
+                Button {
+                    Task { await model.recalculate(trip: currentTrip, trigger: "manual") }
+                } label: {
+                    Label("Recalculate plan", systemImage: "arrow.triangle.2.circlepath")
                 }
-                Text(preTripFootnote)
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                TransferTimeRow(
-                    minutes: transferBinding,
-                    departureAirport: currentTrip.segments.first.flatMap {
-                        model.deps.airports.airport(iata: $0.departureAirport)
-                    }
-                )
-                Text("Door to terminal. Sets the leave-by reminder and keeps sleep clear of the airport run — for departure and return.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                if currentTrip.destinationNights.map({ $0 <= 3 }) == true {
-                    Picker("Adaptation", selection: strategyBinding) {
-                        Text("Automatic").tag(AdaptationStrategy.automatic)
-                        Text("Fully adapt").tag(AdaptationStrategy.fullyAdapt)
-                        Text("Stay on home time").tag(AdaptationStrategy.anchorToHome)
-                    }
-                }
+            } header: {
+                Text("Plan")
+            } footer: {
+                Text("The same Adjust sheet as the Plan tab — one home for tuning.")
             }
 
-            Section {
+            Section("Take it with you") {
                 Button {
                     Task {
                         guard let plan = model.plan(for: currentTrip) else { return }
@@ -185,26 +168,19 @@ struct TripDetailView: View {
                 } label: {
                     Label("Add plan to my calendar", systemImage: "calendar.badge.plus")
                 }
-                Button {
-                    showDelaySheet = true
-                } label: {
-                    Label("My flight changed / was delayed", systemImage: "clock.badge.exclamationmark")
+                if let shareText = model.shareText(for: currentTrip) {
+                    ShareLink(item: shareText) {
+                        Label("Share my plan", systemImage: "square.and.arrow.up")
+                    }
                 }
-                Button {
-                    Task { await model.recalculate(trip: currentTrip, trigger: "manual") }
-                } label: {
-                    Label("Recalculate plan", systemImage: "arrow.triangle.2.circlepath")
-                }
-                if currentTrip.status == .active || currentTrip.status == .completed {
+            }
+
+            if currentTrip.status == .active || currentTrip.status == .completed {
+                Section {
                     Button {
                         showSurvey = true
                     } label: {
                         Label("How did it go? (post-trip check-in)", systemImage: "checklist")
-                    }
-                }
-                if let shareText = model.shareText(for: currentTrip) {
-                    ShareLink(item: shareText) {
-                        Label("Share my plan", systemImage: "square.and.arrow.up")
                     }
                 }
             }
@@ -221,6 +197,10 @@ struct TripDetailView: View {
         }
         .navigationTitle(currentTrip.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showAdjust) {
+            PlanAdjustSheet(trip: currentTrip)
+                .presentationDetents([.medium, .large])
+        }
         .sheet(isPresented: $showGlobe) {
             if let pair = globeAirports {
                 TripGlobeView(trip: currentTrip, origin: pair.origin, destination: pair.destination)
@@ -284,141 +264,7 @@ struct TripDetailView: View {
         }
     }
 
-    private var intensityBinding: Binding<PlanIntensity> {
-        Binding(
-            get: { currentTrip.intensity },
-            set: { newValue in
-                var updated = currentTrip
-                updated.intensity = newValue
-                model.deps.analytics.track(.planModeSelected(intensity: newValue.rawValue))
-                Task { await model.updateTrip(updated) }
-            }
-        )
-    }
-
-    private var strategyBinding: Binding<AdaptationStrategy> {
-        Binding(
-            get: { currentTrip.adaptationStrategy },
-            set: { newValue in
-                var updated = currentTrip
-                updated.adaptationStrategy = newValue
-                Task { await model.updateTrip(updated) }
-            }
-        )
-    }
-
-    private var transferBinding: Binding<Int> {
-        Binding(
-            get: { currentTrip.airportTransferMinutes ?? 60 },
-            set: { newValue in
-                var updated = currentTrip
-                updated.airportTransferMinutes = newValue
-                Task { await model.updateTrip(updated) }
-            }
-        )
-    }
-
     /// -1 = automatic (derived from your profile), 0–4 = explicit days before departure.
-    private var preTripBinding: Binding<Int> {
-        Binding(
-            get: { currentTrip.preTripDaysOverride ?? -1 },
-            set: { newValue in
-                var updated = currentTrip
-                updated.preTripDaysOverride = newValue < 0 ? nil : newValue
-                Task { await model.updateTrip(updated) }
-            }
-        )
-    }
-
-    private var preTripFootnote: String {
-        if let override = currentTrip.preTripDaysOverride {
-            switch override {
-            case 0: return "Your choice: no early shifting — the plan starts working on travel day."
-            case 1: return "Your choice: bedtime starts moving 1 day before departure."
-            default: return "Your choice: bedtime starts moving \(override) days before departure."
-            }
-        }
-        return "Automatic uses your profile's pre-trip preference (Settings → Sleep profile), capped by plan intensity. Pick a value to decide exactly when the shift begins for this trip."
-    }
-}
-
-private struct CommitmentRow: View {
-    let commitment: FixedCommitment
-
-    var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.m) {
-            Image(systemName: commitment.requiresAlertness ? "bolt.circle.fill" : "calendar.circle.fill")
-                .font(.title3)
-                .foregroundStyle(commitment.importance == .critical ? Theme.priorityColor(.mustDo) : Theme.accent)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(commitment.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Theme.textPrimary)
-                Text(TimeFormat.range(commitment.window, zone: commitment.zone.resolved)
-                     + " · " + TimeFormat.dayDate(commitment.start, zone: commitment.zone.resolved))
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                if commitment.requiresAlertness {
-                    Text("Needs you sharp")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textSecondary)
-                }
-            }
-            Spacer()
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-    }
-}
-
-private struct SegmentRow: View {
-    let segment: FlightSegment
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(segment.displayName)
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                if segment.status == .delayed {
-                    Text("Delayed")
-                        .font(.caption2.weight(.bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.18), in: Capsule())
-                        .foregroundStyle(.orange)
-                }
-            }
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(TimeFormat.time(segment.departure, zone: segment.departureZone.resolved))
-                        .font(.callout.weight(.medium).monospacedDigit())
-                    Text(TimeFormat.dayDate(segment.departure, zone: segment.departureZone.resolved))
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textSecondary)
-                }
-                Image(systemName: "arrow.right")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .accessibilityLabel("to")
-                VStack(alignment: .leading) {
-                    Text(TimeFormat.time(segment.arrival, zone: segment.arrivalZone.resolved))
-                        .font(.callout.weight(.medium).monospacedDigit())
-                    Text(TimeFormat.dayDate(segment.arrival, zone: segment.arrivalZone.resolved))
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textSecondary)
-                }
-                Spacer()
-                Text(blockText)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(Theme.textSecondary)
-            }
-        }
-        .padding(.vertical, 2)
-        .accessibilityElement(children: .combine)
-    }
-
     private var blockText: String {
         let hours = Int(segment.blockTime) / 3600
         let minutes = (Int(segment.blockTime) % 3600) / 60

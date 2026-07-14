@@ -219,6 +219,17 @@ struct SettingsView: View {
             Text("No account required — plans, reminders, and calendar scanning all run on-device and work in airplane mode. Optional sign-in adds an encrypted backup of your trips, nothing else. Anonymous usage analytics are OFF unless you turn them on.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
+            Toggle("Local-only mode", isOn: Binding(
+                get: { model.state.settings.localOnlyMode },
+                set: { newValue in
+                    var settings = model.state.settings
+                    settings.localOnlyMode = newValue
+                    Task { await model.updateSettings(settings) }
+                }
+            ))
+            Text("Blocks every network feature — flight lookup, drive-time estimates, backup, sharing. Plans themselves never needed the internet.")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
             Toggle("Share anonymous usage analytics", isOn: Binding(
                 get: { model.state.settings.analyticsEnabled },
                 set: { newValue in

@@ -55,6 +55,14 @@ struct PlanAdjustSheet: View {
                         Text("3 days").tag(3)
                     }
 
+                    if currentTrip.destinationNights.map({ $0 <= 3 }) == true {
+                        Picker("Short-trip strategy", selection: strategyBinding) {
+                            Text("Automatic").tag(AdaptationStrategy.automatic)
+                            Text("Fully adapt").tag(AdaptationStrategy.fullyAdapt)
+                            Text("Stay on home time").tag(AdaptationStrategy.anchorToHome)
+                        }
+                    }
+
                     TransferTimeRow(
                         minutes: transferBinding,
                         departureAirport: departureAirport
@@ -211,6 +219,18 @@ struct PlanAdjustSheet: View {
             }
         }
         withAnimation(Theme.Anim.spring) { savedDefaults = true }
+    }
+
+    private var strategyBinding: Binding<AdaptationStrategy> {
+        Binding(
+            get: { currentTrip.adaptationStrategy },
+            set: { newValue in
+                Haptics.selection()
+                var updated = currentTrip
+                updated.adaptationStrategy = newValue
+                Task { await model.updateTrip(updated) }
+            }
+        )
     }
 
     private var transferBinding: Binding<Int> {
