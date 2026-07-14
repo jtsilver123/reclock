@@ -240,12 +240,12 @@ private struct PlanPrimerCard: View {
                 .font(Theme.display(19, black: false))
                 .foregroundStyle(Theme.textPrimary)
 
-            primerRow(text: "A filled pill is a do — it covers the exact window, in local time.") {
+            primerRow(text: "Two columns: Stay awake and Sleep. A filled pill is a do — it covers the exact window, in local time.") {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(Theme.solidTint(for: .sleep))
                     .frame(width: 16, height: 34)
             }
-            primerRow(text: "An outlined pill is an avoid — like coffee after the cutoff.") {
+            primerRow(text: "A slashed outline means that mode's tool is off-limits — like coffee after the cutoff.") {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .strokeBorder(Theme.tint(for: .caffeineCutoff), lineWidth: 1.5)
                     .frame(width: 16, height: 34)

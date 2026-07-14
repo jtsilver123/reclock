@@ -49,11 +49,13 @@ struct DayColumn: View {
         let slashed: Bool
     }
 
+    /// Column = the mode you're in. Stay awake holds the stimulation toolkit
+    /// (light, coffee, holding out) plus its bans (dim, no coffee, slashed).
+    /// Sleep holds the wind-down program (wind down, melatonin, sleep, nap).
     private static func lane(for type: ActionType) -> Int {
         switch type {
-        case .seekLight, .avoidLight: 0
-        case .sleep, .nap, .windDown, .stayAwake: 1
-        default: 2
+        case .sleep, .nap, .windDown, .melatoninOptional: 1
+        default: 0
         }
     }
 
@@ -73,7 +75,7 @@ struct DayColumn: View {
                     id: action.id.uuidString + "/nocoffee",
                     action: action,
                     window: TimeWindow(start: action.window.start, end: end),
-                    lane: 2,
+                    lane: 0,
                     outlined: true,
                     slashed: true
                 ))
@@ -84,7 +86,7 @@ struct DayColumn: View {
                     window: action.window,
                     lane: 0,
                     outlined: true,
-                    slashed: false
+                    slashed: true
                 ))
             default:
                 result.append(Cap(
@@ -121,7 +123,7 @@ struct DayColumn: View {
             // The columns say what they are — no legend required.
             HStack(spacing: 0) {
                 Color.clear.frame(width: railWidth, height: 1)
-                ForEach(["Light", "Sleep", "Chemistry"], id: \.self) { name in
+                ForEach(["Stay awake", "Sleep"], id: \.self) { name in
                     Text(name)
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
@@ -133,9 +135,35 @@ struct DayColumn: View {
         }
     }
 
+    /// Same-mode pills that overlap in time share the column side-by-side;
+    /// a pill alone in its hours gets the full column width.
+    private struct PlacedCap: Identifiable {
+        let cap: Cap
+        let sub: Int
+        var id: String { cap.id }
+    }
+
+    private func packed() -> (caps: [PlacedCap], subCount: [Int: Int]) {
+        var result: [PlacedCap] = []
+        var laneEnds: [Int: [Date]] = [:]
+        for cap in caps.sorted(by: { $0.window.start < $1.window.start }) {
+            var ends = laneEnds[cap.lane] ?? []
+            if let free = ends.firstIndex(where: { $0 <= cap.window.start }) {
+                ends[free] = cap.window.end
+                result.append(PlacedCap(cap: cap, sub: free))
+            } else {
+                result.append(PlacedCap(cap: cap, sub: ends.count))
+                ends.append(cap.window.end)
+            }
+            laneEnds[cap.lane] = ends
+        }
+        return (result, laneEnds.mapValues { $0.count })
+    }
+
     private func columnBody(totalHeight: CGFloat) -> some View {
         GeometryReader { geo in
-            let laneWidth = (geo.size.width - railWidth) / 3
+            let laneWidth = (geo.size.width - railWidth) / 2
+            let layout = packed()
             ZStack(alignment: .topLeading) {
                 // Hour rail + hairlines.
                 ForEach(Array(stride(from: 0, through: totalHours, by: 2)), id: \.self) { hour in
@@ -151,19 +179,22 @@ struct DayColumn: View {
                         .offset(x: 0, y: y - 7)
                 }
 
-                // Capsules. Hollow avoid-pills draw first so the melatonin dose
-                // nests visibly inside the no-coffee stretch — chemically true:
-                // the dose lands mid-abstention.
-                ForEach(caps.sorted { $0.outlined && !$1.outlined }) { cap in
+                // Capsules, packed into their mode column.
+                ForEach(layout.caps) { placed in
+                    let cap = placed.cap
                     let y = max(0, cap.window.start.timeIntervalSince(domainStart) / 3600 * hourHeight)
                     let rawHeight = cap.window.duration / 3600 * hourHeight
                     let height = min(max(44, rawHeight), totalHeight - y)
-                    let nested = cap.action.type == .melatoninOptional
+                    let subCount = CGFloat(layout.subCount[cap.lane] ?? 1)
+                    let subWidth = laneWidth / subCount
                     NavigationLink(value: cap.action) {
-                        TrackCapsule(cap: cap, height: height, width: laneWidth - (nested ? 26 : 10))
+                        TrackCapsule(cap: cap, height: height, width: subWidth - 10)
                     }
                     .buttonStyle(PressableCardStyle())
-                    .offset(x: railWidth + laneWidth * CGFloat(cap.lane) + (nested ? 13 : 5), y: y)
+                    .offset(
+                        x: railWidth + laneWidth * CGFloat(cap.lane) + subWidth * CGFloat(placed.sub) + 5,
+                        y: y
+                    )
                 }
 
                 // Now marker.
