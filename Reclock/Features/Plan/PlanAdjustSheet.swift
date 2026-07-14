@@ -71,7 +71,7 @@ struct PlanAdjustSheet: View {
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 } header: {
-                    Text("This trip")
+                    Text("This plan")
                 } footer: {
                     Text("Every change rebuilds the plan and its reminders instantly.")
                 }

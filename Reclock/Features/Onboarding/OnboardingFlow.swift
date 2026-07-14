@@ -375,8 +375,11 @@ private struct OnboardingScreen<Content: View>: View {
                     .padding(.top, Theme.Space.xl)
                 }
                 content
-                Button(primaryLabel, action: primaryAction)
-                    .buttonStyle(PrimaryButtonStyle())
+                Button(primaryLabel) {
+                    Haptics.soft()
+                    primaryAction()
+                }
+                .buttonStyle(PrimaryButtonStyle())
                 if let secondaryLabel, let secondaryAction {
                     Button(secondaryLabel, action: secondaryAction)
                         .buttonStyle(SecondaryButtonStyle())

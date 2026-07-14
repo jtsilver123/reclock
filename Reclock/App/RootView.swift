@@ -54,6 +54,9 @@ struct MainTabs: View {
                 .tag(Tab.settings)
         }
         .tint(Theme.accent)
+        .onChange(of: selection) { _, _ in
+            Haptics.selection()
+        }
         // The assistant floats above everything, always within thumb's reach.
         .overlay(alignment: .bottomTrailing) {
             AssistantFAB()

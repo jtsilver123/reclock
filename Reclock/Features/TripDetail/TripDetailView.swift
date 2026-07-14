@@ -83,6 +83,24 @@ struct TripDetailView: View {
                 }
             }
 
+            Section {
+                Button {
+                    Haptics.soft()
+                    showAdjust = true
+                } label: {
+                    Label("Adjust plan (intensity, timing, transfer)", systemImage: "slider.horizontal.3")
+                }
+                Button {
+                    Task { await model.recalculate(trip: currentTrip, trigger: "manual") }
+                } label: {
+                    Label("Recalculate plan", systemImage: "arrow.triangle.2.circlepath")
+                }
+            } header: {
+                Text("Plan")
+            } footer: {
+                Text("Opens the same Adjust sheet as the sliders on the Plan tab — one page, always in sync.")
+            }
+
             TravelBuddiesSection(trip: currentTrip)
 
             Section {
@@ -132,24 +150,6 @@ struct TripDetailView: View {
                 Text(currentTrip.commitments.isEmpty
                      ? "Work, a dinner, a wedding — add anything the plan must not schedule sleep or light windows over."
                      : "Sleep, naps, and light windows always route around these.")
-            }
-
-            Section {
-                Button {
-                    Haptics.soft()
-                    showAdjust = true
-                } label: {
-                    Label("Adjust plan (intensity, timing, transfer)", systemImage: "slider.horizontal.3")
-                }
-                Button {
-                    Task { await model.recalculate(trip: currentTrip, trigger: "manual") }
-                } label: {
-                    Label("Recalculate plan", systemImage: "arrow.triangle.2.circlepath")
-                }
-            } header: {
-                Text("Plan")
-            } footer: {
-                Text("The same Adjust sheet as the Plan tab — one home for tuning.")
             }
 
             Section("Take it with you") {

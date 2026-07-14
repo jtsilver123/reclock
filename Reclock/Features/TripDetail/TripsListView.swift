@@ -54,6 +54,7 @@ struct TripsListView: View {
                     .listRowSeparator(.hidden)
 
                     Button {
+                        Haptics.soft()
                         showJoin = true
                     } label: {
                         HStack(spacing: Theme.Space.s) {
@@ -204,6 +205,7 @@ struct TripsListView: View {
         .swipeActions(edge: .leading) {
             if trip.status != .completed {
                 Button {
+                    Haptics.selection()
                     buddiesTrip = trip
                 } label: {
                     Label("Buddies", systemImage: "person.2.fill")
