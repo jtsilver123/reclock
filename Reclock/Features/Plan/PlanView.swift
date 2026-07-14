@@ -320,7 +320,9 @@ private struct PlanPrimerCard: View {
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
-        .accessibilityElement(children: .combine)
+        // .contain, not .combine: the card now holds two buttons, and VoiceOver
+        // must reach each one individually.
+        .accessibilityElement(children: .contain)
     }
 
     private func primerRow(text: String, @ViewBuilder glyph: () -> some View) -> some View {

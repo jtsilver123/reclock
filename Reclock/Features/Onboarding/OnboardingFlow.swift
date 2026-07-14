@@ -23,6 +23,15 @@ struct OnboardingFlow: View {
         .onAppear {
             model.deps.analytics.track(.onboardingStarted)
         }
+        .onChange(of: step) { _, newStep in
+            // Already signed in (a kept keychain session on reinstall): the sync
+            // step has nothing to offer, so finish the moment the user reaches it.
+            // Checked here, not in the page's onAppear — page TabViews prefetch
+            // neighbors, and prefetch must not end onboarding under the welcome.
+            if newStep == 1 && model.auth.isSignedIn {
+                Task { await finish() }
+            }
+        }
     }
 
     // MARK: Screens
@@ -113,12 +122,6 @@ struct OnboardingFlow: View {
             .padding(Theme.Space.l)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
-        }
-        .onAppear {
-            // Already signed in (a kept keychain session on reinstall): no offer to make.
-            if model.auth.isSignedIn {
-                Task { await finish() }
-            }
         }
     }
 

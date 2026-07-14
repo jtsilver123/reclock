@@ -33,13 +33,21 @@ final class AppModel {
     var pendingJoinCode: PendingJoinCode?
     /// Bumped when a reclock://trip/… link lands so MainTabs jumps to the Plan tab.
     var planTabRequest = 0
+    /// A trip link that arrived on cold launch, before the store finished loading.
+    private var pendingTripLink: UUID?
 
     init(dependencies: Dependencies) {
         self.deps = dependencies
     }
 
     /// A calendar event's link back into the app: focus that trip, show its plan.
+    /// On a cold launch the URL arrives before `start()` has loaded any trips —
+    /// park it and replay once the store is up.
     func openTripFromLink(_ id: UUID) {
+        guard isLoaded else {
+            pendingTripLink = id
+            return
+        }
         guard state.trips.contains(where: { $0.id == id }) else { return }
         state.settings.selectedTripID = id
         planTabRequest += 1
@@ -64,6 +72,11 @@ final class AppModel {
         // Fresh install with a backup waiting (new phone): restore silently.
         if auth.isSignedIn && state.trips.isEmpty && !ProcessInfo.isUITest {
             await restoreFromBackupIfEmpty()
+        }
+        // A calendar-event link launched the app: honor it now that trips exist.
+        if let linked = pendingTripLink {
+            pendingTripLink = nil
+            openTripFromLink(linked)
         }
     }
 

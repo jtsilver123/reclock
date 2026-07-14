@@ -39,9 +39,8 @@ struct CalendarEventRequest: Sendable {
 
 final class EventKitCalendarExporter: CalendarExporting {
     private let store = EKEventStore()
-    private static func markerKey(_ tripID: UUID) -> String { "calendarExport.\(tripID.uuidString)" }
-    /// Registry of trips with exports, so "remove everything" needs no plan context.
-    private static let registryKey = "calendarExport.trips"
+    private static let markerPrefix = "calendarExport."
+    private static func markerKey(_ tripID: UUID) -> String { markerPrefix + tripID.uuidString }
 
     private func ensureAccess() async -> Bool {
         switch EKEventStore.authorizationStatus(for: .event) {
@@ -96,22 +95,14 @@ final class EventKitCalendarExporter: CalendarExporting {
         }
         do { try store.commit() } catch { return nil }
 
-        let defaults = UserDefaults.standard
-        defaults.set(written, forKey: Self.markerKey(tripID))
-        var registry = Set(defaults.stringArray(forKey: Self.registryKey) ?? [])
-        registry.insert(tripID.uuidString)
-        defaults.set(Array(registry), forKey: Self.registryKey)
+        UserDefaults.standard.set(written, forKey: Self.markerKey(tripID))
         return written.count
     }
 
     func removeAll(tripID: UUID) async -> Int? {
         guard await ensureAccess() else { return nil }
         let removed = removeStoredEvents(tripID: tripID, commit: true)
-        let defaults = UserDefaults.standard
-        defaults.removeObject(forKey: Self.markerKey(tripID))
-        var registry = Set(defaults.stringArray(forKey: Self.registryKey) ?? [])
-        registry.remove(tripID.uuidString)
-        defaults.set(Array(registry), forKey: Self.registryKey)
+        UserDefaults.standard.removeObject(forKey: Self.markerKey(tripID))
         return removed
     }
 
@@ -119,13 +110,17 @@ final class EventKitCalendarExporter: CalendarExporting {
         guard await ensureAccess() else { return nil }
         let defaults = UserDefaults.standard
         var total = 0
-        for tripString in defaults.stringArray(forKey: Self.registryKey) ?? [] {
-            guard let id = UUID(uuidString: tripString) else { continue }
+        // Prefix scan, not a registry: also catches exports written by older builds
+        // (and survives any bookkeeping drift) — the marker keys ARE the registry.
+        let keys = defaults.dictionaryRepresentation().keys.filter {
+            $0.hasPrefix(Self.markerPrefix)
+        }
+        for key in keys {
+            guard let id = UUID(uuidString: String(key.dropFirst(Self.markerPrefix.count))) else { continue }
             total += removeStoredEvents(tripID: id, commit: false)
-            defaults.removeObject(forKey: Self.markerKey(id))
+            defaults.removeObject(forKey: key)
         }
         try? store.commit()
-        defaults.removeObject(forKey: Self.registryKey)
         return total
     }
 
