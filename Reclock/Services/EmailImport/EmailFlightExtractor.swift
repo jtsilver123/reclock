@@ -47,7 +47,9 @@ enum EmailFlightExtractor {
         // 2. Flight designators: a two-character airline code (AA, B6, 9W) plus
         //    1–4 digits, optional space. "Flight AA 1234", "DL0442", "UA 5".
         let pattern = "\\b([A-Z0-9]{2})\\s?(\\d{1,4})\\b"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return Extraction(candidates: [], truncated: false)
+        }
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
 
         var seen = Set<String>()
