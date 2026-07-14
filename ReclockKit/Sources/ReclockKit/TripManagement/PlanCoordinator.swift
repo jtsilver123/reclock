@@ -179,6 +179,28 @@ public struct PlanCoordinator: Sendable {
             messages.append("Your next \(label) moved \(amount) \(direction).")
         }
 
+        // Structural changes the next-window checks can't see — without these, an
+        // Adjust-sheet change that reshapes the plan (more recovery days, a different
+        // head start) gets reported as "nothing needed to move".
+        func shiftedEveningsBeforeTravelDay(_ plan: JetLagPlan) -> Int {
+            guard let departure = trip.firstDeparture,
+                  let home = trip.homeZone.timeZone else { return 0 }
+            let travelDay = Calendar.gregorian(in: home).startOfDay(for: departure)
+            return plan.days.filter {
+                $0.dayStart < travelDay && abs($0.cumulativeShiftHours) > 0.1
+            }.count
+        }
+        let preBefore = shiftedEveningsBeforeTravelDay(previous)
+        let preAfter = shiftedEveningsBeforeTravelDay(merged)
+        if preBefore != preAfter {
+            messages.append(preAfter == 0
+                ? "Shifting now starts on your travel day."
+                : "Shifting now starts \(preAfter) evening\(preAfter == 1 ? "" : "s") before departure.")
+        }
+        if merged.days.count != previous.days.count {
+            messages.append("Your plan now covers \(merged.days.count) days (was \(previous.days.count)).")
+        }
+
         if let delayed = trip.segments.first(where: { $0.status == .delayed }) {
             messages.insert("We rebuilt the plan around the new times for \(delayed.displayName).", at: 0)
         }

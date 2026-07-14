@@ -20,8 +20,16 @@ struct ReclockApp: App {
                     await model.start()
                 }
                 .onOpenURL { url in
-                    // reclock://join?c=CODE — the invite deep link (Cini pattern).
                     guard url.scheme == AppLinks.scheme else { return }
+
+                    // reclock://trip/UUID — the link on every exported calendar
+                    // event; tapping one lands back on that trip's plan.
+                    if url.host == "trip", let id = UUID(uuidString: url.lastPathComponent) {
+                        model.openTripFromLink(id)
+                        return
+                    }
+
+                    // reclock://join?c=CODE — the invite deep link (Cini pattern).
                     let isJoin = url.host == "join" || url.path.contains("join")
                     guard isJoin,
                           let components = URLComponents(url: url, resolvingAgainstBaseURL: false),

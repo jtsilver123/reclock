@@ -187,6 +187,11 @@ enum AppLinks {
     static let inviteBase: String? = "https://jtsilver123.github.io/reclock/invite/?c="
     static let scheme = "reclock"
 
+    /// Deep link stamped on exported calendar events: tapping it reopens the plan.
+    static func tripURL(_ id: UUID) -> URL {
+        URL(string: "\(scheme)://trip/\(id.uuidString)")!
+    }
+
     static func inviteLink(code: String) -> String {
         if let inviteBase {
             return "\(inviteBase)\(code)"

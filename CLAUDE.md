@@ -7,9 +7,11 @@
 - Development happens on the designated `claude/…` branch; no PRs unless asked.
 
 ## Product philosophy (owner-set)
-- Plan preferences live with the plan (Adjust Plan sheet), not scattered in
-  Settings. Settings is for app-level concerns: notifications, backup, privacy,
-  about — plus a single link into the full preferences editor.
+- The Adjust sheet holds the sleep anchor (bed/wake) plus per-trip levers only
+  (intensity, head start, recovery, strategy, transfer). Long-term traits —
+  chronotype, planes, caffeine, melatonin — live ONLY in Settings › Default
+  preferences (owner call, 2026-07). "Save these as my defaults" bridges the two.
+- Settings is otherwise app-level: notifications, backup, privacy, about.
 - The Plan tab carries no configuration knobs; the app assumes the right answer
   (per-day zones, everything shown) and announces context passively.
 - Simplicity first: one-shot flows (flight code → plan), progressive disclosure,

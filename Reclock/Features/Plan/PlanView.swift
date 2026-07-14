@@ -7,6 +7,7 @@ struct PlanView: View {
     @Environment(AppModel.self) private var model
     @State private var showAddTrip = false
     @State private var adjustTrip: Trip?
+    @State private var exportTrip: Trip?
 
     var body: some View {
         NavigationStack {
@@ -31,6 +32,17 @@ struct PlanView: View {
                         .foregroundStyle(Theme.textPrimary)
                         .accessibilityAddTraits(.isHeader)
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    if let trip = model.activeTrip, model.plan(for: trip) != nil {
+                        Button {
+                            Haptics.soft()
+                            exportTrip = trip
+                        } label: {
+                            Image(systemName: "calendar.badge.plus")
+                                .accessibilityLabel("Add plan to my calendar")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     if let trip = model.activeTrip, model.plan(for: trip) != nil {
                         Button {
@@ -48,6 +60,10 @@ struct PlanView: View {
             }
             .sheet(item: $adjustTrip) { trip in
                 PlanAdjustSheet(trip: trip)
+                    .presentationDetents([.medium, .large])
+            }
+            .sheet(item: $exportTrip) { trip in
+                CalendarExportSheet(trip: trip)
                     .presentationDetents([.medium, .large])
             }
             .onAppear {
@@ -206,6 +222,9 @@ private struct PlanContent: View {
                         }
                         .padding(.top, Theme.Space.s)
                         .padding(.bottom, 96)  // clears the floating assistant orb
+                        // Every replan bumps the revision; the pills spring to their
+                        // new spots instead of teleporting.
+                        .animation(Theme.Anim.spring, value: plan.revision)
                     }
                     .task {
                         // Mid-trip, the reader's day is what matters — not day 0 last
@@ -278,7 +297,7 @@ private struct PlanPrimerCard: View {
                             .foregroundStyle(Theme.tint(for: .caffeineCutoff))
                     )
             }
-            primerRow(text: "We assumed your usual sleep is \(sleepText). The sliders up top adjust that — plus intensity, head start, and melatonin.") {
+            primerRow(text: "We assumed your usual sleep is \(sleepText). The sliders up top adjust that — plus intensity and your head start.") {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Theme.accentDeep)

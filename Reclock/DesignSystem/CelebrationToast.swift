@@ -26,6 +26,18 @@ struct CelebrationEvent: Equatable, Identifiable {
         CelebrationEvent(type: .checkIn, customLine: "You're in — fly it together.", symbol: "person.2.fill")
     }
 
+    static func planTuned() -> CelebrationEvent {
+        CelebrationEvent(type: .checkIn, customLine: "Plan rebuilt around you.", symbol: "slider.horizontal.3")
+    }
+
+    static func calendarExported(count: Int) -> CelebrationEvent {
+        CelebrationEvent(
+            type: .checkIn,
+            customLine: "\(count) step\(count == 1 ? "" : "s") on your calendar — each links back here.",
+            symbol: "calendar.badge.checkmark"
+        )
+    }
+
     static func kudos(from name: String, emoji: String) -> CelebrationEvent {
         CelebrationEvent(type: .checkIn, customLine: "\(emoji) \(name) sent you kudos!", symbol: "hands.clap.fill")
     }

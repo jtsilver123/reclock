@@ -1,14 +1,18 @@
 import SwiftUI
 import ReclockKit
 
-/// The Plan tab's tune-up sheet: the four things travelers actually adjust — sleep
-/// schedule, plan intensity, when shifting starts, and the drive to the airport.
-/// Every change rebuilds the plan and its reminders on the spot.
+/// The Plan tab's tune-up sheet: your sleep anchor plus the per-trip levers —
+/// intensity, when shifting starts, recovery, and the drive to the airport.
+/// Long-term traits (planes, caffeine, melatonin, chronotype) live in Settings ›
+/// Default preferences; this sheet is about *this* plan. Every change rebuilds
+/// the plan on the spot, and closing after a change announces the rebuild.
 struct PlanAdjustSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let trip: Trip
     @State private var savedDefaults = false
+    /// Any plan-affecting edit arms the "plan rebuilt" moment shown on close.
+    @State private var touched = false
 
     /// Live copy — edits land in the store, and this view re-reads them.
     private var currentTrip: Trip {
@@ -21,15 +25,10 @@ struct PlanAdjustSheet: View {
                 Section {
                     DatePicker("I usually sleep at", selection: bedtimeBinding, displayedComponents: .hourAndMinute)
                     DatePicker("and wake at", selection: wakeBinding, displayedComponents: .hourAndMinute)
-                    Picker("Sleep on planes", selection: planeSleepBinding) {
-                        ForEach(PlaneSleepAbility.allCases, id: \.self) { ability in
-                            Text(ability.displayName).tag(ability)
-                        }
-                    }
                 } header: {
                     Text("Your sleep")
                 } footer: {
-                    Text("The anchor for every plan — and how much in-flight sleep to count on.")
+                    Text("The anchor for every plan you build.")
                 }
 
                 Section {
@@ -82,12 +81,6 @@ struct PlanAdjustSheet: View {
                 }
 
                 Section {
-                    Toggle("Optional melatonin reminders", isOn: melatoninBinding)
-                } footer: {
-                    Text("Melatonin steps appear only on nights your body clock shifts earlier — typically eastward trips — and within a few days of landing. Never presented as required, never a dosage.")
-                }
-
-                Section {
                     Button {
                         saveAsDefaults()
                     } label: {
@@ -99,7 +92,7 @@ struct PlanAdjustSheet: View {
                     }
                     .disabled(savedDefaults)
                 } footer: {
-                    Text("Future trips start from this intensity and head start. Sleep times are always yours, everywhere.")
+                    Text("Future trips start from this intensity and head start. Long-term traits — planes, caffeine, melatonin, chronotype — live in Settings › Default preferences.")
                 }
             }
             .navigationTitle("Adjust plan")
@@ -107,6 +100,16 @@ struct PlanAdjustSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                }
+            }
+            .onDisappear {
+                // The plan already rebuilt live with each change; this is the moment
+                // that SAYS so — toast up top, pills springing to their new spots.
+                if touched {
+                    Haptics.success()
+                    withAnimation(Theme.Anim.spring) {
+                        model.celebration = .planTuned()
+                    }
                 }
             }
         }
@@ -135,6 +138,7 @@ struct PlanAdjustSheet: View {
         Binding(
             get: { clockDate(model.profile?.typicalBedtime ?? LocalClockTime(hour: 23)) },
             set: { newValue in
+                touched = true
                 Task {
                     guard var profile = model.profile else { return }
                     profile.typicalBedtime = clock(from: newValue)
@@ -148,6 +152,7 @@ struct PlanAdjustSheet: View {
         Binding(
             get: { clockDate(model.profile?.typicalWakeTime ?? LocalClockTime(hour: 7)) },
             set: { newValue in
+                touched = true
                 Task {
                     guard var profile = model.profile else { return }
                     profile.typicalWakeTime = clock(from: newValue)
@@ -162,6 +167,7 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.intensity },
             set: { newValue in
                 Haptics.selection()
+                touched = true
                 var updated = currentTrip
                 updated.intensity = newValue
                 Task { await model.updateTrip(updated) }
@@ -174,6 +180,7 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.preTripDaysOverride ?? -1 },
             set: { newValue in
                 Haptics.selection()
+                touched = true
                 var updated = currentTrip
                 updated.preTripDaysOverride = newValue < 0 ? nil : newValue
                 Task { await model.updateTrip(updated) }
@@ -186,43 +193,10 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.recoveryDaysOverride ?? -1 },
             set: { newValue in
                 Haptics.selection()
+                touched = true
                 var updated = currentTrip
                 updated.recoveryDaysOverride = newValue < 0 ? nil : newValue
                 Task { await model.updateTrip(updated) }
-            }
-        )
-    }
-
-    private var planeSleepBinding: Binding<PlaneSleepAbility> {
-        Binding(
-            get: { model.profile?.planeSleepAbility ?? .sometimes },
-            set: { newValue in
-                Haptics.selection()
-                Task {
-                    guard var profile = model.profile else { return }
-                    profile.planeSleepAbility = newValue
-                    // Mirror the profile editor's contract: "never" means plan zero
-                    // in-flight sleep; coming back from it restores a usable stretch.
-                    if newValue == .never {
-                        profile.maxInFlightSleep = 0
-                    } else if profile.maxInFlightSleep < 3600 {
-                        profile.maxInFlightSleep = 4 * 3600
-                    }
-                    await model.updateProfile(profile)
-                }
-            }
-        )
-    }
-
-    private var melatoninBinding: Binding<Bool> {
-        Binding(
-            get: { model.profile?.melatonin.remindersEnabled ?? false },
-            set: { newValue in
-                Task {
-                    guard var profile = model.profile else { return }
-                    profile.melatonin = newValue ? .includeOptionalReminders : .exclude
-                    await model.updateProfile(profile)
-                }
             }
         )
     }
@@ -252,6 +226,7 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.adaptationStrategy },
             set: { newValue in
                 Haptics.selection()
+                touched = true
                 var updated = currentTrip
                 updated.adaptationStrategy = newValue
                 Task { await model.updateTrip(updated) }
@@ -263,6 +238,7 @@ struct PlanAdjustSheet: View {
         Binding(
             get: { currentTrip.airportTransferMinutes ?? 60 },
             set: { newValue in
+                touched = true
                 var updated = currentTrip
                 updated.airportTransferMinutes = newValue
                 Task { await model.updateTrip(updated) }

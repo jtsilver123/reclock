@@ -87,6 +87,10 @@ struct MainTabs: View {
             // The reveal ends on the plan itself, wherever the trip was added from.
             if id != nil { selection = .plan }
         }
+        .onChange(of: model.planTabRequest) { _, _ in
+            // A calendar event's deep link: land on the plan it points at.
+            selection = .plan
+        }
         .task(id: model.celebration?.id) {
             guard model.celebration != nil else { return }
             try? await Task.sleep(nanoseconds: 2_200_000_000)

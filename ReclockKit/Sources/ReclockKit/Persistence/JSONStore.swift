@@ -55,19 +55,24 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var selectedTripID: UUID?
     /// Starting intensity for newly created trips. nil = balanced.
     public var defaultIntensity: PlanIntensity?
+    /// Calendar the user last exported a plan into. nil = system default.
+    /// Optional so pre-existing stores decode unchanged.
+    public var exportCalendarID: String?
 
     public init(
         localOnlyMode: Bool = false,
         analyticsEnabled: Bool = false,
         timeDisplay: TimeDisplayMode = .destination,
         selectedTripID: UUID? = nil,
-        defaultIntensity: PlanIntensity? = nil
+        defaultIntensity: PlanIntensity? = nil,
+        exportCalendarID: String? = nil
     ) {
         self.localOnlyMode = localOnlyMode
         self.analyticsEnabled = analyticsEnabled
         self.timeDisplay = timeDisplay
         self.selectedTripID = selectedTripID
         self.defaultIntensity = defaultIntensity
+        self.exportCalendarID = exportCalendarID
     }
 }
 

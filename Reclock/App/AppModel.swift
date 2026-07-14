@@ -31,9 +31,19 @@ final class AppModel {
     var planReveal: Trip?
     /// A join code arriving via reclock://join?c=… — RootView presents the join sheet.
     var pendingJoinCode: PendingJoinCode?
+    /// Bumped when a reclock://trip/… link lands so MainTabs jumps to the Plan tab.
+    var planTabRequest = 0
 
     init(dependencies: Dependencies) {
         self.deps = dependencies
+    }
+
+    /// A calendar event's link back into the app: focus that trip, show its plan.
+    func openTripFromLink(_ id: UUID) {
+        guard state.trips.contains(where: { $0.id == id }) else { return }
+        state.settings.selectedTripID = id
+        planTabRequest += 1
+        Task { await persist() }
     }
 
     // MARK: - Lifecycle

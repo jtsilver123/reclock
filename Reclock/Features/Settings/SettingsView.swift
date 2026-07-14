@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
 
     @State private var showDeleteAllConfirm = false
+    @State private var calendarSweepResult: Int??  // nil = idle, .some(nil) = denied, .some(n) = removed
     @State private var showDeleteAccountConfirm = false
     @State private var exportedData: ExportPayload?
     @State private var notificationStatusGranted: Bool?
@@ -76,15 +77,15 @@ struct SettingsView: View {
                 }
             } label: {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Sleep & plan preferences")
+                    Text("Default preferences")
                         .font(.subheadline.weight(.semibold))
-                    Text("Sleep times, chronotype, caffeine, melatonin, default intensity")
+                    Text("Sleep times, chronotype, planes, caffeine, melatonin, plan defaults")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
         } footer: {
-            Text("Day-to-day tuning lives on the Plan tab — tap the sliders on any plan.")
+            Text("Every new trip starts from these. Per-trip tuning lives in Adjust on the Plan tab — and \"Save these as my defaults\" there writes back here.")
         }
     }
 
@@ -250,6 +251,15 @@ struct SettingsView: View {
             } label: {
                 Label("Export my data (JSON)", systemImage: "square.and.arrow.up")
             }
+            Button {
+                Task {
+                    let count = await model.deps.calendarExporter.removeEverything()
+                    if let count { Haptics.soft() }
+                    calendarSweepResult = .some(count)
+                }
+            } label: {
+                Label("Remove Reclock events from Calendar", systemImage: "calendar.badge.minus")
+            }
             Button(role: .destructive) {
                 showDeleteAllConfirm = true
             } label: {
@@ -257,6 +267,26 @@ struct SettingsView: View {
             }
         } header: {
             SettingsHeader(title: "Privacy", symbol: "lock.fill")
+        } footer: {
+            Text("Removing calendar events takes back everything Reclock ever added, across all trips — your own events are never touched.")
+        }
+        .alert(
+            calendarSweepResult == .some(nil) ? "Calendar access is off" : "Calendar cleaned up",
+            isPresented: Binding(
+                get: { calendarSweepResult != nil },
+                set: { if !$0 { calendarSweepResult = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if calendarSweepResult == .some(nil) {
+                Text("Allow calendar access for Reclock in iOS Settings, then try again.")
+            } else {
+                let count = calendarSweepResult?.flatMap { $0 } ?? 0
+                Text(count == 0
+                     ? "There were no Reclock events to remove."
+                     : "Removed \(count) event\(count == 1 ? "" : "s") Reclock had added.")
+            }
         }
     }
 
@@ -456,7 +486,7 @@ struct ProfileEditorView: View {
                 Text("Changing your profile rebuilds the plan for upcoming trips.")
             }
         }
-        .navigationTitle("Sleep profile")
+        .navigationTitle("Default preferences")
         .onAppear {
             bedtime = Calendar.current.date(
                 bySettingHour: profile.typicalBedtime.hour,
