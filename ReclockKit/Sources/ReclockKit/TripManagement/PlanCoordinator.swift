@@ -173,7 +173,7 @@ public struct PlanCoordinator: Sendable {
             let hours = abs(delta) / 3600
             guard hours >= 1 else { return "\(Int(abs(delta) / 60)) minutes" }
             let formatted = String(format: "%.1f", hours).replacingOccurrences(of: ".0", with: "")
-            return "\(formatted) hour\(hours >= 1.95 ? "s" : "")"
+            return "\(formatted) hour\(formatted == "1" ? "" : "s")"
         }
 
         let pairsToCheck: [(ActionType, String)] = [

@@ -228,9 +228,11 @@ private struct PlanContent: View {
                     }
                     .task {
                         // Mid-trip, the reader's day is what matters — not day 0 last
-                        // week. A beat's delay lets the lazy rows realize first.
-                        try? await Task.sleep(nanoseconds: 200_000_000)
-                        if let today = PlanDays.currentDayID(plan: plan, now: model.deps.now()) {
+                        // week. Lazy rows realize progressively, and a single early
+                        // scrollTo can land short on long plans — try a few times.
+                        guard let today = PlanDays.currentDayID(plan: plan, now: model.deps.now()) else { return }
+                        for delay in [200_000_000, 400_000_000, 600_000_000] {
+                            try? await Task.sleep(nanoseconds: UInt64(delay))
                             proxy.scrollTo(today, anchor: .top)
                         }
                     }

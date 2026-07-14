@@ -132,12 +132,14 @@ struct DayColumn: View {
     private struct PlacedCap: Identifiable {
         let cap: Cap
         let sub: Int
+        /// How many sub-lanes THIS pill's cluster needs — width divides by this,
+        /// so one busy evening never halves every lone pill all day.
+        let subCount: Int
         var id: String { cap.id }
     }
 
-    private func packed() -> (caps: [PlacedCap], subCount: [Int: Int]) {
-        var result: [PlacedCap] = []
-        var laneEnds: [Int: [Date]] = [:]
+    private func packed() -> [PlacedCap] {
+        var placed: [PlacedCap] = []
         // A pill is drawn at least 44 pt tall, so a short window occupies more
         // vertical space than its time span. Pack against the drawn extent —
         // otherwise the next pill in the column lands on top of the overflow.
@@ -145,18 +147,36 @@ struct DayColumn: View {
         func drawnEnd(_ cap: Cap) -> Date {
             max(cap.window.end, cap.window.start.addingTimeInterval(minVisualSpan))
         }
-        for cap in caps.sorted(by: { $0.window.start < $1.window.start }) {
-            var ends = laneEnds[cap.lane] ?? []
-            if let free = ends.firstIndex(where: { $0 <= cap.window.start }) {
-                ends[free] = drawnEnd(cap)
-                result.append(PlacedCap(cap: cap, sub: free))
-            } else {
-                result.append(PlacedCap(cap: cap, sub: ends.count))
-                ends.append(drawnEnd(cap))
+        // Per lane, sweep by start time; a cluster is a maximal run of pills whose
+        // drawn extents chain-overlap. Widths divide by the cluster's own need.
+        for laneCaps in Dictionary(grouping: caps, by: \.lane).values {
+            var cluster: [(cap: Cap, sub: Int)] = []
+            var ends: [Date] = []
+            var clusterMaxEnd = Date.distantPast
+            func closeCluster() {
+                guard !cluster.isEmpty else { return }
+                let width = ends.count
+                placed.append(contentsOf: cluster.map {
+                    PlacedCap(cap: $0.cap, sub: $0.sub, subCount: width)
+                })
+                cluster = []
+                ends = []
+                clusterMaxEnd = .distantPast
             }
-            laneEnds[cap.lane] = ends
+            for cap in laneCaps.sorted(by: { $0.window.start < $1.window.start }) {
+                if cap.window.start >= clusterMaxEnd { closeCluster() }
+                if let free = ends.firstIndex(where: { $0 <= cap.window.start }) {
+                    ends[free] = drawnEnd(cap)
+                    cluster.append((cap, free))
+                } else {
+                    cluster.append((cap, ends.count))
+                    ends.append(drawnEnd(cap))
+                }
+                clusterMaxEnd = max(clusterMaxEnd, drawnEnd(cap))
+            }
+            closeCluster()
         }
-        return (result, laneEnds.mapValues { $0.count })
+        return placed
     }
 
     private func columnBody(totalHeight: CGFloat) -> some View {
@@ -186,13 +206,12 @@ struct DayColumn: View {
                     .offset(x: railWidth + laneWidth - 0.5)
 
                 // Capsules, packed into their mode column.
-                ForEach(layout.caps) { placed in
+                ForEach(layout) { placed in
                     let cap = placed.cap
                     let y = max(0, cap.window.start.timeIntervalSince(domainStart) / 3600 * hourHeight)
                     let rawHeight = cap.window.duration / 3600 * hourHeight
                     let height = min(max(44, rawHeight), totalHeight - y)
-                    let subCount = CGFloat(layout.subCount[cap.lane] ?? 1)
-                    let subWidth = laneWidth / subCount
+                    let subWidth = laneWidth / CGFloat(placed.subCount)
                     NavigationLink(value: cap.action) {
                         TrackCapsule(cap: cap, height: height, width: subWidth - 10)
                     }

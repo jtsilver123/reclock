@@ -9,6 +9,7 @@ struct TravelBuddiesSection: View {
     let trip: Trip
 
     @State private var board: AppModel.BuddyBoard?
+    @State private var loadFailed = false
     @State private var isCreating = false
     @State private var kudosSentTo: Set<String> = []
 
@@ -72,6 +73,7 @@ struct TravelBuddiesSection: View {
         .task(id: trip.sharedPlanCode) {
             if trip.sharedPlanCode != nil {
                 board = await model.fetchBuddyBoard(for: trip)
+                loadFailed = board == nil
             }
         }
     }
@@ -110,6 +112,17 @@ struct TravelBuddiesSection: View {
                 Text("Just you so far — send the invite.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
+            }
+        } else if loadFailed {
+            Button {
+                loadFailed = false
+                Task {
+                    board = await model.fetchBuddyBoard(for: trip)
+                    loadFailed = board == nil
+                }
+            } label: {
+                Label("Couldn't load buddies — tap to retry", systemImage: "arrow.clockwise")
+                    .font(.caption)
             }
         } else {
             HStack {

@@ -127,6 +127,11 @@ struct SettingsView: View {
     @ViewBuilder
     private var backupSection: some View {
         Section {
+            if model.state.settings.localOnlyMode {
+                Label("Local-only mode is on — backup and sharing are paused.", systemImage: "wifi.slash")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+            }
             if model.auth.isSignedIn {
                 LabeledContent("Signed in") {
                     Text(model.auth.email ?? "Apple ID")

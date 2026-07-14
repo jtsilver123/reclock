@@ -123,7 +123,12 @@ private final class OneShotLocationProvider: NSObject, CLLocationManagerDelegate
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
         Task { @MainActor in
+            // The delegate fires once immediately on assignment, while the permission
+            // dialog is still on screen (status == .notDetermined). Resuming then
+            // fails the estimate under the live prompt — wait for the real answer.
+            guard status != .notDetermined else { return }
             self.authContinuation?.resume()
             self.authContinuation = nil
         }

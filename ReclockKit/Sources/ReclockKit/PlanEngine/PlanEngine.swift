@@ -330,7 +330,14 @@ public struct PlanEngine: JetLagPlanGenerating, Sendable {
             // newly shifted time tonight.
             let nominalBed = homeBedInstant.adding(hours: -bodyAfter)
             // Clamp scheduled bedtime to a practical local window at the place you're sleeping.
-            let bed = clampBedtimePractically(nominalBed, context: context)
+            var bed = clampBedtimePractically(nominalBed, context: context)
+            // Monotonicity belt: nights must move strictly forward. If clamping ever
+            // lands at or before the previous bed (DST oddities, extreme shifts),
+            // fall back to the unclamped nominal rather than schedule two bedtimes
+            // in the same instant — an odd hour beats an impossible plan.
+            if let prev = previousBed, bed <= prev {
+                bed = max(nominalBed, prev.addingTimeInterval(.hours(12)))
+            }
 
             let wake = (previousBed ?? bed.addingTimeInterval(-86_400)).addingTimeInterval(sleepDuration)
             let nextWake = bed.addingTimeInterval(sleepDuration)
@@ -482,9 +489,12 @@ public struct PlanEngine: JetLagPlanGenerating, Sendable {
         if inWindow { return bed }
 
         if clock > latest && clock < LocalClockTime(hour: 12) {
-            // Too late (e.g. 03:30) → pull back to the latest practical bedtime.
-            let anchor = bed.addingTimeInterval(-.hours(6))
-            return CircadianMath.resolve(latest, onDayContaining: anchor, zone: zone).addingTimeInterval(86_400)
+            // Too late (e.g. 03:30) → pull back to the latest practical bedtime on
+            // bed's own calendar day. (The old anchor-6h dance overshot by a full
+            // day for beds after ~07:30, collapsing consecutive nights onto one
+            // instant — which is how JFK↔Tokyo round trips became unbuildable.)
+            let pulled = CircadianMath.resolve(latest, onDayContaining: bed, zone: zone)
+            return pulled <= bed ? pulled : pulled.addingTimeInterval(-86_400)
         } else {
             // Too early (e.g. 18:45) → push to the earliest practical bedtime that evening.
             return CircadianMath.resolve(earliest, onDayContaining: bed, zone: zone)

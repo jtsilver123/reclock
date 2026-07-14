@@ -23,7 +23,7 @@ struct TripGlobeView: View {
 
     var body: some View {
         NavigationStack {
-            SwiftUI.TimelineView(.periodic(from: .now, by: 60)) { timeline in
+            SwiftUI.TimelineView(.everyMinute) { timeline in
                 let now = timeline.date
                 VStack(spacing: Theme.Space.m) {
                     Text("\(trip.origin) → \(trip.destination)")
@@ -187,8 +187,11 @@ struct TripGlobeView: View {
                     clockwise: !arcContains(from: a2, to: a1, angle: aNight, clockwise: false)
                 )
                 night.closeSubpath()
-                ctx.clip(to: disk)
-                ctx.fill(night, with: .color(Color(red: 0.03, green: 0.05, blue: 0.13).opacity(0.55)))
+                // Clip a COPY: clipping the shared context would also clip the
+                // route, city labels, and sun/moon drawn after this.
+                var nightCtx = ctx
+                nightCtx.clip(to: disk)
+                nightCtx.fill(night, with: .color(Color(red: 0.03, green: 0.05, blue: 0.13).opacity(0.55)))
             } else if facingSun < 0 {
                 ctx.fill(disk, with: .color(Color(red: 0.03, green: 0.05, blue: 0.13).opacity(0.55)))
             }

@@ -9,8 +9,15 @@ enum EmailFlightExtractor {
     struct Candidate: Identifiable, Hashable {
         var id: String { "\(flightNumber)-\(date?.timeIntervalSince1970 ?? 0)" }
         var flightNumber: String
-        /// Best nearby date in the text, if any; the UI lets the traveler adjust.
+        /// Best nearby date in the text, if any; the schedule lookup validates it.
         var date: Date?
+    }
+
+    struct Extraction {
+        var candidates: [Candidate]
+        /// True when the email held more designators than the cap — the UI says so
+        /// instead of silently dropping legs.
+        var truncated: Bool
     }
 
     /// Tokens that match the AA-1234 shape but are never airlines in booking emails.
@@ -20,6 +27,10 @@ enum EmailFlightExtractor {
     ]
 
     static func extract(from text: String, now: Date = Date()) -> [Candidate] {
+        extraction(from: text, now: now).candidates
+    }
+
+    static func extraction(from text: String, now: Date = Date()) -> Extraction {
         let nsText = text as NSString
 
         // 1. Every date the system detector can see, with its position.
@@ -41,6 +52,7 @@ enum EmailFlightExtractor {
 
         var seen = Set<String>()
         var candidates: [Candidate] = []
+        var truncated = false
         for match in matches {
             let airline = nsText.substring(with: match.range(at: 1))
             let number = nsText.substring(with: match.range(at: 2))
@@ -49,18 +61,41 @@ enum EmailFlightExtractor {
             // Years and times sneak through as "20 26" style artifacts; flights
             // are 1–4 digits and airlines aren't purely numeric.
             guard airline.rangeOfCharacter(from: .letters) != nil else { continue }
+            // Aircraft types masquerade as designators: "Airbus A320" → "A3 20",
+            // "Boeing 777-300" nearby tokens, "A350-900" model suffixes.
+            let prefixStart = max(0, match.range.location - 12)
+            let prefix = nsText.substring(
+                with: NSRange(location: prefixStart, length: match.range.location - prefixStart)
+            ).lowercased()
+            if prefix.hasSuffix("airbus ") || prefix.hasSuffix("boeing ") || prefix.hasSuffix("embraer ") {
+                continue
+            }
+            let tailStart = match.range.location + match.range.length
+            if tailStart < nsText.length,
+               nsText.substring(with: NSRange(location: tailStart, length: 1)) == "-" {
+                continue  // "A350-900": a model number, not a flight
+            }
             guard !seen.contains(designator) else { continue }
+
+            if candidates.count >= 6 {  // sanity cap; emails list a handful at most
+                truncated = true
+                break
+            }
             seen.insert(designator)
 
-            // Pair with the nearest date mentioned in the text (by character
-            // distance) — confirmation emails put the date next to the flight.
-            let nearest = dates.min {
+            // Pair with a date mentioned in the text. Confirmation emails put each
+            // leg's date at or after its designator ("AY 16 — Sat, Jul 18"), while
+            // a summary block up top can sit closer by raw distance — prefer the
+            // nearest FOLLOWING date, falling back to nearest overall.
+            let following = dates
+                .filter { $0.location >= match.range.location }
+                .min { $0.location - match.range.location < $1.location - match.range.location }
+            let nearest = following ?? dates.min {
                 abs($0.location - match.range.location) < abs($1.location - match.range.location)
-            }?.date
+            }
 
-            candidates.append(Candidate(flightNumber: designator, date: nearest))
-            if candidates.count >= 6 { break }  // sanity cap; emails list a handful at most
+            candidates.append(Candidate(flightNumber: designator, date: nearest?.date))
         }
-        return candidates
+        return Extraction(candidates: candidates, truncated: truncated)
     }
 }

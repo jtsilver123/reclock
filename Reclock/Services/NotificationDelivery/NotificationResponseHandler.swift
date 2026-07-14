@@ -7,7 +7,18 @@ import ReclockKit
 /// Set as the UNUserNotificationCenter delegate at launch.
 @MainActor
 final class NotificationResponseHandler: NSObject, UNUserNotificationCenterDelegate {
-    weak var model: AppModel?
+    weak var model: AppModel? {
+        didSet {
+            // A tap that cold-launched the app arrived before RootView could hand
+            // us the model — replay it now instead of silently dropping it.
+            if model != nil, let queued = pending {
+                pending = nil
+                Task { await handle(actionID: queued.actionID, actionIdentifier: queued.identifier) }
+            }
+        }
+    }
+
+    private var pending: (actionID: UUID, identifier: String)?
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -21,18 +32,27 @@ final class NotificationResponseHandler: NSObject, UNUserNotificationCenterDeleg
         didReceive response: UNNotificationResponse
     ) async {
         guard
-            let model,
             let actionIDString = response.notification.request.content.userInfo["actionID"] as? String,
             let actionID = UUID(uuidString: actionIDString)
         else { return }
+        guard model != nil else {
+            pending = (actionID, response.actionIdentifier)
+            return
+        }
+        await handle(actionID: actionID, actionIdentifier: response.actionIdentifier)
+    }
 
-        guard
-            let trip = model.activeTrip,
-            let plan = model.plan(for: trip),
-            let action = plan.actions.first(where: { $0.id == actionID })
-        else { return }
+    private func handle(actionID: UUID, actionIdentifier: String) async {
+        guard let model else { return }
+        // Wait out a cold launch: the store may still be loading when the tap lands.
+        for _ in 0..<50 where !model.isLoaded {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        // The notification names its action, not a trip — search every plan, not just
+        // the active one, so acting on another trip's reminder isn't a silent no-op.
+        guard let (trip, action) = findAction(actionID, in: model) else { return }
 
-        switch response.actionIdentifier {
+        switch actionIdentifier {
         case "RECLOCK_DONE":
             await model.setCompletion(.done, for: action, in: trip)
         case "RECLOCK_SNOOZE":
@@ -40,8 +60,17 @@ final class NotificationResponseHandler: NSObject, UNUserNotificationCenterDeleg
         case "RECLOCK_COULDNT":
             await model.setCompletion(.notPossible, for: action, in: trip)
         default:
-            break // default tap opens the app; Today tab already shows the action
+            break // default tap opens the app; the Plan tab already shows the action
         }
+    }
+
+    private func findAction(_ id: UUID, in model: AppModel) -> (Trip, PlanAction)? {
+        for trip in model.state.trips {
+            if let action = model.plan(for: trip)?.actions.first(where: { $0.id == id }) {
+                return (trip, action)
+            }
+        }
+        return nil
     }
 }
 

@@ -4,6 +4,7 @@ import ReclockKit
 @main
 struct ReclockApp: App {
     @UIApplicationDelegateAdaptor(ReclockAppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model: AppModel
 
     init() {
@@ -18,6 +19,13 @@ struct ReclockApp: App {
                 .task {
                     appDelegate.notificationHandler.model = model
                     await model.start()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    // Statuses and the 60-slot notification window go stale while
+                    // the app naps; every return to foreground refreshes both.
+                    if phase == .active {
+                        Task { await model.refreshOnForeground() }
+                    }
                 }
                 .onOpenURL { url in
                     guard url.scheme == AppLinks.scheme else { return }

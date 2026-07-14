@@ -64,19 +64,10 @@ extension AppModel {
 
     /// Adds the friend's trip + plan to this device and registers membership.
     func acceptSharedPlan(_ fetched: FetchedSharedPlan) async -> Bool {
+        guard !state.settings.localOnlyMode else { return false }
         guard let session = try? await auth.validSession() else { return false }
-        // Same trip already present (tapped the link twice): just make sure we're a member.
-        if !state.trips.contains(where: { $0.sharedPlanCode == fetched.code }) {
-            var trip = fetched.trip
-            trip.sharedPlanCode = fetched.code
-            trip.isSharedPlanOwner = false
-            state.trips.append(trip)
-            state.plans.removeAll { $0.tripID == trip.id }
-            state.plans.append(fetched.plan)
-            state.settings.selectedTripID = trip.id
-            await persist()
-            await rescheduleAllNotifications()
-        }
+        // Register membership FIRST: if the join fails we must not have already
+        // mutated local state while telling the user it "couldn't join".
         do {
             try await shareClient.joinSharedPlan(
                 code: fetched.code, displayName: buddyDisplayName, session: session
@@ -84,6 +75,23 @@ extension AppModel {
         } catch {
             return false
         }
+        var trip = fetched.trip
+        trip.sharedPlanCode = fetched.code
+        trip.isSharedPlanOwner = false
+        if let existing = state.trips.firstIndex(where: {
+            $0.sharedPlanCode == fetched.code || $0.id == trip.id
+        }) {
+            // Already on this device (re-shared code, or the same trip UUID from an
+            // earlier share): update in place — never append a duplicate UUID.
+            state.trips[existing] = trip
+        } else {
+            state.trips.append(trip)
+        }
+        state.plans.removeAll { $0.tripID == trip.id }
+        state.plans.append(fetched.plan)
+        state.settings.selectedTripID = trip.id
+        await persist()
+        await rescheduleAllNotifications()
         deps.analytics.track(.importMethodSelected(method: "share_joined"))
         celebration = .joinedPlan()
         return true
@@ -93,7 +101,7 @@ extension AppModel {
 
     /// Called after a local completion change on a shared trip. Best-effort.
     func mirrorProgress(action: PlanAction, completion: CompletionState, trip: Trip) {
-        guard let code = trip.sharedPlanCode else { return }
+        guard !state.settings.localOnlyMode, let code = trip.sharedPlanCode else { return }
         Task {
             guard let session = try? await auth.validSession() else { return }
             switch completion {
@@ -121,7 +129,8 @@ extension AppModel {
     }
 
     func fetchBuddyBoard(for trip: Trip) async -> BuddyBoard? {
-        guard let code = trip.sharedPlanCode,
+        guard !state.settings.localOnlyMode,
+              let code = trip.sharedPlanCode,
               let session = try? await auth.validSession() else { return nil }
         do {
             let members = try await shareClient.fetchMembers(code: code, session: session)
@@ -155,7 +164,8 @@ extension AppModel {
 
     /// New kudos since last check, surfaced as a celebration. Marker in UserDefaults.
     func checkForKudos(trip: Trip) async {
-        guard let code = trip.sharedPlanCode,
+        guard !state.settings.localOnlyMode,
+              let code = trip.sharedPlanCode,
               let session = try? await auth.validSession() else { return }
         let key = "reclock.kudos.lastSeen.\(code)"
         let since = UserDefaults.standard.object(forKey: key) as? Date

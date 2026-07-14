@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import ReclockKit
 
 /// Whole-state backup: the local JSON store, mirrored to one server row per user.
@@ -8,14 +9,20 @@ import ReclockKit
 /// - Restore: only onto an EMPTY device (fresh install / new phone) — a device with
 ///   trips keeps them and becomes the new source of truth on its next push.
 @MainActor
+@Observable
 final class SyncService {
-    private let client = SupabaseAuthClient()
-    private let schemaVersion = 1
-    private var pushTask: Task<Void, Never>?
+    @ObservationIgnored private let client = SupabaseAuthClient()
+    @ObservationIgnored private let schemaVersion = 1
+    @ObservationIgnored private var pushTask: Task<Void, Never>?
 
+    /// Observable mirror of the persisted stamp, so "Back up now (last: …)" in
+    /// Settings actually refreshes when a backup lands.
     private(set) var lastBackupAt: Date? {
-        get { UserDefaults.standard.object(forKey: "reclock.sync.lastBackupAt") as? Date }
-        set { UserDefaults.standard.set(newValue, forKey: "reclock.sync.lastBackupAt") }
+        didSet { UserDefaults.standard.set(lastBackupAt, forKey: "reclock.sync.lastBackupAt") }
+    }
+
+    init() {
+        lastBackupAt = UserDefaults.standard.object(forKey: "reclock.sync.lastBackupAt") as? Date
     }
 
     var lastBackupDescription: String? {
@@ -27,7 +34,8 @@ final class SyncService {
 
     /// Debounced push — several rapid saves collapse into one upload.
     func schedulePush(state: AppState, auth: AuthManager) {
-        guard auth.isSignedIn else { return }
+        // Local-only mode promises "no network, full stop" — including backup.
+        guard !state.settings.localOnlyMode, auth.isSignedIn else { return }
         pushTask?.cancel()
         pushTask = Task { [weak auth] in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -38,6 +46,7 @@ final class SyncService {
 
     /// Immediate push (Settings "Back up now", right after sign-in).
     func push(state: AppState, auth: AuthManager) async {
+        guard !state.settings.localOnlyMode else { return }
         guard let session = try? await auth.validSession() else { return }
         guard let payload = Self.encode(state) else { return }
         do {

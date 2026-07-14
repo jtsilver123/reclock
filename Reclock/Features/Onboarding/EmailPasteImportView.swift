@@ -25,6 +25,7 @@ struct EmailPasteImportView: View {
     @State private var hasExtracted = false
     @State private var transferMinutes = 60
     @State private var isCreating = false
+    @State private var wasTruncated = false
     @State private var buildError: String?
 
     private var confirmedFlights: [ScheduledFlight] {
@@ -205,16 +206,20 @@ struct EmailPasteImportView: View {
                     .foregroundStyle(Theme.textSecondary)
             }
         } footer: {
-            Text("Everything else — intensity, start day — can be tuned any time with Adjust on the Plan tab.")
+            Text(wasTruncated
+                 ? "Showing the first 6 flights found — trim the email to just your itinerary if one is missing. Everything else can be tuned any time with Adjust on the Plan tab."
+                 : "Everything else — intensity, start day — can be tuned any time with Adjust on the Plan tab.")
         }
     }
 
     // MARK: Actions
 
     private func extractAndVerify() {
-        let candidates = EmailFlightExtractor.extract(from: pastedText, now: model.deps.now())
+        let extraction = EmailFlightExtractor.extraction(from: pastedText, now: model.deps.now())
+        let candidates = extraction.candidates
         withAnimation(Theme.Anim.spring) {
             hasExtracted = true
+            wasTruncated = extraction.truncated
             legs = candidates.map { VerifiedLeg(candidate: $0, state: .checking) }
         }
         if !candidates.isEmpty { Haptics.selection() }
@@ -222,11 +227,13 @@ struct EmailPasteImportView: View {
         for leg in legs {
             Task {
                 let date = leg.candidate.date ?? model.deps.now().addingTimeInterval(3 * 86_400)
-                let homeZone = model.profile?.homeZone.resolved ?? .current
+                // The detector produced this Date in the DEVICE zone; the lookup
+                // formats it back to yyyy-MM-dd in whatever zone we pass. Passing
+                // the home zone shifted the query a day for users currently abroad.
                 let found = try? await model.deps.scheduleProvider.lookup(
                     flightNumber: leg.candidate.flightNumber,
                     departureDate: date,
-                    homeZone: homeZone
+                    homeZone: .current
                 )
                 await MainActor.run {
                     guard let index = legs.firstIndex(where: { $0.id == leg.id }) else { return }
@@ -244,6 +251,7 @@ struct EmailPasteImportView: View {
     }
 
     private func buildTrip() async {
+        guard !isCreating else { return }
         isCreating = true
         buildError = nil
         defer { isCreating = false }

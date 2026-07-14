@@ -209,7 +209,11 @@ extension SupabaseAuthClient {
 
     /// Kudos sent to me on this plan since a marker date.
     func fetchKudos(code: String, since: Date, session: AuthSession) async throws -> [ReceivedKudo] {
+        // The stored marker is the newest kudo's created_at WITH fractional seconds;
+        // querying gt. a truncated stamp re-matches that same row forever — the
+        // stale-toast bug.
         let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         var request = rest("kudos", query: [
             URLQueryItem(name: "plan_code", value: "eq.\(code)"),
             URLQueryItem(name: "to_user", value: "eq.\(session.userID)"),

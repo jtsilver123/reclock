@@ -411,8 +411,17 @@ struct TripStrip: View {
     private func statusText(for trip: Trip) -> String {
         guard let departure = trip.segments.first?.departure else { return "" }
         if departure > now {
-            let days = Int((departure.timeIntervalSince(now) / 86_400).rounded(.up))
-            return days <= 1 ? "tomorrow" : "in \(days)d"
+            // Calendar days in home time, not 24h buckets — a flight later today
+            // is "today", not "tomorrow".
+            let cal = Calendar.gregorian(in: trip.homeZone.resolved)
+            let days = cal.dateComponents(
+                [.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: departure)
+            ).day ?? 0
+            switch days {
+            case 0: return "today"
+            case 1: return "tomorrow"
+            default: return "in \(days)d"
+            }
         }
         return "under way"
     }

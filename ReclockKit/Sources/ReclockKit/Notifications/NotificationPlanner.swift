@@ -238,6 +238,16 @@ public struct NotificationPlanner: Sendable {
                 kept.append(contentsOf: group)
                 continue
             }
+            // Time-critical notifications (leave-for-airport) are exempt from the
+            // cap outright — "missing it forfeits the flight" must never lose a
+            // ranking fight to three well-meaning sleep reminders on a busy day.
+            let critical = group.filter(\.isTimeCritical)
+            kept.append(contentsOf: critical)
+            let group = group.filter { !$0.isTimeCritical }
+            if group.count <= max(0, cap - critical.count) {
+                kept.append(contentsOf: group)
+                continue
+            }
             let ranked = group.sorted { a, b in
                 let pa = priorityByAction[a.actionID]?.priority ?? .optional
                 let pb = priorityByAction[b.actionID]?.priority ?? .optional
@@ -246,7 +256,7 @@ public struct NotificationPlanner: Sendable {
                 let ib = priorityByAction[b.actionID]?.impactScore ?? 0
                 return ia > ib
             }
-            kept.append(contentsOf: ranked.prefix(cap))
+            kept.append(contentsOf: ranked.prefix(max(0, cap - critical.count)))
         }
         return kept
     }

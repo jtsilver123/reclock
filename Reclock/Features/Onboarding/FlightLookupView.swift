@@ -136,11 +136,13 @@ struct FlightLookupView: View {
         buildError = nil
         defer { isSearching = false }
         do {
-            let homeZone = model.profile?.homeZone.resolved ?? .current
+            // The DatePicker hands back a Date in the DEVICE zone; the provider
+            // formats it to yyyy-MM-dd in the zone we pass. Passing the home zone
+            // queried the wrong day for anyone adding a return flight from abroad.
             let found = try await provider.lookup(
                 flightNumber: flightNumber,
                 departureDate: date,
-                homeZone: homeZone
+                homeZone: .current
             )
             if found.count == 1, let only = found.first {
                 // It found your flight. That IS the confirmation — build.
@@ -163,6 +165,8 @@ struct FlightLookupView: View {
     }
 
     private func build(_ flight: ScheduledFlight) async {
+        // Two result rows tapped in the same frame must not become two trips.
+        guard buildingFlight == nil else { return }
         Haptics.success()
         withAnimation(Theme.Anim.spring) {
             buildingFlight = flight

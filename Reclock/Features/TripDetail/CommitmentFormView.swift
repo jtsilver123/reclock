@@ -16,7 +16,18 @@ struct CommitmentFormView: View {
     @State private var mustBeAlert = false
     @State private var isCritical = false
 
-    private var zone: TimeZone { trip.destinationZone.resolved }
+    /// Where the commitment happens: before the first departure it's at home,
+    /// afterwards at the destination — judged live from the picked start, and the
+    /// section header names the zone so the traveler sees which clock they're on.
+    /// (Always pinning to the destination turned "Work 9–17 the day before flying"
+    /// into an overnight block at home.)
+    private var zoneID: ZoneID {
+        guard let departure = trip.firstDeparture else { return trip.destinationZone }
+        let asDestination = TimeFormat.reinterpret(start, into: trip.destinationZone.resolved)
+        return asDestination < departure ? trip.homeZone : trip.destinationZone
+    }
+
+    private var zone: TimeZone { zoneID.resolved }
 
     private static let suggestions = ["Work", "Meeting", "Dinner", "Wedding", "Presentation", "Tour", "Childcare"]
 
@@ -72,8 +83,8 @@ struct CommitmentFormView: View {
     private func seed() {
         if let existing {
             title = existing.title
-            start = TimeFormat.pickerDate(for: existing.start, in: zone)
-            end = TimeFormat.pickerDate(for: existing.end, in: zone)
+            start = TimeFormat.pickerDate(for: existing.start, in: existing.zone.resolved)
+            end = TimeFormat.pickerDate(for: existing.end, in: existing.zone.resolved)
             mustBeAlert = existing.requiresAlertness
             isCritical = existing.importance == .critical
         } else if let arrival = trip.outboundArrival {
@@ -90,7 +101,7 @@ struct CommitmentFormView: View {
             title: title.trimmingCharacters(in: .whitespaces),
             start: TimeFormat.reinterpret(start, into: zone),
             end: TimeFormat.reinterpret(end, into: zone),
-            zone: trip.destinationZone,
+            zone: zoneID,
             importance: isCritical ? .critical : .standard,
             requiresAlertness: mustBeAlert,
             blocksSleep: true

@@ -85,6 +85,14 @@ final class AppModel {
         }
     }
 
+    /// Foreground housekeeping: statuses drift while the app naps, and the scheduler
+    /// only holds the soonest 60 notifications — long trips need their tail refilled.
+    func refreshOnForeground() async {
+        guard isLoaded else { return }
+        await refreshTripStatuses()
+        await rescheduleAllNotifications()
+    }
+
     func persist() async {
         do {
             try await deps.store.save(state)
@@ -371,7 +379,24 @@ final class AppModel {
             s.arrival = newArrival
             return s
         }.sorted { $0.departure < $1.departure }
+        guard validateEditedTimes(updated) else { return }
         await updateTrip(updated)
+    }
+
+    /// Dry-runs the engine before committing edited flight times. Persisting times
+    /// the itinerary validator rejects (a delay that eats the connection) would leave
+    /// the trip and plan out of sync and poison every future replan with the same
+    /// error — nothing recoverable from inside the app.
+    private func validateEditedTimes(_ updated: Trip) -> Bool {
+        guard let profile = state.profile else { return true }
+        if (try? deps.engine.generatePlan(trip: updated, profile: profile, currentState: nil)) != nil {
+            return true
+        }
+        activeAlert = AppAlert(
+            title: "Those times don't fit this trip",
+            message: "The new times overlap another flight in this trip — often a connection the delay just broke. Update the connecting flight too, or double-check the times. Nothing has been changed yet."
+        )
+        return false
     }
 
     func updateTrip(_ trip: Trip, regenerate: Bool = true) async {
@@ -396,6 +421,9 @@ final class AppModel {
             } else {
                 newStatus = trip.status
             }
+            // A trip marked completed (post-trip survey done, or a prior pass past
+            // the window) must not bounce back to active on the next launch.
+            if t.status == .completed && newStatus == .active { return t }
             if newStatus != t.status { t.status = newStatus; changed = true }
             return t
         }
@@ -417,9 +445,11 @@ final class AppModel {
             celebration = CelebrationEvent(type: action.type)
             deps.analytics.track(.actionCompleted(type: action.type.rawValue, priority: action.priority.rawValue))
             await deps.notifications.cancel(notificationIDsPrefixed: "r\(plan.revision)/\(action.id.uuidString)")
+            await deps.notifications.cancel(notificationIDsPrefixed: "snooze/\(plan.revision)/\(action.id.uuidString)")
         case .notPossible, .skipped, .sleptInstead:
             deps.analytics.track(.actionSkipped(type: action.type.rawValue, priority: action.priority.rawValue))
             await deps.notifications.cancel(notificationIDsPrefixed: "r\(plan.revision)/\(action.id.uuidString)")
+            await deps.notifications.cancel(notificationIDsPrefixed: "snooze/\(plan.revision)/\(action.id.uuidString)")
             // A missed key action changes the trajectory — recalculate the future.
             if action.type == .sleep || action.type == .seekLight {
                 await recalculate(trip: trip, trigger: "missed_action")
@@ -446,6 +476,7 @@ final class AppModel {
         let updated = deps.coordinator.applyingDelay(
             to: trip, segmentID: segmentID, newDeparture: newDeparture, newArrival: newArrival
         )
+        guard validateEditedTimes(updated) else { return }
         guard let index = state.trips.firstIndex(where: { $0.id == trip.id }) else { return }
         state.trips[index] = updated
         if let original = trip.segments.first(where: { $0.id == segmentID }) {
@@ -520,6 +551,7 @@ final class AppModel {
         }
         if let old = cancellingRevision {
             await deps.notifications.cancel(notificationIDsPrefixed: "r\(old)/")
+            await deps.notifications.cancel(notificationIDsPrefixed: "snooze/\(old)/")
         }
         let planner = NotificationPlanner(configuration: PlanEngineConfiguration())
         let planned = planner.plannedNotifications(
