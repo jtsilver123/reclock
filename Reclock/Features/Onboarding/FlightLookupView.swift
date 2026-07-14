@@ -163,6 +163,7 @@ struct FlightLookupView: View {
             segments: [flight.segment()],
             homeZone: model.profile?.homeZone ?? ZoneID(TimeZone.current.identifier),
             airports: model.deps.airports,
+            intensity: model.state.settings.defaultIntensity ?? .balanced,
             airportTransferMinutes: 60,
             importSource: .flightNumber
         ) else {

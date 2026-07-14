@@ -144,6 +144,18 @@ struct SettingsView: View {
                     }
                 }
             ))
+            Picker("Default plan intensity", selection: Binding(
+                get: { model.state.settings.defaultIntensity ?? .balanced },
+                set: { newValue in
+                    var settings = model.state.settings
+                    settings.defaultIntensity = newValue
+                    Task { await model.updateSettings(settings) }
+                }
+            )) {
+                ForEach(PlanIntensity.allCases, id: \.self) { value in
+                    Text(value.displayName).tag(value)
+                }
+            }
         } header: {
             SettingsHeader(title: "Planning", symbol: "slider.horizontal.3")
         }

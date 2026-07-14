@@ -53,17 +53,21 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var timeDisplay: TimeDisplayMode
     /// Trip the user explicitly focused (Today/Timeline follow it). nil = automatic.
     public var selectedTripID: UUID?
+    /// Starting intensity for newly created trips. nil = balanced.
+    public var defaultIntensity: PlanIntensity?
 
     public init(
         localOnlyMode: Bool = false,
         analyticsEnabled: Bool = false,
         timeDisplay: TimeDisplayMode = .destination,
-        selectedTripID: UUID? = nil
+        selectedTripID: UUID? = nil,
+        defaultIntensity: PlanIntensity? = nil
     ) {
         self.localOnlyMode = localOnlyMode
         self.analyticsEnabled = analyticsEnabled
         self.timeDisplay = timeDisplay
         self.selectedTripID = selectedTripID
+        self.defaultIntensity = defaultIntensity
     }
 }
 

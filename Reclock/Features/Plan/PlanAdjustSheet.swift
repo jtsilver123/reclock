@@ -8,6 +8,7 @@ struct PlanAdjustSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let trip: Trip
+    @State private var savedDefaults = false
 
     /// Live copy — edits land in the store, and this view re-reads them.
     private var currentTrip: Trip {
@@ -46,6 +47,14 @@ struct PlanAdjustSheet: View {
                         Text("4 days before").tag(4)
                     }
 
+                    Picker("Recovery after landing", selection: recoveryBinding) {
+                        Text("Automatic").tag(-1)
+                        Text("None").tag(0)
+                        Text("1 day").tag(1)
+                        Text("2 days").tag(2)
+                        Text("3 days").tag(3)
+                    }
+
                     TransferTimeRow(
                         minutes: transferBinding,
                         departureAirport: departureAirport
@@ -57,6 +66,27 @@ struct PlanAdjustSheet: View {
                     Text("This trip")
                 } footer: {
                     Text("Every change rebuilds the plan and its reminders instantly.")
+                }
+
+                Section {
+                    Toggle("Optional melatonin reminders", isOn: melatoninBinding)
+                } footer: {
+                    Text("Melatonin steps appear only on nights your body clock shifts earlier — typically eastward trips — and within a few days of landing. Never presented as required, never a dosage.")
+                }
+
+                Section {
+                    Button {
+                        saveAsDefaults()
+                    } label: {
+                        Label(
+                            savedDefaults ? "Saved as your defaults" : "Save these as my defaults",
+                            systemImage: savedDefaults ? "checkmark.circle.fill" : "square.and.arrow.down"
+                        )
+                        .font(.subheadline.weight(.semibold))
+                    }
+                    .disabled(savedDefaults)
+                } footer: {
+                    Text("Future trips start from this intensity and head start. Sleep times are always yours, everywhere.")
                 }
             }
             .navigationTitle("Adjust plan")
@@ -136,6 +166,51 @@ struct PlanAdjustSheet: View {
                 Task { await model.updateTrip(updated) }
             }
         )
+    }
+
+    private var recoveryBinding: Binding<Int> {
+        Binding(
+            get: { currentTrip.recoveryDaysOverride ?? -1 },
+            set: { newValue in
+                Haptics.selection()
+                var updated = currentTrip
+                updated.recoveryDaysOverride = newValue < 0 ? nil : newValue
+                Task { await model.updateTrip(updated) }
+            }
+        )
+    }
+
+    private var melatoninBinding: Binding<Bool> {
+        Binding(
+            get: { model.profile?.melatonin.remindersEnabled ?? false },
+            set: { newValue in
+                Task {
+                    guard var profile = model.profile else { return }
+                    profile.melatonin = newValue ? .includeOptionalReminders : .exclude
+                    await model.updateProfile(profile)
+                }
+            }
+        )
+    }
+
+    private func saveAsDefaults() {
+        Haptics.success()
+        var settings = model.state.settings
+        settings.defaultIntensity = currentTrip.intensity
+        let trip = currentTrip
+        Task {
+            await model.updateSettings(settings)
+            if let override = trip.preTripDaysOverride, var profile = model.profile {
+                profile.preTripAdjustment = switch override {
+                case 0: .none
+                case 1: .small
+                case 2: .moderate
+                default: .maximum
+                }
+                await model.updateProfile(profile)
+            }
+        }
+        withAnimation(Theme.Anim.spring) { savedDefaults = true }
     }
 
     private var transferBinding: Binding<Int> {

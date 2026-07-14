@@ -28,6 +28,7 @@ struct ManualTripEntryView: View {
     @State private var preTripChoice: Int = -1
     @State private var transferMinutes = 60
     @State private var validationMessages: [String] = []
+    @State private var seededDefaults = false
     @State private var isCreating = false
 
     var body: some View {
@@ -135,6 +136,12 @@ struct ManualTripEntryView: View {
         }
         .navigationTitle("Enter trip")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if !seededDefaults {
+                seededDefaults = true
+                intensity = model.state.settings.defaultIntensity ?? .balanced
+            }
+        }
     }
 
     private func index(of id: UUID) -> Int {

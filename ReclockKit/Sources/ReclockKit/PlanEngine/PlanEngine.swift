@@ -273,7 +273,9 @@ public struct PlanEngine: JetLagPlanGenerating, Sendable {
         // Adaptation continues after final arrival until complete (bounded).
         let postDays = context.strategy == .anchorToHome
             ? (trip.destinationNights.map { min($0 + 1, 4) } ?? 2)
-            : min(cfg.maxAdaptationDays, context.outboundShift.daysToComplete + cfg.recoveryBufferDays + 1)
+            : min(cfg.maxAdaptationDays,
+                  context.outboundShift.daysToComplete
+                      + (trip.recoveryDaysOverride ?? cfg.recoveryBufferDays) + 1)
         let planEnd = lastArrival.addingTimeInterval(Double(postDays) * 86_400)
 
         let sleepDuration = profile.typicalSleepDuration

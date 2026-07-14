@@ -116,6 +116,23 @@ struct DayColumn: View {
 
     var body: some View {
         let totalHeight = CGFloat(totalHours) * hourHeight
+        VStack(spacing: 2) {
+            // The columns say what they are — no legend required.
+            HStack(spacing: 0) {
+                Color.clear.frame(width: railWidth, height: 1)
+                ForEach(["Light", "Sleep", "Coffee"], id: \.self) { name in
+                    Text(name)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .accessibilityHidden(true)
+            columnBody(totalHeight: totalHeight)
+        }
+    }
+
+    private func columnBody(totalHeight: CGFloat) -> some View {
         GeometryReader { geo in
             let laneWidth = (geo.size.width - railWidth) / 3
             ZStack(alignment: .topLeading) {
