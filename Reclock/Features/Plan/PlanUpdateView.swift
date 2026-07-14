@@ -84,7 +84,7 @@ struct PlanUpdateView: View {
                         style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [1, 6])
                     )
                     .frame(width: [132, 100, 70][i], height: [132, 100, 70][i])
-                    .rotationEffect(.degrees(spin ? [360, -360, 300][i] : 0))
+                    .rotationEffect(.degrees(spin ? [720, -600, 480][i] : 0))
                     .opacity(stage >= 1 ? 0 : 1)
             }
 
@@ -171,8 +171,12 @@ struct PlanUpdateView: View {
             return
         }
 
-        withAnimation(.linear(duration: 2.2).repeatForever(autoreverses: false)) { spin = true }
+        // A FINITE spin, not repeatForever: an endless animation means the app never
+        // reports "idle", which hangs XCUITest on every interaction and can wedge the
+        // whole simulator run. Two full turns over the recompute beat reads as motion
+        // and then settles, letting the app go idle.
         Haptics.soft()
+        withAnimation(.easeInOut(duration: 1.15)) { spin = true }
         try? await Task.sleep(nanoseconds: 1_150_000_000)
         Haptics.success()
         withAnimation(Theme.Anim.spring) { stage = 1 }
