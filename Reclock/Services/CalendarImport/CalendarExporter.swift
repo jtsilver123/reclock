@@ -50,6 +50,13 @@ final class EventKitCalendarExporter: CalendarExporting {
         }
     }
 
+    /// Removal paths use this instead of `ensureAccess()`: cleaning up must never be
+    /// the reason a user first sees the calendar permission dialog (e.g. deleting a
+    /// trip they never exported).
+    private var hasAccessAlready: Bool {
+        EKEventStore.authorizationStatus(for: .event) == .fullAccess
+    }
+
     func writableCalendars() async -> [ExportCalendar] {
         guard await ensureAccess() else { return [] }
         let defaultID = store.defaultCalendarForNewEvents?.calendarIdentifier
@@ -93,34 +100,51 @@ final class EventKitCalendarExporter: CalendarExporting {
                 if let id = event.eventIdentifier { written.append(id) }
             } catch { continue }
         }
-        do { try store.commit() } catch { return nil }
+        do {
+            try store.commit()
+        } catch {
+            // A failed commit leaves the batch queued in the long-lived store; the
+            // NEXT successful commit would flush it too, duplicating events.
+            store.reset()
+            return nil
+        }
 
         UserDefaults.standard.set(written, forKey: Self.markerKey(tripID))
         return written.count
     }
 
     func removeAll(tripID: UUID) async -> Int? {
-        guard await ensureAccess() else { return nil }
+        let key = Self.markerKey(tripID)
+        let recorded = UserDefaults.standard.stringArray(forKey: key) ?? []
+        // Nothing was ever exported (or a reinstall cleared the markers): done,
+        // and crucially without ever prompting for calendar access.
+        guard !recorded.isEmpty else { return 0 }
+        guard hasAccessAlready else { return nil }
         let removed = removeStoredEvents(tripID: tripID, commit: true)
-        UserDefaults.standard.removeObject(forKey: Self.markerKey(tripID))
+        if removed > 0 {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        // removed == 0 with identifiers recorded: iCloud likely moved the events and
+        // staled our IDs — keep the marker so a later attempt can still try.
         return removed
     }
 
     func removeEverything() async -> Int? {
-        guard await ensureAccess() else { return nil }
         let defaults = UserDefaults.standard
-        var total = 0
         // Prefix scan, not a registry: also catches exports written by older builds
         // (and survives any bookkeeping drift) — the marker keys ARE the registry.
         let keys = defaults.dictionaryRepresentation().keys.filter {
             $0.hasPrefix(Self.markerPrefix)
         }
+        guard !keys.isEmpty else { return 0 }
+        guard hasAccessAlready else { return nil }
+        var total = 0
         for key in keys {
             guard let id = UUID(uuidString: String(key.dropFirst(Self.markerPrefix.count))) else { continue }
             total += removeStoredEvents(tripID: id, commit: false)
             defaults.removeObject(forKey: key)
         }
-        try? store.commit()
+        do { try store.commit() } catch { store.reset() }
         return total
     }
 
@@ -135,7 +159,9 @@ final class EventKitCalendarExporter: CalendarExporting {
                 removed += 1
             }
         }
-        if commit { try? store.commit() }
+        if commit {
+            do { try store.commit() } catch { store.reset(); return 0 }
+        }
         return removed
     }
 }

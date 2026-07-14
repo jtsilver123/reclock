@@ -93,7 +93,9 @@ struct MainTabs: View {
         }
         .task(id: model.celebration?.id) {
             guard model.celebration != nil else { return }
-            try? await Task.sleep(nanoseconds: 2_200_000_000)
+            // A cancelled sleep must NOT fall through to the clear: when toast B
+            // replaces toast A inside 2.2s, A's dying task would wipe B out.
+            do { try await Task.sleep(nanoseconds: 2_200_000_000) } catch { return }
             model.celebration = nil
         }
     }

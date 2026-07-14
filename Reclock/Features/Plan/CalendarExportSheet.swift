@@ -14,6 +14,7 @@ struct CalendarExportSheet: View {
     @State private var accessDenied = false
     @State private var working = false
     @State private var resultLine: String?
+    @State private var errorLine: String?
 
     private var pendingCount: Int {
         guard let plan = model.plan(for: trip) else { return 0 }
@@ -95,6 +96,12 @@ struct CalendarExportSheet: View {
                                 .foregroundStyle(.green)
                         }
                     }
+                    if let errorLine {
+                        Section {
+                            Label(errorLine, systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.orange)
+                        }
+                    }
                 }
             }
             .navigationTitle("My calendar")
@@ -123,12 +130,19 @@ struct CalendarExportSheet: View {
         working = true
         Task {
             defer { working = false }
+            errorLine = nil
             let requests = PlanCalendarEvents.requests(trip: trip, plan: plan, now: model.deps.now())
             let count = await model.deps.calendarExporter.export(
                 requests, tripID: trip.id, calendarID: selectedID
             )
             guard let count else {
-                accessDenied = true
+                // nil can also mean "the write itself failed" (iCloud hiccup, calendar
+                // gone) — with a chooser full of calendars, access clearly isn't off.
+                if calendars.isEmpty {
+                    accessDenied = true
+                } else {
+                    errorLine = "That didn't save — try again in a moment."
+                }
                 return
             }
             Haptics.success()
@@ -149,9 +163,14 @@ struct CalendarExportSheet: View {
         working = true
         Task {
             defer { working = false }
+            errorLine = nil
             let count = await model.deps.calendarExporter.removeAll(tripID: trip.id)
             guard let count else {
-                accessDenied = true
+                if calendars.isEmpty {
+                    accessDenied = true
+                } else {
+                    errorLine = "That didn't work — try again in a moment."
+                }
                 return
             }
             Haptics.soft()

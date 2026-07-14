@@ -106,6 +106,28 @@ struct AdjustReplanTests {
         #expect(before != after, "post-landing sleep windows must track the new bedtime")
     }
 
+    @Test("Switching to home-time anchoring tells one clear story")
+    func anchorSwitchNarration() throws {
+        var trip = DemoTrips.newYorkToHelsinki(reference: Self.reference)
+        let profile = DemoTrips.defaultProfile()
+        let previous = try coordinator.engine.generatePlan(
+            trip: trip, profile: profile, currentState: nil
+        )
+        trip.adaptationStrategy = .anchorToHome
+        let state = coordinator.estimateState(plan: previous, trip: trip, events: [], asOf: Self.reference)
+        let result = try coordinator.replan(
+            trip: trip, profile: profile, previousPlan: previous, state: state
+        )
+        #expect(result.changeMessages.contains { $0.contains("Staying on home time") })
+        // No shift-start claims and no window-move noise for a plan that never shifts —
+        // and never scientific notation anywhere.
+        for message in result.changeMessages {
+            #expect(!message.contains("Shifting now starts"))
+            #expect(!message.contains("window moved"))
+            #expect(!message.lowercased().contains("e+"))
+        }
+    }
+
     @Test("Replanning with nothing changed leaves the future alone")
     func noChangeIsStable() throws {
         let replay = try adjust()

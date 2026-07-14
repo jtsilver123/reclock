@@ -35,16 +35,20 @@ final class AppModel {
     var planTabRequest = 0
     /// A trip link that arrived on cold launch, before the store finished loading.
     private var pendingTripLink: UUID?
+    /// True once start() has fully finished — including the backup restore, which is
+    /// exactly where a reinstalled user's trips come from.
+    private var startFinished = false
 
     init(dependencies: Dependencies) {
         self.deps = dependencies
     }
 
     /// A calendar event's link back into the app: focus that trip, show its plan.
-    /// On a cold launch the URL arrives before `start()` has loaded any trips —
-    /// park it and replay once the store is up.
+    /// On a cold launch the URL can arrive at any point during `start()` — before the
+    /// store loads, or after `isLoaded` but before the backup restore has brought the
+    /// trips back. Park it until start() has completely finished, then replay.
     func openTripFromLink(_ id: UUID) {
-        guard isLoaded else {
+        guard startFinished else {
             pendingTripLink = id
             return
         }
@@ -73,6 +77,7 @@ final class AppModel {
         if auth.isSignedIn && state.trips.isEmpty && !ProcessInfo.isUITest {
             await restoreFromBackupIfEmpty()
         }
+        startFinished = true
         // A calendar-event link launched the app: honor it now that trips exist.
         if let linked = pendingTripLink {
             pendingTripLink = nil

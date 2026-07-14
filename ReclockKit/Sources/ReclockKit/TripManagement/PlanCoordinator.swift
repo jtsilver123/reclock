@@ -153,10 +153,27 @@ public struct PlanCoordinator: Sendable {
     ) -> [String] {
         var messages: [String] = []
 
+        // A switch to home-time anchoring rewrites the whole story: window deltas
+        // ("your sleep moved 50 hours later") and shift-start messages are noise
+        // against the one fact that matters.
+        let becameAnchored = merged.strategy == .anchorToHome && previous.strategy != .anchorToHome
+        if becameAnchored {
+            messages.append("Staying on home time — no body-clock shifting scheduled.")
+        }
+
         func upcoming(_ plan: JetLagPlan, _ type: ActionType) -> PlanAction? {
             plan.actions
                 .filter { $0.type == type && $0.window.start > asOf }
                 .min { $0.window.start < $1.window.start }
+        }
+
+        /// "1.5 hours", "2 hours", "45 minutes" — plain numbers at any magnitude
+        /// (%.1g rendered a 2-day jump as "5e+01 hours").
+        func amountText(_ delta: TimeInterval) -> String {
+            let hours = abs(delta) / 3600
+            guard hours >= 1 else { return "\(Int(abs(delta) / 60)) minutes" }
+            let formatted = String(format: "%.1f", hours).replacingOccurrences(of: ".0", with: "")
+            return "\(formatted) hour\(hours >= 1.95 ? "s" : "")"
         }
 
         let pairsToCheck: [(ActionType, String)] = [
@@ -164,19 +181,15 @@ public struct PlanCoordinator: Sendable {
             (.seekLight, "light window"),
             (.caffeineCutoff, "caffeine cutoff"),
         ]
-        for (type, label) in pairsToCheck {
+        for (type, label) in pairsToCheck where !becameAnchored {
             guard
                 let before = upcoming(previous, type),
                 let after = upcoming(merged, type)
             else { continue }
             let delta = after.window.start.timeIntervalSince(before.window.start)
             guard abs(delta) >= .minutes(30) else { continue }
-            let hours = abs(delta) / 3600
             let direction = delta > 0 ? "later" : "earlier"
-            let amount = hours >= 1
-                ? String(format: "%.1g hour%@", hours, hours >= 1.95 ? "s" : "")
-                : "\(Int(abs(delta) / 60)) minutes"
-            messages.append("Your next \(label) moved \(amount) \(direction).")
+            messages.append("Your next \(label) moved \(amountText(delta)) \(direction).")
         }
 
         // Structural changes the next-window checks can't see — without these, an
@@ -192,7 +205,7 @@ public struct PlanCoordinator: Sendable {
         }
         let preBefore = shiftedEveningsBeforeTravelDay(previous)
         let preAfter = shiftedEveningsBeforeTravelDay(merged)
-        if preBefore != preAfter {
+        if preBefore != preAfter && merged.strategy != .anchorToHome {
             messages.append(preAfter == 0
                 ? "Shifting now starts on your travel day."
                 : "Shifting now starts \(preAfter) evening\(preAfter == 1 ? "" : "s") before departure.")
