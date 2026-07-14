@@ -116,11 +116,16 @@ final class ReclockUITests: XCTestCase {
         XCTAssertTrue(update.waitForExistence(timeout: 5))
         update.tap()
 
-        // The sheet dismisses once the plan is rebuilt.
+        // A deliberate replan now announces itself: the sheet dismisses and the
+        // "here's what changed" moment takes the screen. Wait it out, then continue.
         expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: update)
         waitForExpectations(timeout: 10)
-        // Back on trip detail (scroll position preserved, so the row is still there).
-        XCTAssertTrue(delayButton.waitForExistence(timeout: 10))
+        let seePlan = app.buttons["See the plan"]
+        XCTAssertTrue(seePlan.waitForExistence(timeout: 10), "Plan-update summary should appear")
+        seePlan.tap()
+
+        // "See the plan" lands on the Plan tab with the rebuilt plan.
+        XCTAssertTrue(app.tabBars.buttons["Plan"].waitForExistence(timeout: 10))
     }
 
     func testDeleteTrip() throws {
