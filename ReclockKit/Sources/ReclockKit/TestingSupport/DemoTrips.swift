@@ -9,6 +9,11 @@ public enum DemoTrips {
 
     /// A wall-clock instant `dayOffset` days after the reference day, at `hour:minute`
     /// in `zone`. The reference day is the calendar day containing `reference` in `zone`.
+    /// "Day N at HH:MM in zone Z" — with day N anchored to ONE canonical calendar
+    /// (UTC), not to Z's. Anchoring per-zone made departure/arrival pairs drift a
+    /// whole day apart for the few hours each night when two zones disagree about
+    /// the date — a time-of-day bomb that produced impossible 32-hour "flights"
+    /// and made the itinerary validator (rightly) reject the demo trips.
     static func at(
         _ reference: Date,
         dayOffset: Int,
@@ -16,11 +21,15 @@ public enum DemoTrips {
         _ minute: Int,
         _ zoneID: String
     ) -> Date {
+        let utc = Calendar.gregorian(in: TimeZone(identifier: "UTC")!)
+        let anchor = utc.date(byAdding: .day, value: dayOffset, to: utc.startOfDay(for: reference))!
+        let comps = utc.dateComponents([.year, .month, .day], from: anchor)
         let zone = TimeZone(identifier: zoneID)!
-        let cal = Calendar.gregorian(in: zone)
-        let baseDay = cal.startOfDay(for: reference)
-        let day = cal.date(byAdding: .day, value: dayOffset, to: baseDay)!
-        return LocalClockTime(hour: hour, minute: minute).date(on: day, in: zone)!
+        var cal = Calendar.gregorian(in: zone)
+        cal.timeZone = zone
+        return cal.date(from: DateComponents(
+            year: comps.year, month: comps.month, day: comps.day, hour: hour, minute: minute
+        ))!
     }
 
     // MARK: - Profiles
