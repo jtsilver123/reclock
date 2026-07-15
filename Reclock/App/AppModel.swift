@@ -13,6 +13,8 @@ final class AppModel {
     /// Optional backup & sync identity. The app never requires it.
     let auth = AuthManager()
     let sync = SyncService()
+    /// Decides when to ask for an App Store rating (device-local, self-throttled).
+    private let review = ReviewPrompter()
 
     // Internal (not private(set)): AppModel+Sharing funnels mutations through
     // the same persist path from its own file.
@@ -36,6 +38,8 @@ final class AppModel {
     var pendingJoinCode: PendingJoinCode?
     /// Bumped when a reclock://trip/… link lands so MainTabs jumps to the Plan tab.
     var planTabRequest = 0
+    /// Bumped when we've earned a rating prompt; MainTabs then asks StoreKit for it.
+    var reviewRequestToken = 0
     /// A trip link that arrived on cold launch, before the store finished loading.
     private var pendingTripLink: UUID?
     /// True once start() has fully finished — including the backup restore, which is
@@ -449,6 +453,10 @@ final class AppModel {
             deps.analytics.track(.actionCompleted(type: action.type.rawValue, priority: action.priority.rawValue))
             await deps.notifications.cancel(notificationIDsPrefixed: "r\(plan.revision)/\(action.id.uuidString)")
             await deps.notifications.cancel(notificationIDsPrefixed: "snooze/\(plan.revision)/\(action.id.uuidString)")
+            // Following the plan is the value moment. After enough done steps, and well
+            // spaced, this is when we ask for a rating.
+            review.noteCompletedStep()
+            maybeRequestReview(.completedStep)
         case .notPossible, .skipped, .sleptInstead:
             deps.analytics.track(.actionSkipped(type: action.type.rawValue, priority: action.priority.rawValue))
             await deps.notifications.cancel(notificationIDsPrefixed: "r\(plan.revision)/\(action.id.uuidString)")
@@ -605,6 +613,19 @@ final class AppModel {
             severity: survey.severity, usefulness: survey.usefulness, adherence: survey.adherence.rawValue
         ))
         await persist()
+        // A happy check-in is the single best moment to ask for a rating.
+        if survey.usefulness >= 8 || survey.wouldUseAgain == true {
+            maybeRequestReview(.positiveSurvey)
+        }
+    }
+
+    /// Asks StoreKit for a rating when ReviewPolicy allows. Never during UI tests, and
+    /// the actual prompt is fired by MainTabs once it observes the token.
+    private func maybeRequestReview(_ trigger: ReviewPolicy.Trigger) {
+        guard !ProcessInfo.isUITest else { return }
+        guard review.shouldRequest(trigger, now: deps.now()) else { return }
+        reviewRequestToken += 1
+        deps.analytics.track(.reviewPromptShown)
     }
 
     func exportData() async -> Data? {

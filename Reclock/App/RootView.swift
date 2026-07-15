@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import ReclockKit
 
 struct RootView: View {
@@ -37,6 +38,7 @@ struct RootView: View {
 struct MainTabs: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.requestReview) private var requestReview
 
     private enum Tab: Hashable { case plan, trips, settings }
     @State private var selection: Tab = .plan
@@ -105,6 +107,17 @@ struct MainTabs: View {
         .onChange(of: model.planTabRequest) { _, _ in
             // A calendar event's deep link: land on the plan it points at.
             selection = .plan
+        }
+        .onChange(of: model.reviewRequestToken) { _, token in
+            guard token > 0 else { return }
+            Task { @MainActor in
+                // Let the celebration land first, and never stack the rating prompt on
+                // top of a full-screen moment.
+                try? await Task.sleep(nanoseconds: 1_400_000_000)
+                guard model.planReveal == nil, model.planUpdate == nil,
+                      model.pendingJoinCode == nil else { return }
+                requestReview()
+            }
         }
         .task(id: model.celebration?.id) {
             guard model.celebration != nil else { return }

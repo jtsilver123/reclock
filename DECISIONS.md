@@ -280,3 +280,10 @@ time" chip above the day list, doubling as the zone switcher.
 21. **"See an example" was retired with the questionnaire onboarding (supersedes #17).**
     The demo trip now exists for dev fixtures and UI tests only; first-run goes straight
     to a real flight.
+22. **Rating prompts fire only at earned high points, self-throttled below Apple's cap.**
+    We ask for an App Store rating in exactly two moments: after the traveler has
+    marked enough plan steps done to have felt the value (ReviewPolicy.stepsForAsk),
+    and right after a positive post-trip check-in (usefulness >= 8 or wouldUseAgain).
+    Never on first run, never during an error, never in UI tests. Our own cap is 3
+    lifetime and 90 days apart (Apple also caps at 3 per 365 days). Timing rules live
+    in ReclockKit/Review/ReviewPolicy.swift and are unit-tested.
