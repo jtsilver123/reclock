@@ -35,52 +35,24 @@ struct TripDetailView: View {
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(currentTrip.origin)
-                            .font(Theme.display(33))
-                        Image(systemName: "airplane")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(Theme.accentDeep)
-                            .accessibilityHidden(true)
-                        Spacer()
-                        Text(currentTrip.destination)
-                            .font(Theme.display(33))
-                    }
-                    if let plan = model.plan(for: currentTrip) {
-                        HStack(spacing: Theme.Space.s) {
-                            Text(shiftDescription(plan))
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(Theme.accentDeep)
-                                .padding(.horizontal, Theme.Space.s)
-                                .padding(.vertical, 4)
-                                .background(Theme.accent.opacity(0.12), in: Capsule())
-                            Text(plan.strategySummary)
-                                .font(.footnote)
-                                .foregroundStyle(Theme.textSecondary)
-                                .lineLimit(2)
-                        }
-                    }
-                    Label("Works fully offline once generated", systemImage: "airplane.circle")
-                        .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                if let pair = globeAirports {
+                    // The live planet, front and center: route, day/night, active zone.
+                    TripGlobeHero(
+                        trip: currentTrip,
+                        origin: pair.origin,
+                        destination: pair.destination,
+                        shiftText: model.plan(for: currentTrip).map { shiftDescription($0) },
+                        strategy: model.plan(for: currentTrip)?.strategySummary,
+                        onTap: { showGlobe = true }
+                    )
+                    .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.m, bottom: 0, trailing: Theme.Space.m))
+                    .listRowBackground(Color.clear)
+                } else {
+                    // No coordinates for one endpoint: a plain header, no globe.
+                    textHeader
                 }
-                .overlay(alignment: .topTrailing) {
-                    if globeAirports != nil {
-                        Button {
-                            Haptics.soft()
-                            showGlobe = true
-                        } label: {
-                            Image(systemName: "globe.americas.fill")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Theme.accentDeep)
-                                .frame(width: 36, height: 36)
-                                .background(Circle().fill(Theme.accent.opacity(0.15)))
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Globe view: route and daylight")
-                    }
-                }
+            } footer: {
+                Text("Works fully offline once generated.")
             }
 
             Section {
@@ -232,6 +204,38 @@ struct TripDetailView: View {
             }
         } message: {
             Text("This removes the trip, its plan, and scheduled reminders. There's no undo.")
+        }
+    }
+
+    /// Header for trips whose airports lack coordinates (no globe possible).
+    @ViewBuilder
+    private var textHeader: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(currentTrip.origin)
+                    .font(Theme.display(33))
+                Image(systemName: "airplane")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Theme.accentDeep)
+                    .accessibilityHidden(true)
+                Spacer()
+                Text(currentTrip.destination)
+                    .font(Theme.display(33))
+            }
+            if let plan = model.plan(for: currentTrip) {
+                HStack(spacing: Theme.Space.s) {
+                    Text(shiftDescription(plan))
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.accentDeep)
+                        .padding(.horizontal, Theme.Space.s)
+                        .padding(.vertical, 4)
+                        .background(Theme.accent.opacity(0.12), in: Capsule())
+                    Text(plan.strategySummary)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(2)
+                }
+            }
         }
     }
 

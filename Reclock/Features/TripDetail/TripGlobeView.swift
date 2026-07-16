@@ -1,17 +1,17 @@
 import SwiftUI
 import ReclockKit
 
-/// The trip as a planet: an orthographic globe with the live day/night terminator,
-/// the route arcing between the two cities, and both local clocks ticking below.
-/// Drag to spin. Pure Canvas + GlobeMath — no maps, no network, no assets.
-struct TripGlobeView: View {
-    @Environment(\.dismiss) private var dismiss
-    let trip: Trip
+/// The globe itself, as a reusable Canvas: a lit sphere, graticule, the live day/night
+/// terminator, the great-circle route, both cities, and the sun and moon at their real
+/// positions. Shared by the full-screen `TripGlobeView` and the trip-detail hero, so the
+/// same planet appears inline and full screen. Pure Canvas + GlobeMath, no assets.
+struct GlobeCanvas: View {
     let origin: Airport
     let destination: Airport
-
-    @State private var lonOffset: Double = 0
-    @State private var lonOffsetAtDragStart: Double?
+    let originCode: String
+    let destCode: String
+    let now: Date
+    var lonOffset: Double = 0
 
     private var originVec: GlobeMath.Vec3 {
         GlobeMath.unit(latDeg: origin.latitude ?? 0, lonDeg: origin.longitude ?? 0)
@@ -22,82 +22,6 @@ struct TripGlobeView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            SwiftUI.TimelineView(.everyMinute) { timeline in
-                let now = timeline.date
-                VStack(spacing: Theme.Space.m) {
-                    Text("\(trip.origin) → \(trip.destination)")
-                        .font(Theme.display(26))
-                        .foregroundStyle(Color.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .padding(.top, Theme.Space.s)
-
-                    globe(now: now)
-                        .aspectRatio(1, contentMode: .fit)
-                        .gesture(
-                            DragGesture()
-                                .onChanged { value in
-                                    if lonOffsetAtDragStart == nil {
-                                        lonOffsetAtDragStart = lonOffset
-                                    }
-                                    lonOffset = (lonOffsetAtDragStart ?? 0)
-                                        - Double(value.translation.width) / 3.2
-                                }
-                                .onEnded { _ in lonOffsetAtDragStart = nil }
-                        )
-                        .accessibilityLabel(
-                            "Globe showing the route from \(origin.city) to \(destination.city) with the current day and night sides of Earth"
-                        )
-
-                    HStack(spacing: Theme.Space.m) {
-                        cityClock(code: trip.origin, city: origin.city,
-                                  zone: origin.zone.resolved, now: now)
-                        Image(systemName: "airplane")
-                            .foregroundStyle(Theme.accent)
-                            .accessibilityHidden(true)
-                        cityClock(code: trip.destination, city: destination.city,
-                                  zone: destination.zone.resolved, now: now)
-                    }
-
-                    Text("The bright side is daylight right now. Drag to spin.")
-                        .font(.caption)
-                        .foregroundStyle(Color.white.opacity(0.55))
-                        .padding(.bottom, Theme.Space.m)
-                }
-                .padding(.horizontal, Theme.Space.m)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(red: 0.05, green: 0.07, blue: 0.16).ignoresSafeArea())
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .foregroundStyle(Color.white)
-                }
-            }
-            .toolbarColorScheme(.dark, for: .navigationBar)
-        }
-    }
-
-    // MARK: Pieces
-
-    private func cityClock(code: String, city: String, zone: TimeZone, now: Date) -> some View {
-        VStack(spacing: 2) {
-            Text(TimeFormat.time(now, zone: zone))
-                .font(.system(size: 24, weight: .bold, design: .rounded).monospacedDigit())
-                .foregroundStyle(Color.white)
-                .contentTransition(.numericText())
-            Text(code)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.white.opacity(0.6))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(city): \(TimeFormat.time(now, zone: zone))")
-    }
-
-    private func globe(now: Date) -> some View {
         Canvas { ctx, size in
             let radius = min(size.width, size.height) * 0.46
             let centerPt = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -212,7 +136,7 @@ struct TripGlobeView: View {
             )
 
             // City markers.
-            for (vec, code) in [(originVec, trip.origin), (destVec, trip.destination)] {
+            for (vec, code) in [(originVec, originCode), (destVec, destCode)] {
                 let p = GlobeMath.project(vec, lookingAt: center)
                 guard p.visible else { continue }
                 let pt = screen(p)
@@ -284,5 +208,219 @@ struct TripGlobeView: View {
         let span = norm(to - from)
         let offset = norm(angle - from)
         return clockwise ? offset >= span : offset <= span
+    }
+}
+
+// MARK: - Trip-detail hero
+
+/// The live planet, front and center when you open a trip: the route as a globe with the
+/// real day/night terminator, and the clock you're steering toward called out as the
+/// active zone. Tap to open the full, spinnable view.
+struct TripGlobeHero: View {
+    let trip: Trip
+    let origin: Airport
+    let destination: Airport
+    var shiftText: String?
+    var strategy: String?
+    var onTap: () -> Void
+
+    /// Before landing, the traveler's clock is still home; after, it's the destination.
+    private func destinationIsActive(now: Date) -> Bool {
+        guard let arrival = trip.outboundArrival ?? trip.finalArrival else { return true }
+        return now >= arrival
+    }
+
+    var body: some View {
+        SwiftUI.TimelineView(.everyMinute) { timeline in
+            let now = timeline.date
+            let destActive = destinationIsActive(now: now)
+            VStack(spacing: Theme.Space.m) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(trip.origin)
+                        .font(Theme.display(27))
+                    Image(systemName: "airplane")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .accessibilityHidden(true)
+                    Spacer()
+                    Text(trip.destination)
+                        .font(Theme.display(27))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+                .foregroundStyle(Color.white)
+
+                GlobeCanvas(
+                    origin: origin, destination: destination,
+                    originCode: trip.origin, destCode: trip.destination,
+                    now: now
+                )
+                .aspectRatio(1, contentMode: .fit)
+                .frame(height: 208)
+                .frame(maxWidth: .infinity)
+
+                HStack(alignment: .top, spacing: Theme.Space.m) {
+                    clock(code: trip.origin, city: origin.city,
+                          zone: origin.zone.resolved, now: now, active: !destActive)
+                    Rectangle()
+                        .fill(Color.white.opacity(0.12))
+                        .frame(width: 1, height: 40)
+                    clock(code: trip.destination, city: destination.city,
+                          zone: destination.zone.resolved, now: now, active: destActive)
+                }
+
+                if let shiftText {
+                    HStack(spacing: Theme.Space.s) {
+                        Text(shiftText)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.ink)
+                            .padding(.horizontal, Theme.Space.s)
+                            .padding(.vertical, 4)
+                            .background(Theme.accent, in: Capsule())
+                        if let strategy {
+                            Text(strategy)
+                                .font(.caption)
+                                .foregroundStyle(Color.white.opacity(0.7))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+
+                Label("Tap to spin the globe", systemImage: "hand.draw")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.5))
+            }
+            .padding(Theme.Space.l)
+        }
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.06, green: 0.08, blue: 0.18),
+                         Color(red: 0.10, green: 0.13, blue: 0.30)],
+                startPoint: .top, endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture { Haptics.soft(); onTap() }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(origin.city) to \(destination.city). Tap to open the globe with the current day and night sides of Earth.")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// One city clock. The active zone (where the plan is steering the body clock right
+    /// now) glows marigold; the other is quiet.
+    private func clock(code: String, city: String, zone: TimeZone, now: Date, active: Bool) -> some View {
+        VStack(spacing: 3) {
+            Text(active ? "Active now" : city)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(active ? Theme.accent : Color.white.opacity(0.55))
+                .lineLimit(1)
+            Text(TimeFormat.time(now, zone: zone))
+                .font(.system(size: 26, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(active ? Theme.accent : Color.white)
+                .contentTransition(.numericText())
+            Text(code)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.6))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(active ? "Active zone, " : "")\(city): \(TimeFormat.time(now, zone: zone))")
+    }
+}
+
+// MARK: - Full-screen globe
+
+/// The trip as a planet you can spin: the same `GlobeCanvas`, full screen, with both
+/// live clocks below. Reached from the trip-detail hero.
+struct TripGlobeView: View {
+    @Environment(\.dismiss) private var dismiss
+    let trip: Trip
+    let origin: Airport
+    let destination: Airport
+
+    @State private var lonOffset: Double = 0
+    @State private var lonOffsetAtDragStart: Double?
+
+    var body: some View {
+        NavigationStack {
+            SwiftUI.TimelineView(.everyMinute) { timeline in
+                let now = timeline.date
+                VStack(spacing: Theme.Space.m) {
+                    Text("\(trip.origin) → \(trip.destination)")
+                        .font(Theme.display(26))
+                        .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .padding(.top, Theme.Space.s)
+
+                    GlobeCanvas(
+                        origin: origin, destination: destination,
+                        originCode: trip.origin, destCode: trip.destination,
+                        now: now, lonOffset: lonOffset
+                    )
+                    .aspectRatio(1, contentMode: .fit)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                if lonOffsetAtDragStart == nil {
+                                    lonOffsetAtDragStart = lonOffset
+                                }
+                                lonOffset = (lonOffsetAtDragStart ?? 0)
+                                    - Double(value.translation.width) / 3.2
+                            }
+                            .onEnded { _ in lonOffsetAtDragStart = nil }
+                    )
+                    .accessibilityLabel(
+                        "Globe showing the route from \(origin.city) to \(destination.city) with the current day and night sides of Earth"
+                    )
+
+                    HStack(spacing: Theme.Space.m) {
+                        cityClock(code: trip.origin, city: origin.city,
+                                  zone: origin.zone.resolved, now: now)
+                        Image(systemName: "airplane")
+                            .foregroundStyle(Theme.accent)
+                            .accessibilityHidden(true)
+                        cityClock(code: trip.destination, city: destination.city,
+                                  zone: destination.zone.resolved, now: now)
+                    }
+
+                    Text("The bright side is daylight right now. Drag to spin.")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.55))
+                        .padding(.bottom, Theme.Space.m)
+                }
+                .padding(.horizontal, Theme.Space.m)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(red: 0.05, green: 0.07, blue: 0.16).ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(Color.white)
+                }
+            }
+            .toolbarColorScheme(.dark, for: .navigationBar)
+        }
+    }
+
+    private func cityClock(code: String, city: String, zone: TimeZone, now: Date) -> some View {
+        VStack(spacing: 2) {
+            Text(TimeFormat.time(now, zone: zone))
+                .font(.system(size: 24, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(Color.white)
+                .contentTransition(.numericText())
+            Text(code)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.6))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(city): \(TimeFormat.time(now, zone: zone))")
     }
 }
