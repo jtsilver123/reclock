@@ -53,7 +53,9 @@ struct ManualTripEntryView: View {
                 }
                 if segments.count > 1 {
                     Button(role: .destructive) {
-                        withAnimation(Theme.Anim.spring) { segments.removeLast() }
+                        // removeLast() returns the element; discard it so the Button's
+                        // Void action closure doesn't try to return it (compile error).
+                        withAnimation(Theme.Anim.spring) { _ = segments.removeLast() }
                     } label: {
                         Label("Remove last flight", systemImage: "minus.circle")
                     }
