@@ -69,7 +69,8 @@ struct JoinPlanView: View {
                     if let errorText {
                         Label(errorText, systemImage: "exclamationmark.triangle")
                             .font(.footnote)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
+                            .transition(.opacity)
                     }
                 } footer: {
                     Text("Your buddy finds the code on their trip page under Travel buddies.")
@@ -98,12 +99,14 @@ struct JoinPlanView: View {
                                 Text("Add to my plans").frame(maxWidth: .infinity)
                             }
                         }
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(isJoining)
                     }
                 }
             }
         }
         .navigationTitle("Join a friend's trip")
+        .tint(Theme.accentDeep)
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: model.auth.isSignedIn) { _, signedIn in
             // Arriving from an invite link signed out: after sign-in, keep going.
@@ -126,9 +129,12 @@ struct JoinPlanView: View {
         fetched = nil
         defer { isFetching = false }
         if let plan = await model.fetchSharedPlan(code: code) {
-            fetched = plan
+            withAnimation(Theme.Anim.spring) { fetched = plan }
+            Haptics.success()
         } else {
-            errorText = "No trip found for that code. Double-check it with your buddy."
+            withAnimation(Theme.Anim.spring) {
+                errorText = "No trip found for that code. Double-check it with your buddy."
+            }
         }
     }
 
@@ -140,7 +146,9 @@ struct JoinPlanView: View {
             onFinished?()
             dismiss()
         } else {
-            errorText = "Couldn't join right now — check your connection and try again."
+            withAnimation(Theme.Anim.spring) {
+                errorText = "Couldn't join right now — check your connection and try again."
+            }
         }
     }
 }

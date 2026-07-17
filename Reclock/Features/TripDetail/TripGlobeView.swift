@@ -231,6 +231,17 @@ struct TripGlobeHero: View {
     }
 
     var body: some View {
+        Button {
+            Haptics.soft()
+            onTap()
+        } label: {
+            heroContent
+        }
+        .buttonStyle(PressableCardStyle())
+        .accessibilityLabel("\(origin.city) to \(destination.city). Opens the globe with the current day and night sides of Earth.")
+    }
+
+    private var heroContent: some View {
         SwiftUI.TimelineView(.everyMinute) { timeline in
             let now = timeline.date
             let destActive = destinationIsActive(now: now)
@@ -303,11 +314,6 @@ struct TripGlobeHero: View {
             )
         )
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .contentShape(Rectangle())
-        .onTapGesture { Haptics.soft(); onTap() }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(origin.city) to \(destination.city). Tap to open the globe with the current day and night sides of Earth.")
-        .accessibilityAddTraits(.isButton)
     }
 
     /// One city clock. The active zone (where the plan is steering the body clock right
@@ -397,7 +403,14 @@ struct TripGlobeView: View {
                 .padding(.horizontal, Theme.Space.m)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(red: 0.05, green: 0.07, blue: 0.16).ignoresSafeArea())
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.06, green: 0.08, blue: 0.18),
+                             Color(red: 0.10, green: 0.13, blue: 0.30)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            )
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

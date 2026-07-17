@@ -18,6 +18,9 @@ struct RootView: View {
                 MainTabs()
             }
         }
+        // The three root states hand off with a breath, not a hard cut.
+        .animation(Theme.Anim.gentle, value: model.isLoaded)
+        .animation(Theme.Anim.spring, value: model.state.onboardingComplete)
         .alert(
             model.activeAlert?.title ?? "",
             isPresented: Binding(

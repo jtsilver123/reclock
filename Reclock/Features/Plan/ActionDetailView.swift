@@ -39,13 +39,16 @@ struct ActionDetailView: View {
                 .background(
                     RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                         .fill(Theme.sky(for: action.type))
+                        .shadow(color: Theme.skyColors(for: action.type).last?.opacity(0.35) ?? .clear,
+                                radius: 12, y: 5)
                 )
                 .grain()
                 .livingSky()
 
                 Text(action.instruction)
-                    .font(.body)
+                    .font(Theme.display(21, black: false))
                     .foregroundStyle(Theme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     SectionHeader(title: "Why this helps")
@@ -88,6 +91,7 @@ struct ActionDetailView: View {
                     .buttonStyle(PrimaryButtonStyle())
 
                     Button("Couldn't do it") {
+                        Haptics.soft()
                         Task {
                             await model.setCompletion(.notPossible, for: action, in: trip)
                             dismiss()
@@ -100,10 +104,11 @@ struct ActionDetailView: View {
                         systemImage: action.completion == .done ? "checkmark.circle.fill" : "slash.circle"
                     )
                     .font(.headline)
-                    .foregroundStyle(action.completion == .done ? .green : Theme.textSecondary)
+                    .foregroundStyle(action.completion == .done ? Theme.success : Theme.textSecondary)
 
                     if action.completion != .expired {
                         Button("Undo — mark as not done yet") {
+                            Haptics.soft()
                             Task {
                                 await model.setCompletion(.pending, for: action, in: trip)
                                 dismiss()

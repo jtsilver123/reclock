@@ -115,6 +115,7 @@ struct TripsListView: View {
             }
             .navigationTitle("Trips")
             .contentMargins(.bottom, 84, for: .scrollContent)
+            .animation(Theme.Anim.spring, value: model.state.trips.map(\.id))
             .sheet(isPresented: $showAddTrip) {
                 AddTripFlow()
             }
@@ -230,10 +231,15 @@ private struct TripListRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
-            Image(systemName: isOnPlanTab ? "sun.horizon.fill" : "airplane.circle.fill")
-                .font(.title2)
-                .foregroundStyle(trip.status == .completed ? Theme.textSecondary : Theme.accent)
-                .accessibilityHidden(true)
+            ZStack {
+                Circle()
+                    .fill((trip.status == .completed ? Theme.textSecondary : Theme.accent).opacity(0.15))
+                Image(systemName: isOnPlanTab ? "sun.horizon.fill" : "airplane")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(trip.status == .completed ? Theme.textSecondary : Theme.accentDeep)
+            }
+            .frame(width: 40, height: 40)
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(trip.origin) → \(trip.destination)")
                     .font(.subheadline.weight(.semibold))
@@ -244,7 +250,7 @@ private struct TripListRow: View {
                     Text(trip.status == .completed
                          ? dateRange
                          : "\(dateRange) · \(TimeFormat.time(timeline.date, zone: trip.destinationZone.resolved)) there")
-                        .font(.caption)
+                        .font(.caption.monospacedDigit())
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)

@@ -222,16 +222,22 @@ struct DayColumn: View {
                     )
                 }
 
-                // Now marker.
+                // Now marker: a small sun on the rail. (Ink here was invisible in
+                // dark mode — ink is spec'd for sitting on marigold, not on the
+                // background.)
                 let sinceStart = now.timeIntervalSince(domainStart) / 3600
                 if sinceStart >= 0 && sinceStart <= Double(totalHours) {
                     let y = sinceStart * hourHeight
                     Rectangle()
-                        .fill(Theme.ink.opacity(0.45))
+                        .fill(Theme.accentDeep.opacity(0.55))
                         .frame(width: geo.size.width - railWidth, height: 1.5)
                         .offset(x: railWidth, y: y)
                     Circle()
-                        .fill(Theme.ink)
+                        .fill(Theme.background)
+                        .frame(width: 13, height: 13)
+                        .offset(x: railWidth - 6.5, y: y - 6)
+                    Circle()
+                        .fill(Theme.accent)
                         .frame(width: 7, height: 7)
                         .offset(x: railWidth - 3.5, y: y - 3)
                 }
@@ -326,6 +332,7 @@ struct TrackCapsule: View {
             .padding(.top, 6)
         }
         .frame(width: width, height: height)
+        .animation(Theme.Anim.gentle, value: cap.action.completion)
         .accessibilityLabel("\(cap.action.title), \(TimeFormat.range(cap.window, zone: cap.action.displayZone.resolved))")
     }
 
@@ -395,7 +402,7 @@ private struct TimelineActionRow: View {
             if action.completion != .pending {
                 Image(systemName: action.completion == .done ? "checkmark.circle.fill" : "slash.circle")
                     .font(.title3)
-                    .foregroundStyle(action.completion == .done ? .green : Theme.textSecondary)
+                    .foregroundStyle(action.completion == .done ? Theme.success : Theme.textSecondary)
                     .symbolEffect(.bounce, value: action.completion)
                     .accessibilityLabel(action.completion == .done ? "Done" : "Skipped")
             } else {

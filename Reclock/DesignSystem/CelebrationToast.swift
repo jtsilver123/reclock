@@ -67,9 +67,15 @@ struct CelebrationToast: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.s) {
-            Image(systemName: event.symbol)
-                .foregroundStyle(event.customLine == nil ? Color.green : Theme.accentDeep)
-                .symbolEffect(.bounce, value: event.id)
+            ZStack {
+                Circle()
+                    .fill((event.customLine == nil ? Theme.tint(for: event.type) : Theme.accentDeep).opacity(0.15))
+                    .frame(width: 28, height: 28)
+                Image(systemName: event.symbol)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(event.customLine == nil ? Theme.tint(for: event.type) : Theme.accentDeep)
+                    .symbolEffect(.bounce, value: event.id)
+            }
             Text(event.line)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)

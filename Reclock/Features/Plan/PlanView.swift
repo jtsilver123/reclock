@@ -117,6 +117,7 @@ private struct EmptyPlanState: View {
                             .fill(Theme.accent)
                             .shadow(color: Theme.accent.opacity(0.45), radius: 20, y: 8)
                     )
+                    .grain(0.4, cornerRadius: 108)
                 }
                 .buttonStyle(PressableCardStyle())
                 .accessibilityLabel("Add my trip")
@@ -173,8 +174,11 @@ private struct PlanContent: View {
                             }
 
                             if notificationsPending {
-                                NotificationNudge(onEnabled: { notificationsPending = false })
-                                    .padding(.horizontal, Theme.Space.m)
+                                NotificationNudge(onEnabled: {
+                                    withAnimation(Theme.Anim.spring) { notificationsPending = false }
+                                })
+                                .padding(.horizontal, Theme.Space.m)
+                                .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             }
 
                             if trip.status == .completed && !model.hasSurvey(for: trip) {
@@ -319,11 +323,19 @@ private struct PlanPrimerCard: View {
             }
 
             HStack(spacing: Theme.Space.l) {
-                Button("Adjust my sleep", action: onAdjust)
+                Button(action: onAdjust) {
+                    Text("Adjust my sleep")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, Theme.Space.m)
+                        .padding(.vertical, 8)
+                        .background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(PressableCardStyle())
                 Button("Looks right", action: onDismiss)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accentDeep)
             }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Theme.accentDeep)
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -380,12 +392,19 @@ private struct NotificationNudge: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Label(
-                wasDenied ? "Reminders are off" : "Get nudged at the right moments",
-                systemImage: "bell.badge.fill"
-            )
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Theme.textPrimary)
+            HStack(spacing: Theme.Space.m) {
+                ZStack {
+                    Circle().fill(Theme.accent.opacity(0.15))
+                    Image(systemName: "bell.badge.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Theme.accentDeep)
+                }
+                .frame(width: 40, height: 40)
+                .accessibilityHidden(true)
+                Text(wasDenied ? "Reminders are off" : "Get nudged at the right moments")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+            }
             Text(wasDenied
                  ? "The Plan tab works as your checklist. To get alerts at the right moments, allow notifications in iOS Settings."
                  : "Your plan is ready. Reminders fire exactly when a window opens — even in airplane mode.")
@@ -428,9 +447,19 @@ private struct SurveyPromptCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Label("Back from \(trip.destination)?", systemImage: "checklist")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.textPrimary)
+            HStack(spacing: Theme.Space.m) {
+                ZStack {
+                    Circle().fill(Theme.accent.opacity(0.15))
+                    Image(systemName: "checklist")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Theme.accentDeep)
+                }
+                .frame(width: 40, height: 40)
+                .accessibilityHidden(true)
+                Text("Back from \(trip.destination)?")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+            }
             Text("90 seconds: how rough was jet lag, and what was unrealistic? Your answers tune future plans.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
@@ -461,7 +490,8 @@ private struct ChangeBanner: View {
                     .foregroundStyle(Theme.textPrimary)
             }
             Button("Got it") {
-                model.lastChangeMessages = []
+                Haptics.selection()
+                withAnimation(Theme.Anim.spring) { model.lastChangeMessages = [] }
             }
             .font(.footnote.weight(.semibold))
             .foregroundStyle(Theme.accentDeep)

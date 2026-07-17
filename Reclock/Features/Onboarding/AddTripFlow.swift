@@ -25,8 +25,7 @@ struct AddTripFlow: View {
             ScrollView {
                 VStack(spacing: Theme.Space.m) {
                     Text("Where's your flight?")
-                        .font(.title2.weight(.bold))
-                        .fontDesign(.rounded)
+                        .font(Theme.display(26))
                         .foregroundStyle(Theme.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, Theme.Space.s)
@@ -63,8 +62,10 @@ struct AddTripFlow: View {
                         .background(
                             RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                                 .fill(Theme.sky(for: .leaveForAirport))
-                                .shadow(color: .black.opacity(0.18), radius: 12, y: 5)
+                                .shadow(color: Theme.skyColors(for: .leaveForAirport).last?.opacity(0.35) ?? .clear,
+                                        radius: 12, y: 5)
                         )
+                        .grain()
                     }
                     .buttonStyle(PressableCardStyle())
 
@@ -217,12 +218,16 @@ struct CalendarImportView: View {
             case .explaining:
                 VStack(spacing: Theme.Space.l) {
                     Spacer()
-                    Image(systemName: "calendar.badge.checkmark")
-                        .font(.system(size: 48))
-                        .foregroundStyle(Theme.accentDeep)
-                        .accessibilityHidden(true)
+                    ZStack {
+                        Circle().fill(Theme.accent.opacity(0.15))
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.system(size: 30, weight: .semibold))
+                            .foregroundStyle(Theme.accentDeep)
+                    }
+                    .frame(width: 76, height: 76)
+                    .accessibilityHidden(true)
                     Text("Scan your calendar for flights")
-                        .font(.title2.weight(.bold))
+                        .font(Theme.display(26))
                         .multilineTextAlignment(.center)
                     Text("Reclock looks for flight-shaped events — airline codes, airport pairs, boarding notes — on this device only. You'll see exactly what was found and choose what to import. Nothing else is read, stored, or sent anywhere.")
                         .font(.callout)
@@ -236,20 +241,33 @@ struct CalendarImportView: View {
                 }
                 .padding(Theme.Space.l)
             case .scanning:
-                ProgressView("Looking for flights…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: Theme.Space.m) {
+                    Image(systemName: "calendar.badge.checkmark")
+                        .font(.system(size: 34, weight: .semibold))
+                        .foregroundStyle(Theme.accentDeep)
+                        .symbolEffect(.variableColor.iterative, options: .repeat(5))
+                        .accessibilityHidden(true)
+                    ProgressView("Looking for flights…")
+                        .tint(Theme.accentDeep)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .denied:
                 VStack(spacing: Theme.Space.l) {
                     Spacer()
-                    Image(systemName: "calendar.badge.exclamationmark")
-                        .font(.system(size: 44))
-                        .foregroundStyle(Theme.textSecondary)
-                        .accessibilityHidden(true)
+                    ZStack {
+                        Circle().fill(Theme.accent.opacity(0.15))
+                        Image(systemName: "calendar.badge.exclamationmark")
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(Theme.accentDeep)
+                    }
+                    .frame(width: 76, height: 76)
+                    .accessibilityHidden(true)
                     Text("Calendar access is optional")
-                        .font(.title3.weight(.bold))
+                        .font(Theme.display(22))
                     Text("No problem — you can still enter your flight in under a minute. You can allow access any time in iOS Settings.")
                         .font(.callout)
                         .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
                     Button("Open iOS Settings") {
                         if let url = URL(string: UIApplication.openSettingsURLString) {
                             UIApplication.shared.open(url)
@@ -257,18 +275,13 @@ struct CalendarImportView: View {
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.accentDeep)
-                        .multilineTextAlignment(.center)
                     Spacer()
                     NavigationLink {
                         ManualTripEntryView(onFinished: onFinished)
                     } label: {
                         Text("Enter flight manually")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .foregroundStyle(Theme.ink)
                     }
+                    .buttonStyle(PrimaryButtonStyle())
                 }
                 .padding(Theme.Space.l)
             case .results(let flights):
@@ -280,7 +293,7 @@ struct CalendarImportView: View {
     }
 
     private func requestAndScan() async {
-        phase = .scanning
+        withAnimation(Theme.Anim.spring) { phase = .scanning }
         let status = await model.deps.calendarImporter.accessStatus()
         let granted: Bool
         switch status {
@@ -290,12 +303,12 @@ struct CalendarImportView: View {
         }
         model.deps.analytics.track(.calendarPermission(granted: granted))
         guard granted else {
-            phase = .denied
+            withAnimation(Theme.Anim.spring) { phase = .denied }
             return
         }
         let flights = await model.deps.calendarImporter.detectFlights(daysAhead: 180)
         selectedIDs = Set(flights.filter(\.isComplete).map(\.id))
-        phase = .results(flights)
+        withAnimation(Theme.Anim.spring) { phase = .results(flights) }
     }
 
     @ViewBuilder
@@ -304,7 +317,7 @@ struct CalendarImportView: View {
             VStack(spacing: Theme.Space.l) {
                 Spacer()
                 Text("No flights found")
-                    .font(.title3.weight(.bold))
+                    .font(Theme.display(22))
                 Text("We looked through the next six months and didn't spot flight-shaped events. You can enter the trip manually instead.")
                     .font(.callout)
                     .foregroundStyle(Theme.textSecondary)
@@ -314,12 +327,8 @@ struct CalendarImportView: View {
                     ManualTripEntryView(onFinished: onFinished)
                 } label: {
                     Text("Enter flight manually")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .foregroundStyle(Theme.ink)
                 }
+                .buttonStyle(PrimaryButtonStyle())
             }
             .padding(Theme.Space.l)
         } else {
@@ -330,10 +339,13 @@ struct CalendarImportView: View {
                             flight: flight,
                             isSelected: selectedIDs.contains(flight.id),
                             toggle: {
-                                if selectedIDs.contains(flight.id) {
-                                    selectedIDs.remove(flight.id)
-                                } else {
-                                    selectedIDs.insert(flight.id)
+                                Haptics.selection()
+                                withAnimation(Theme.Anim.gentle) {
+                                    if selectedIDs.contains(flight.id) {
+                                        selectedIDs.remove(flight.id)
+                                    } else {
+                                        selectedIDs.insert(flight.id)
+                                    }
                                 }
                             }
                         )
@@ -347,7 +359,7 @@ struct CalendarImportView: View {
                     if let importError {
                         Label(importError, systemImage: "exclamationmark.triangle")
                             .font(.footnote)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
                     }
                     Button {
                         Task { await importSelected(flights) }
@@ -357,9 +369,12 @@ struct CalendarImportView: View {
                                 .frame(maxWidth: .infinity)
                         } else {
                             Text("Import \(selectedIDs.count) flight\(selectedIDs.count == 1 ? "" : "s")")
+                                .contentTransition(.numericText())
+                                .animation(Theme.Anim.gentle, value: selectedIDs.count)
                                 .frame(maxWidth: .infinity)
                         }
                     }
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabled(selectedIDs.isEmpty || isCreating)
                 }
             }
@@ -403,7 +418,8 @@ private struct DetectedFlightRow: View {
             HStack(spacing: Theme.Space.m) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundStyle(isSelected ? Theme.accent : Theme.textSecondary)
+                    .foregroundStyle(isSelected ? Theme.accentDeep : Theme.textSecondary)
+                    .contentTransition(.symbolEffect(.replace))
                     .accessibilityLabel(isSelected ? "Selected" : "Not selected")
                 VStack(alignment: .leading, spacing: 2) {
                     Text(routeText)
@@ -417,7 +433,7 @@ private struct DetectedFlightRow: View {
                     if !flight.isComplete {
                         Label("Missing times — add this one with Type it in", systemImage: "exclamationmark.triangle")
                             .font(.caption2)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
                     }
                 }
                 Spacer()

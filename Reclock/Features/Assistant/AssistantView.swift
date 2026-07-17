@@ -53,9 +53,11 @@ struct AssistantView: View {
                                         .foregroundStyle(Theme.textSecondary)
                                 }
                                 .padding(.horizontal, Theme.Space.m)
+                                .transition(.opacity)
                             }
                         }
                         .padding(Theme.Space.m)
+                        .animation(Theme.Anim.gentle, value: isThinking)
                     }
                     .onChange(of: messages) { _, newValue in
                         guard let last = newValue.last else { return }
@@ -86,7 +88,7 @@ struct AssistantView: View {
                     session = PlanAssistant.makeSession(trip: trip, model: model) { toolName in
                         await MainActor.run {
                             Haptics.selection()
-                            messages.append(Message(kind: .tool, text: toolName))
+                            withAnimation(Theme.Anim.spring) { messages.append(Message(kind: .tool, text: toolName)) }
                         }
                     }
                 }
@@ -164,7 +166,7 @@ struct AssistantView: View {
                 .lineLimit(1...3)
                 .padding(.horizontal, Theme.Space.m)
                 .padding(.vertical, 10)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .onSubmit { Task { await send() } }
             Button {
                 Task { await send() }
@@ -186,7 +188,7 @@ struct AssistantView: View {
         guard !text.isEmpty, let session, !isThinking else { return }
         input = ""
         Haptics.soft()
-        messages.append(Message(kind: .user, text: text))
+        withAnimation(Theme.Anim.spring) { messages.append(Message(kind: .user, text: text)) }
         isThinking = true
         defer { isThinking = false }
         do {
@@ -197,16 +199,18 @@ struct AssistantView: View {
                 if let index = assistantIndex {
                     messages[index].text = content
                 } else {
-                    messages.append(Message(kind: .assistant, text: content))
+                    withAnimation(Theme.Anim.spring) { messages.append(Message(kind: .assistant, text: content)) }
                     assistantIndex = messages.count - 1
                 }
             }
             Haptics.soft()
         } catch {
-            messages.append(Message(
-                kind: .assistant,
-                text: "I couldn't think that one through — mind trying again?"
-            ))
+            withAnimation(Theme.Anim.spring) {
+                messages.append(Message(
+                    kind: .assistant,
+                    text: "I couldn't think that one through — mind trying again?"
+                ))
+            }
         }
     }
 }
@@ -244,30 +248,36 @@ struct AssistantFAB: View {
     @State private var showAssistant = false
 
     var body: some View {
-        if #available(iOS 26.0, *), PlanAssistant.isSupported, let trip = model.activeTrip {
-            Button {
-                Haptics.soft()
-                showAssistant = true
-            } label: {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 56, height: 56)
-                    .background(
-                        Circle()
-                            .fill(Theme.quietSky)
-                            .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
-                    )
-                    .grain(0.5, cornerRadius: 28)
-            }
-            .buttonStyle(PressableCardStyle())
-            .breathing()
-            .accessibilityLabel("Ask Reclock")
-            .sheet(isPresented: $showAssistant) {
-                AssistantView(trip: trip)
-                    .presentationDetents([.large])
+        // The ZStack persists across trips appearing and vanishing, so the orb can
+        // scale in and out instead of popping.
+        ZStack(alignment: .bottomTrailing) {
+            if #available(iOS 26.0, *), PlanAssistant.isSupported, let trip = model.activeTrip {
+                Button {
+                    Haptics.soft()
+                    showAssistant = true
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 56, height: 56)
+                        .background(
+                            Circle()
+                                .fill(Theme.quietSky)
+                                .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
+                        )
+                        .grain(0.5, cornerRadius: 28)
+                }
+                .buttonStyle(PressableCardStyle())
+                .breathing()
+                .accessibilityLabel("Ask Reclock")
+                .sheet(isPresented: $showAssistant) {
+                    AssistantView(trip: trip)
+                        .presentationDetents([.large])
+                }
+                .transition(.scale(scale: 0.5, anchor: .bottomTrailing).combined(with: .opacity))
             }
         }
+        .animation(Theme.Anim.spring, value: model.activeTrip?.id)
     }
 }
 

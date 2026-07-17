@@ -38,12 +38,21 @@ struct OnboardingFlow: View {
     // MARK: Screens
 
     private var welcome: some View {
+        welcomeScreen
+            .background(alignment: .top) {
+                AmbientHorizon(zone: .current, now: Date())
+                    .frame(height: 280)
+                    .ignoresSafeArea(edges: .top)
+            }
+    }
+
+    private var welcomeScreen: some View {
         OnboardingScreen(
             primaryLabel: "Add my trip",
             primaryAction: { step = 1 }
         ) {
             Spacer()
-            BreathingSymbol(systemName: "sun.and.horizon.fill", size: 64)
+            BreathingSymbol(systemName: "sun.and.horizon.fill", size: 64, tint: Theme.accent)
             Text("Feel local when you land")
                 .font(Theme.display(36))
                 .multilineTextAlignment(.center)
@@ -69,7 +78,7 @@ struct OnboardingFlow: View {
             VStack(spacing: Theme.Space.l) {
                 Spacer(minLength: Theme.Space.xl)
                 ZStack {
-                    Circle().fill(Theme.accent.opacity(0.18))
+                    Circle().fill(Theme.accent.opacity(0.15))
                     Image(systemName: "arrow.triangle.2.circlepath.icloud.fill")
                         .font(.system(size: 30, weight: .semibold))
                         .foregroundStyle(Theme.accentDeep)
@@ -102,11 +111,13 @@ struct OnboardingFlow: View {
                 .signInWithAppleButtonStyle(.black)
                 .frame(height: 50)
                 .frame(maxWidth: 360)
+                .animation(Theme.Anim.gentle, value: model.auth.lastError)
 
                 if let error = model.auth.lastError {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.warning)
+                        .transition(.opacity)
                 }
 
                 Button("Skip and add my trip") {
@@ -183,7 +194,7 @@ private struct OnboardingScreen<Content: View>: View {
                     VStack(spacing: Theme.Space.xs) {
                         if let symbol {
                             ZStack {
-                                Circle().fill(Theme.accent.opacity(0.18))
+                                Circle().fill(Theme.accent.opacity(0.15))
                                 Image(systemName: symbol)
                                     .font(.system(size: 26, weight: .semibold))
                                     .foregroundStyle(Theme.accentDeep)

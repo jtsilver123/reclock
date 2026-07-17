@@ -33,7 +33,7 @@ struct PlanAdjustSheet: View {
                     DatePicker("I usually sleep at", selection: bedtimeBinding, displayedComponents: .hourAndMinute)
                     DatePicker("and wake at", selection: wakeBinding, displayedComponents: .hourAndMinute)
                 } header: {
-                    Text("Your sleep")
+                    SettingsHeader(title: "Your sleep", symbol: "bed.double.fill")
                 } footer: {
                     Text("The anchor for every plan you build.")
                 }
@@ -82,7 +82,7 @@ struct PlanAdjustSheet: View {
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 } header: {
-                    Text("This plan")
+                    SettingsHeader(title: "This plan", symbol: "slider.horizontal.3")
                 } footer: {
                     Text("Every change rebuilds the plan and its reminders instantly.")
                 }
@@ -96,6 +96,8 @@ struct PlanAdjustSheet: View {
                             systemImage: savedDefaults ? "checkmark.circle.fill" : "square.and.arrow.down"
                         )
                         .font(.subheadline.weight(.semibold))
+                        .contentTransition(.symbolEffect(.replace))
+                        .symbolEffect(.bounce, value: savedDefaults)
                     }
                     .disabled(savedDefaults)
                 } footer: {
@@ -103,6 +105,7 @@ struct PlanAdjustSheet: View {
                 }
             }
             .navigationTitle("Adjust plan")
+            .tint(Theme.accentDeep)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

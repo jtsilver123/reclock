@@ -92,6 +92,18 @@ enum Theme {
         dark: UIColor(red: 0.62, green: 0.63, blue: 0.70, alpha: 1)
     )
 
+    /// Confirmation green — one token so dark-mode tuning stays possible.
+    static let success = dynamic(
+        light: UIColor(red: 0.20, green: 0.62, blue: 0.32, alpha: 1),
+        dark: UIColor(red: 0.38, green: 0.80, blue: 0.50, alpha: 1)
+    )
+
+    /// Caution amber-orange for error/warning labels.
+    static let warning = dynamic(
+        light: UIColor(red: 0.85, green: 0.47, blue: 0.08, alpha: 1),
+        dark: UIColor(red: 1.00, green: 0.62, blue: 0.26, alpha: 1)
+    )
+
     /// Per-action-type accents. Never the sole differentiator — every action also has a
     /// distinct SF Symbol and a text label (accessibility).
     static func tint(for type: ActionType) -> Color {

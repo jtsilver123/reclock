@@ -35,6 +35,7 @@ struct FlightLookupView: View {
             }
         }
         .navigationTitle("Flight number")
+        .tint(Theme.accentDeep)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -56,16 +57,17 @@ struct FlightLookupView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(flightNumber.trimmingCharacters(in: .whitespaces).count < 3 || isBusy)
             if let searchError {
                 Label(searchError, systemImage: "exclamationmark.triangle")
                     .font(.footnote)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.warning)
             }
             if let buildError {
                 Label(buildError, systemImage: "exclamationmark.triangle")
                     .font(.footnote)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.warning)
             }
             // Every error message ends "…enter it manually" — so the way to do
             // that must be right here, not a back-navigation away.
@@ -101,15 +103,26 @@ struct FlightLookupView: View {
         Section {
             HStack(spacing: Theme.Space.s) {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.success)
                     .accessibilityHidden(true)
                 ScheduledFlightRow(flight: flight)
             }
-            HStack(spacing: Theme.Space.s) {
-                ProgressView()
+            HStack(spacing: Theme.Space.m) {
+                ZStack {
+                    Circle().fill(Theme.accent.opacity(0.15))
+                    Image(systemName: "sun.max.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Theme.accentDeep)
+                        .symbolEffect(.variableColor.iterative, options: .repeat(5))
+                }
+                .frame(width: 40, height: 40)
+                .accessibilityHidden(true)
                 Text("Building your plan…")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.textSecondary)
+                    .font(Theme.display(17, black: false))
+                    .foregroundStyle(Theme.textPrimary)
+                Spacer(minLength: 0)
+                ProgressView()
+                    .tint(Theme.accentDeep)
             }
         }
     }
@@ -148,19 +161,23 @@ struct FlightLookupView: View {
                 // It found your flight. That IS the confirmation — build.
                 await build(only)
             } else {
-                results = found
+                withAnimation(Theme.Anim.spring) { results = found }
             }
         } catch let error as FlightScheduleError {
-            switch error {
-            case .notFound:
-                searchError = "No flight found for that number and date. Double-check both, or enter it manually."
-            case .networkUnavailable:
-                searchError = "No connection. Try again later, or enter the flight manually."
-            case .notConfigured, .unparseable:
-                searchError = "Lookup is unavailable right now. Manual entry takes under a minute."
+            withAnimation(Theme.Anim.spring) {
+                switch error {
+                case .notFound:
+                    searchError = "No flight found for that number and date. Double-check both, or enter it manually."
+                case .networkUnavailable:
+                    searchError = "No connection. Try again later, or enter the flight manually."
+                case .notConfigured, .unparseable:
+                    searchError = "Lookup is unavailable right now. Manual entry takes under a minute."
+                }
             }
         } catch {
-            searchError = "Something went wrong. Manual entry takes under a minute."
+            withAnimation(Theme.Anim.spring) {
+                searchError = "Something went wrong. Manual entry takes under a minute."
+            }
         }
     }
 

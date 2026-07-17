@@ -27,7 +27,7 @@ struct CalendarExportSheet: View {
                 if accessDenied {
                     Section {
                         Label("Calendar access is off", systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
                         Button("Open iOS Settings") {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
@@ -76,8 +76,9 @@ struct CalendarExportSheet: View {
                                     : "Add \(pendingCount) step\(pendingCount == 1 ? "" : "s") to my calendar",
                                 systemImage: "calendar.badge.plus"
                             )
-                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
                         }
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(working || pendingCount == 0 || selectedID == nil)
 
                         Button(role: .destructive) {
@@ -93,18 +94,19 @@ struct CalendarExportSheet: View {
                     if let resultLine {
                         Section {
                             Label(resultLine, systemImage: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
+                                .foregroundStyle(Theme.success)
                         }
                     }
                     if let errorLine {
                         Section {
                             Label(errorLine, systemImage: "exclamationmark.triangle")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Theme.warning)
                         }
                     }
                 }
             }
             .navigationTitle("My calendar")
+            .tint(Theme.accentDeep)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -117,8 +119,10 @@ struct CalendarExportSheet: View {
 
     private func loadCalendars() async {
         let found = await model.deps.calendarExporter.writableCalendars()
-        calendars = found
-        accessDenied = found.isEmpty
+        withAnimation(Theme.Anim.gentle) {
+            calendars = found
+            accessDenied = found.isEmpty
+        }
         let remembered = model.state.settings.exportCalendarID
         selectedID = found.first { $0.id == remembered }?.id
             ?? found.first { $0.isDefault }?.id
@@ -146,7 +150,9 @@ struct CalendarExportSheet: View {
                 return
             }
             Haptics.success()
-            resultLine = "Added \(count) event\(count == 1 ? "" : "s")."
+            withAnimation(Theme.Anim.spring) {
+                resultLine = "Added \(count) event\(count == 1 ? "" : "s")."
+            }
             var settings = model.state.settings
             settings.exportCalendarID = selectedID
             await model.updateSettings(settings)
@@ -174,9 +180,11 @@ struct CalendarExportSheet: View {
                 return
             }
             Haptics.soft()
-            resultLine = count == 0
-                ? "Nothing of this plan was on your calendar."
-                : "Removed \(count) event\(count == 1 ? "" : "s")."
+            withAnimation(Theme.Anim.spring) {
+                resultLine = count == 0
+                    ? "Nothing of this plan was on your calendar."
+                    : "Removed \(count) event\(count == 1 ? "" : "s")."
+            }
         }
     }
 }

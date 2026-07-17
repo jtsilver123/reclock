@@ -36,6 +36,8 @@ struct SettingsView: View {
                 #endif
             }
             .navigationTitle("Settings")
+            .tint(Theme.accentDeep)
+            .contentMargins(.bottom, 84, for: .scrollContent)
             .task {
                 notificationStatusGranted = await model.deps.notifications.permissionGranted()
             }
@@ -68,12 +70,22 @@ struct SettingsView: View {
                     ProfileEditorView(profile: profile)
                 }
             } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Default preferences")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Sleep times, chronotype, planes, caffeine, melatonin, plan defaults")
-                        .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                HStack(spacing: Theme.Space.m) {
+                    ZStack {
+                        Circle().fill(Theme.accent.opacity(0.15))
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Theme.accentDeep)
+                    }
+                    .frame(width: 36, height: 36)
+                    .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Default preferences")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Sleep times, chronotype, planes, caffeine, melatonin, plan defaults")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                 }
             }
         } footer: {
@@ -101,10 +113,12 @@ struct SettingsView: View {
                     "Plan reminders",
                     isOn: profileBinding(\.notifications.enabled)
                 )
+                .tint(Theme.accent)
                 Toggle(
                     "Include optional actions",
                     isOn: profileBinding(\.notifications.includeOptionalActions)
                 )
+                .tint(Theme.accent)
                 QuietHoursEditor()
             }
         } header: {
@@ -131,7 +145,7 @@ struct SettingsView: View {
                 if let error = model.auth.lastError {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.warning)
                 }
                 Button {
                     Task {
@@ -183,7 +197,7 @@ struct SettingsView: View {
                 if let error = model.auth.lastError {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.warning)
                 }
             }
         } header: {
@@ -223,6 +237,7 @@ struct SettingsView: View {
                     Task { await model.updateSettings(settings) }
                 }
             ))
+            .tint(Theme.accent)
             Text("Blocks every network feature — flight lookup, drive-time estimates, backup, sharing. Plans themselves never needed the internet.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
@@ -234,6 +249,7 @@ struct SettingsView: View {
                     Task { await model.updateSettings(settings) }
                 }
             ))
+            .tint(Theme.accent)
             Text("Off by default — never includes trip details, flights, or where you are.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
@@ -342,23 +358,6 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Section header
-
-/// Standard header type plus a small tinted glyph, so every section gets a visual anchor.
-private struct SettingsHeader: View {
-    let title: String
-    let symbol: String
-
-    var body: some View {
-        Label {
-            Text(title)
-        } icon: {
-            Image(systemName: symbol)
-                .foregroundStyle(Theme.accentDeep)
-        }
-    }
-}
-
 // MARK: - Quiet hours
 
 private struct QuietHoursEditor: View {
@@ -419,14 +418,16 @@ struct ProfileEditorView: View {
 
     var body: some View {
         Form {
-            Section("Normal sleep") {
+            Section {
                 DatePicker("Bedtime", selection: $bedtime, displayedComponents: .hourAndMinute)
                 DatePicker("Wake time", selection: $wakeTime, displayedComponents: .hourAndMinute)
                 Picker("Chronotype", selection: $profile.chronotype) {
                     ForEach(Chronotype.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
+            } header: {
+                SettingsHeader(title: "Normal sleep", symbol: "bed.double.fill")
             }
-            Section("On planes") {
+            Section {
                 Picker("Sleep on planes", selection: $profile.planeSleepAbility) {
                     ForEach(PlaneSleepAbility.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
@@ -441,24 +442,31 @@ struct ProfileEditorView: View {
                         step: 1
                     )
                     Toggle("Skip meals to sleep", isOn: $profile.prioritizesSleepOverMeals)
+                        .tint(Theme.accent)
                 }
+            } header: {
+                SettingsHeader(title: "On planes", symbol: "airplane")
             }
-            Section("Before a trip") {
+            Section {
                 Picker("Pre-trip adjustment", selection: $profile.preTripAdjustment) {
                     ForEach(PreTripAdjustmentWillingness.allCases, id: \.self) {
                         Text($0.displayName).tag($0)
                     }
                 }
+            } header: {
+                SettingsHeader(title: "Before a trip", symbol: "calendar.badge.clock")
             }
             Section {
                 Toggle("Caffeine guidance", isOn: Binding(
                     get: { profile.caffeine == .include },
                     set: { profile.caffeine = $0 ? .include : .exclude }
                 ))
+                .tint(Theme.accent)
                 Toggle("Optional melatonin reminders", isOn: Binding(
                     get: { profile.melatonin.remindersEnabled },
                     set: { profile.melatonin = $0 ? .includeOptionalReminders : .exclude }
                 ))
+                .tint(Theme.accent)
                 Picker("Default plan intensity", selection: Binding(
                     get: { model.state.settings.defaultIntensity ?? .balanced },
                     set: { newValue in
@@ -472,12 +480,13 @@ struct ProfileEditorView: View {
                     }
                 }
             } header: {
-                Text("Caffeine, melatonin & intensity")
+                SettingsHeader(title: "Caffeine, melatonin & intensity", symbol: "cup.and.saucer.fill")
             } footer: {
                 Text("Melatonin steps appear only on nights your clock shifts earlier — typically eastward trips. New trips start from the default intensity. Every change applies instantly and rebuilds upcoming plans.")
             }
         }
         .navigationTitle("Default preferences")
+        .tint(Theme.accentDeep)
         .onAppear {
             bedtime = Calendar.current.date(
                 bySettingHour: profile.typicalBedtime.hour,

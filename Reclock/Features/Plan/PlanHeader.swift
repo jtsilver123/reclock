@@ -24,8 +24,7 @@ struct PlanPinnedHeader: View {
             HStack(alignment: .center, spacing: Theme.Space.s) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(trip.origin) → \(trip.destination)")
-                        .font(.headline.weight(.heavy))
-                        .fontDesign(.rounded)
+                        .font(Theme.display(18))
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
@@ -186,6 +185,7 @@ struct CompactNowCard: View {
                     .frame(width: 44, height: 44)
                     .background(Color.white.opacity(0.22), in: Circle())
             }
+            .buttonStyle(PressableCardStyle())
             .accessibilityLabel("Done")
             .padding(.trailing, Theme.Space.m)
         }
@@ -200,11 +200,13 @@ struct CompactNowCard: View {
             }
             if action.type == .stayAwake || action.type == .seekLight {
                 Button("I slept instead") {
+                    Haptics.soft()
                     Task { await model.setCompletion(.sleptInstead, for: action, in: trip) }
                 }
             }
             if action.type == .sleep {
                 Button("I'm still awake") {
+                    Haptics.soft()
                     Task { await model.setCompletion(.notPossible, for: action, in: trip) }
                 }
             }

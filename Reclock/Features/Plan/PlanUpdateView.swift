@@ -27,6 +27,7 @@ struct PlanUpdateView: View {
                 startPoint: .top, endPoint: .bottom
             )
             .ignoresSafeArea()
+            .grain(0.35, cornerRadius: 0)
 
             VStack(spacing: Theme.Space.l) {
                 Spacer()

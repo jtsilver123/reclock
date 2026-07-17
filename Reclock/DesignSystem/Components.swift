@@ -94,7 +94,7 @@ struct ActionRow: View {
             if action.completion == .done {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.success)
                     .symbolEffect(.bounce, value: action.completion)
                     .accessibilityLabel("Done")
             } else if action.completion == .notPossible || action.completion == .skipped {
@@ -305,6 +305,23 @@ struct ClockChip: View {
 }
 
 // MARK: - Buttons
+
+/// Standard section header: title plus a small tinted glyph, so every settings-style
+/// section gets a visual anchor. Shared by Settings, the Adjust sheet, and the
+/// preferences editor.
+struct SettingsHeader: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: symbol)
+                .foregroundStyle(Theme.accentDeep)
+        }
+    }
+}
 
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {

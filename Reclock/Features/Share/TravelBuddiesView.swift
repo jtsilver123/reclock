@@ -17,12 +17,15 @@ struct TravelBuddiesSection: View {
         Section {
             if let code = trip.sharedPlanCode {
                 sharedContent(code: code)
+                    .animation(Theme.Anim.gentle, value: trip.sharedPlanCode)
             } else if model.auth.isSignedIn {
                 Button {
                     Task {
                         isCreating = true
                         defer { isCreating = false }
-                        _ = await model.createSharedPlan(for: trip)
+                        if await model.createSharedPlan(for: trip) != nil {
+                            Haptics.success()
+                        }
                     }
                 } label: {
                     if isCreating {
@@ -202,7 +205,7 @@ private struct BuddyRow: View {
                               ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 15))
                             .foregroundStyle(doneIDs.contains(action.id)
-                                             ? Color.green : Theme.textSecondary.opacity(0.5))
+                                             ? Theme.success : Theme.textSecondary.opacity(0.5))
                             .accessibilityLabel("\(action.title): \(doneIDs.contains(action.id) ? "done" : "not yet")")
                     }
                 }

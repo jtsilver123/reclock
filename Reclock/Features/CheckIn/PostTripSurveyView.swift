@@ -38,10 +38,13 @@ struct PostTripSurveyView: View {
                 Section("Anything feel unrealistic? (tap all that apply)") {
                     ForEach(candidateTypes, id: \.self) { type in
                         Button {
-                            if unrealistic.contains(type) {
-                                unrealistic.remove(type)
-                            } else {
-                                unrealistic.insert(type)
+                            Haptics.selection()
+                            withAnimation(Theme.Anim.gentle) {
+                                if unrealistic.contains(type) {
+                                    unrealistic.remove(type)
+                                } else {
+                                    unrealistic.insert(type)
+                                }
                             }
                         } label: {
                             HStack {
@@ -64,9 +67,11 @@ struct PostTripSurveyView: View {
                 }
                 Section {
                     Toggle("I'd use Reclock again", isOn: $wouldUseAgain)
+                        .tint(Theme.accent)
                 }
                 Section {
                     Button("Submit") {
+                        Haptics.success()
                         Task {
                             let survey = PostTripSurvey(
                                 tripID: trip.id,
@@ -83,11 +88,13 @@ struct PostTripSurveyView: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
+                    .buttonStyle(PrimaryButtonStyle())
                 } footer: {
                     Text("Stored on your device. If you've enabled anonymous analytics, only the ratings — never trip details — are shared to improve default plans.")
                 }
             }
             .navigationTitle("How did it go?")
+            .tint(Theme.accentDeep)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -129,6 +136,8 @@ private struct RatingSlider: View {
                 Spacer()
                 Text("\(value)")
                     .font(.headline.monospacedDigit())
+                    .contentTransition(.numericText())
+                    .animation(Theme.Anim.gentle, value: value)
                 Spacer()
                 Text(high)
             }

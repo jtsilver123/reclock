@@ -59,6 +59,7 @@ struct EmailPasteImportView: View {
             }
         }
         .navigationTitle("From an email")
+        .tint(Theme.accentDeep)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -69,7 +70,7 @@ struct EmailPasteImportView: View {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(spacing: Theme.Space.m) {
                     ZStack {
-                        Circle().fill(Theme.accent.opacity(0.16))
+                        Circle().fill(Theme.accent.opacity(0.15))
                         Image(systemName: "envelope.fill")
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(Theme.accentDeep)
@@ -99,6 +100,7 @@ struct EmailPasteImportView: View {
                     .font(.footnote)
                 if !pastedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Button {
+                        Haptics.soft()
                         extractAndVerify()
                     } label: {
                         Label("Find the flights", systemImage: "magnifyingglass")
@@ -151,14 +153,14 @@ struct EmailPasteImportView: View {
         case .confirmed(let flight):
             HStack(spacing: Theme.Space.s) {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.success)
                     .accessibilityHidden(true)
                 ScheduledFlightRow(flight: flight)
             }
         case .notFound:
             HStack(spacing: Theme.Space.s) {
                 Image(systemName: "questionmark.circle")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.warning)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(leg.candidate.flightNumber)
@@ -183,15 +185,15 @@ struct EmailPasteImportView: View {
                     ProgressView().frame(maxWidth: .infinity)
                 } else {
                     Text("Build my plan")
-                        .font(.headline)
                         .frame(maxWidth: .infinity)
                 }
             }
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(isCreating)
             if let buildError {
                 Label(buildError, systemImage: "exclamationmark.triangle")
                     .font(.footnote)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.warning)
             }
             DisclosureGroup {
                 TransferTimeRow(

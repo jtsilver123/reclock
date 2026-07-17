@@ -40,7 +40,7 @@ struct CommitmentFormView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: Theme.Space.s) {
                                 ForEach(Self.suggestions, id: \.self) { suggestion in
-                                    Button(suggestion) { title = suggestion }
+                                    Button(suggestion) { Haptics.selection(); title = suggestion }
                                         .font(.footnote.weight(.medium))
                                         .padding(.horizontal, Theme.Space.m)
                                         .padding(.vertical, 6)
@@ -64,6 +64,7 @@ struct CommitmentFormView: View {
                 }
             }
             .navigationTitle(existing == nil ? "Add commitment" : "Edit commitment")
+            .tint(Theme.accentDeep)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -71,6 +72,7 @@ struct CommitmentFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        Haptics.success()
                         Task { await save() }
                     }
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || end <= start)
@@ -148,6 +150,7 @@ struct SegmentEditSheet: View {
                 }
             }
             .navigationTitle("Edit flight times")
+            .tint(Theme.accentDeep)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

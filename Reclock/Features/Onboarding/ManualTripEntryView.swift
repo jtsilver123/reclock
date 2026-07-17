@@ -47,18 +47,19 @@ struct ManualTripEntryView: View {
                         next.departureDate = last.arrivalDate.addingTimeInterval(2 * 3600)
                         next.arrivalDate = last.arrivalDate.addingTimeInterval(5 * 3600)
                     }
-                    segments.append(next)
+                    withAnimation(Theme.Anim.spring) { segments.append(next) }
                 } label: {
                     Label("Add connecting flight", systemImage: "plus")
                 }
                 if segments.count > 1 {
                     Button(role: .destructive) {
-                        segments.removeLast()
+                        withAnimation(Theme.Anim.spring) { segments.removeLast() }
                     } label: {
                         Label("Remove last flight", systemImage: "minus.circle")
                     }
                 }
-                Toggle("Add return flight", isOn: $includeReturn)
+                Toggle("Add return flight", isOn: $includeReturn.animation(Theme.Anim.spring))
+                    .tint(Theme.accent)
                 if includeReturn {
                     SegmentEditor(draft: $returnSegment)
                 }
@@ -114,7 +115,7 @@ struct ManualTripEntryView: View {
                     ForEach(validationMessages, id: \.self) { message in
                         Label(message, systemImage: "exclamationmark.triangle")
                             .font(.footnote)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
                     }
                 }
             }
@@ -129,12 +130,14 @@ struct ManualTripEntryView: View {
                         Text("Build my plan").frame(maxWidth: .infinity)
                     }
                 }
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(!isComplete || isCreating)
             } footer: {
                 Text("Times are entered in each airport's local time — exactly as they appear on your ticket.")
             }
         }
         .navigationTitle("Enter trip")
+        .tint(Theme.accentDeep)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if !seededDefaults {
@@ -202,7 +205,7 @@ struct ManualTripEntryView: View {
         let built = buildSegments().sorted { $0.departure < $1.departure }
         let validator = TripValidator(airports: model.deps.airports)
         let issues = validator.validate(segments: built, now: model.deps.now())
-        validationMessages = issues.map(\.description)
+        withAnimation(Theme.Anim.spring) { validationMessages = issues.map(\.description) }
         guard !issues.contains(where: \.isBlocking) else { return }
 
         guard let first = built.first else { return }
@@ -305,7 +308,7 @@ private struct SegmentEditor: View {
             if let lookupNote {
                 Label(lookupNote, systemImage: lookupFailed ? "exclamationmark.triangle" : "checkmark.circle.fill")
                     .font(.caption2)
-                    .foregroundStyle(lookupFailed ? .orange : .green)
+                    .foregroundStyle(lookupFailed ? Theme.warning : Theme.success)
             }
             if filled {
                 // The filled-in flight, at a glance; tweak in the other tab if needed.
@@ -473,6 +476,7 @@ struct AirportField: View {
                 let hits = model.deps.airports.search(query, limit: 5)
                 ForEach(hits) { airport in
                     Button {
+                        Haptics.selection()
                         selection = airport
                         isSearching = false
                     } label: {

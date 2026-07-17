@@ -70,7 +70,7 @@ struct WhyItWorksView: View {
                 )
                 ExplainerBlock(
                     icon: "checkmark.seal.fill",
-                    tint: .green,
+                    tint: Theme.success,
                     title: "When the plan is inconvenient",
                     body: """
                     Life wins sometimes. Miss a light window, crash early, drink the \
@@ -81,7 +81,7 @@ struct WhyItWorksView: View {
                 )
                 ExplainerBlock(
                     icon: "exclamationmark.triangle.fill",
-                    tint: .orange,
+                    tint: Theme.warning,
                     title: "A note on safety",
                     body: """
                     \(SafetyCopy.drowsinessWarning) Reclock offers general wellness \
@@ -114,14 +114,17 @@ private struct ExplainerBlock: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(tint)
-                .frame(width: 36)
-                .accessibilityHidden(true)
+            ZStack {
+                Circle().fill(tint.opacity(0.15))
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(tint)
+            }
+            .frame(width: 44, height: 44)
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text(title)
-                    .font(.headline)
+                    .font(Theme.display(19, black: false))
                     .foregroundStyle(Theme.textPrimary)
                 Text(text)
                     .font(.callout)

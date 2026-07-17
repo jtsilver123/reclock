@@ -63,6 +63,7 @@ struct TripDetailView: View {
                     Label("Adjust plan (intensity, timing, transfer)", systemImage: "slider.horizontal.3")
                 }
                 Button {
+                    Haptics.soft()
                     Task { await model.recalculate(trip: currentTrip, trigger: "manual", presentation: .announce) }
                 } label: {
                     Label("Recalculate plan", systemImage: "arrow.triangle.2.circlepath")
@@ -85,6 +86,7 @@ struct TripDetailView: View {
                     .buttonStyle(.plain)
                 }
                 Button {
+                    Haptics.soft()
                     showDelaySheet = true
                 } label: {
                     Label("My flight changed / was delayed", systemImage: "clock.badge.exclamationmark")
@@ -112,6 +114,7 @@ struct TripDetailView: View {
                     }
                 }
                 Button {
+                    Haptics.soft()
                     showAddCommitment = true
                 } label: {
                     Label("Add a commitment", systemImage: "plus.circle")
@@ -159,7 +162,9 @@ struct TripDetailView: View {
             }
         }
         .navigationTitle(currentTrip.name)
+        .tint(Theme.accentDeep)
         .navigationBarTitleDisplayMode(.inline)
+        .contentMargins(.bottom, 84, for: .scrollContent)
         .sheet(isPresented: $showAdjust) {
             PlanAdjustSheet(trip: currentTrip)
                 .presentationDetents([.medium, .large])
@@ -296,8 +301,8 @@ private struct SegmentRow: View {
                         .font(.caption2.weight(.bold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.18), in: Capsule())
-                        .foregroundStyle(.orange)
+                        .background(Theme.warning.opacity(0.18), in: Capsule())
+                        .foregroundStyle(Theme.warning)
                 }
             }
             HStack {
@@ -383,6 +388,7 @@ struct ReportDelayView: View {
                 }
             }
             .navigationTitle("Flight changed")
+            .tint(Theme.accentDeep)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -438,16 +444,24 @@ struct ReportDelayView: View {
 
     @ViewBuilder
     private func quickDelayButtons(segment: FlightSegment) -> some View {
-        HStack {
+        HStack(spacing: Theme.Space.s) {
             ForEach([1.0, 2.0, 4.0], id: \.self) { hours in
-                Button("+\(Int(hours))h") {
+                Button {
+                    Haptics.selection()
                     // Shifting the wall-clock reading by N hours shifts the instant by N.
                     newDeparture = TimeFormat.pickerDate(for: segment.departure, in: segment.departureZone.resolved)
                         .addingTimeInterval(hours * 3600)
                     newArrival = TimeFormat.pickerDate(for: segment.arrival, in: segment.arrivalZone.resolved)
                         .addingTimeInterval(hours * 3600)
+                } label: {
+                    Text("+\(Int(hours))h")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.accentDeep)
+                        .padding(.horizontal, Theme.Space.m)
+                        .padding(.vertical, 8)
+                        .background(Theme.accent.opacity(0.12), in: Capsule())
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderless)
             }
         }
     }
