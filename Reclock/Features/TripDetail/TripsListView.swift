@@ -128,7 +128,7 @@ struct TripsListView: View {
                     List {
                         TravelBuddiesSection(trip: trip)
                     }
-                    .navigationTitle("\(trip.origin) → \(trip.destination)")
+                    .navigationTitle("\(model.originName(for: trip)) → \(trip.destination)")
                     .navigationBarTitleDisplayMode(.inline)
                 }
                 .presentationDetents([.medium, .large])
@@ -198,6 +198,7 @@ struct TripsListView: View {
         } label: {
             TripListRow(
                 trip: trip,
+                originName: model.originName(for: trip),
                 isOnPlanTab: model.activeTrip?.id == trip.id,
                 buddyCount: buddyCounts[trip.id]
             )
@@ -226,6 +227,7 @@ struct TripsListView: View {
 
 private struct TripListRow: View {
     let trip: Trip
+    let originName: String
     let isOnPlanTab: Bool
     let buddyCount: Int?
 
@@ -241,7 +243,7 @@ private struct TripListRow: View {
             .frame(width: 40, height: 40)
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(trip.origin) → \(trip.destination)")
+                Text("\(originName) → \(trip.destination)")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)

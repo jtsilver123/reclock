@@ -419,6 +419,21 @@ struct ProfileEditorView: View {
     var body: some View {
         Form {
             Section {
+                NavigationLink {
+                    HomeZonePicker(current: profile.homeZone) { picked in
+                        profile.homeZone = picked
+                    }
+                } label: {
+                    LabeledContent("Home time zone") {
+                        Text(TimeFormat.zoneCity(profile.homeZone.resolved))
+                    }
+                }
+            } header: {
+                SettingsHeader(title: "Home", symbol: "house.fill")
+            } footer: {
+                Text("Where your body normally lives — every plan measures its shift from here. Installed Reclock while traveling? It may have picked up the wrong city; fixing it rebuilds upcoming plans.")
+            }
+            Section {
                 DatePicker("Bedtime", selection: $bedtime, displayedComponents: .hourAndMinute)
                 DatePicker("Wake time", selection: $wakeTime, displayedComponents: .hourAndMinute)
                 Picker("Chronotype", selection: $profile.chronotype) {
@@ -511,6 +526,74 @@ struct ProfileEditorView: View {
             guard updated != model.profile else { return }
             Task { await model.updateProfile(updated) }
         }
+    }
+}
+
+// MARK: - Home zone picker
+
+/// Search-and-pick the home time zone by city name. The device's own zone gets a
+/// one-tap shortcut, since "I onboarded abroad and home is where my phone usually
+/// lives" is the whole reason this screen exists.
+private struct HomeZonePicker: View {
+    @Environment(\.dismiss) private var dismiss
+    let current: ZoneID
+    let onPick: (ZoneID) -> Void
+
+    @State private var query = ""
+
+    private var matches: [String] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: " ", with: "_")
+            .lowercased()
+        guard q.count >= 2 else { return [] }
+        return Array(TimeZone.knownTimeZoneIdentifiers.filter { $0.lowercased().contains(q) }.prefix(20))
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Current home", value: TimeFormat.zoneCity(current.resolved))
+                if ZoneID(TimeZone.current.identifier) != current {
+                    Button {
+                        Haptics.success()
+                        onPick(ZoneID(TimeZone.current.identifier))
+                        dismiss()
+                    } label: {
+                        Label(
+                            "Use this device's zone (\(TimeFormat.zoneCity(.current)))",
+                            systemImage: "iphone"
+                        )
+                    }
+                }
+            }
+            Section {
+                TextField("Search a city, e.g. Chicago", text: $query)
+                    .autocorrectionDisabled()
+                ForEach(matches, id: \.self) { identifier in
+                    Button {
+                        Haptics.success()
+                        onPick(ZoneID(identifier))
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Text(identifier.replacingOccurrences(of: "_", with: " "))
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                            if identifier == current.identifier {
+                                Image(systemName: "checkmark")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.accentDeep)
+                            }
+                        }
+                    }
+                }
+            } footer: {
+                Text("Zones are named for a major city — pick the one your home shares a clock with.")
+            }
+        }
+        .navigationTitle("Home time zone")
+        .tint(Theme.accentDeep)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

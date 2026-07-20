@@ -281,6 +281,14 @@ final class AppModel {
     private static let demoProfileID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 
     func updateProfile(_ profile: UserProfile) async {
+        // Home moved (fixed after a mid-trip install, say): trips measured from the
+        // old home re-anchor to the new one before their plans rebuild below.
+        if let previousHome = state.profile?.homeZone, previousHome != profile.homeZone {
+            for index in state.trips.indices
+            where state.trips[index].status == .upcoming || state.trips[index].status == .active {
+                state.trips[index].homeZone = profile.homeZone
+            }
+        }
         state.profile = profile
         await persist()
         // Profile changes affect all future plans; regenerate active ones.
@@ -352,12 +360,18 @@ final class AppModel {
             await regeneratePlan(for: merged, trigger: "connection_merged")
             // The reveal shows the whole journey; the Plan banner tells the merge story.
             lastChangeMessages = [
-                "Two flights, one journey — this leg joined your \(merged.origin) → \(merged.destination) trip."
+                "Two flights, one journey — this leg joined your \(originName(for: merged)) → \(merged.destination) trip."
             ]
             planReveal = merged
             return true
         }
         return false
+    }
+
+    /// The trip's starting point for display: the city when the directory knows
+    /// the airport, otherwise the raw code the trip was built with.
+    func originName(for trip: Trip) -> String {
+        deps.airports.airport(iata: trip.origin)?.city ?? trip.origin
     }
 
     /// Dry-run: does this trip produce a valid plan? Checked before committing a
@@ -382,7 +396,7 @@ final class AppModel {
             await deleteTrip(absorbed)
             await regeneratePlan(for: merged, trigger: "connection_merged")
             lastChangeMessages = [
-                "Two flights were one journey — merged them into your \(merged.origin) → \(merged.destination) plan."
+                "Two flights were one journey — merged them into your \(originName(for: merged)) → \(merged.destination) plan."
             ]
         }
     }
@@ -611,7 +625,7 @@ final class AppModel {
             case .announce:
                 planUpdate = PlanUpdate(
                     tripID: trip.id,
-                    route: "\(trip.origin) → \(trip.destination)",
+                    route: "\(originName(for: trip)) → \(trip.destination)",
                     changes: result.changeMessages
                 )
             case .quiet:

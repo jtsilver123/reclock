@@ -4,6 +4,7 @@ import ReclockKit
 /// The frozen top of the Plan tab: which trip, how far the body clock has come, and
 /// the one step that matters right now. Everything below it scrolls; this doesn't.
 struct PlanPinnedHeader: View {
+    @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let trip: Trip
     let plan: JetLagPlan
@@ -23,7 +24,7 @@ struct PlanPinnedHeader: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .center, spacing: Theme.Space.s) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("\(trip.origin) → \(trip.destination)")
+                    Text("\(model.originName(for: trip)) → \(trip.destination)")
                         .font(Theme.display(18))
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)

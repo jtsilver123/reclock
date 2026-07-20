@@ -5,6 +5,7 @@ import ReclockKit
 /// screen, the plane flies the route, the plan lands with a burst of brand confetti.
 /// Pure theater (~2.5s) — tap anywhere to skip, quiet under Reduce Motion.
 struct PlanRevealView: View {
+    @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let trip: Trip
     var onDone: () -> Void
@@ -33,7 +34,7 @@ struct PlanRevealView: View {
                 // The route, boarding-pass style, with the plane riding its arc.
                 VStack(spacing: Theme.Space.m) {
                     HStack {
-                        Text(trip.origin)
+                        Text(model.originName(for: trip))
                             .font(Theme.display(36))
                         Spacer()
                         Text(trip.destination)
@@ -78,7 +79,7 @@ struct PlanRevealView: View {
         .onTapGesture { finish() }
         .task { await run() }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Your plan for \(trip.origin) to \(trip.destination) is ready. Tap to continue.")
+        .accessibilityLabel("Your plan for \(model.originName(for: trip)) to \(trip.destination) is ready. Tap to continue.")
         .accessibilityAddTraits(.isButton)
     }
 

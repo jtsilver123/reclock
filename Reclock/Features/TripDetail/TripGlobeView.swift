@@ -247,8 +247,10 @@ struct TripGlobeHero: View {
             let destActive = destinationIsActive(now: now)
             VStack(spacing: Theme.Space.m) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(trip.origin)
+                    Text(origin.city)
                         .font(Theme.display(27))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                     Image(systemName: "airplane")
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(Theme.accent)
@@ -357,7 +359,7 @@ struct TripGlobeView: View {
             SwiftUI.TimelineView(.everyMinute) { timeline in
                 let now = timeline.date
                 VStack(spacing: Theme.Space.m) {
-                    Text("\(trip.origin) → \(trip.destination)")
+                    Text("\(origin.city) → \(trip.destination)")
                         .font(Theme.display(26))
                         .foregroundStyle(Color.white)
                         .lineLimit(1)

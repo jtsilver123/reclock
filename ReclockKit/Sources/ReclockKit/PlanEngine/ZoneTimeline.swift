@@ -16,7 +16,12 @@ public struct ZoneTimeline: Sendable {
 
     public init(trip: Trip) {
         self.homeZone = trip.homeZone
-        var points: [Breakpoint] = [Breakpoint(start: .distantPast, zone: trip.homeZone)]
+        // Before the first flight the traveler is wherever that flight leaves from —
+        // usually home, but not always: a trip can start away (app installed
+        // mid-journey, or a positioning leg). Those days must read in the zone of
+        // the clock on the wall in front of them, not a home they aren't at.
+        let preTripZone = trip.segments.first?.departureZone ?? trip.homeZone
+        var points: [Breakpoint] = [Breakpoint(start: .distantPast, zone: preTripZone)]
         for segment in trip.segments {
             // While airborne, remain in the departure zone until landing.
             points.append(Breakpoint(start: segment.departure, zone: segment.departureZone))

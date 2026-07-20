@@ -217,7 +217,7 @@ struct TripDetailView: View {
     private var textHeader: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             HStack(alignment: .firstTextBaseline) {
-                Text(currentTrip.origin)
+                Text(model.originName(for: currentTrip))
                     .font(Theme.display(33))
                 Image(systemName: "airplane")
                     .font(.title3.weight(.semibold))
