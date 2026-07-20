@@ -508,8 +508,25 @@ final class AppModel {
             return t
         }
         if changed { await persist() }
+        // The directory is truth for zones of airports it knows: trips imported while
+        // an airport was missing (zone guessed from a calendar event) relabel to the
+        // real zone as soon as a richer directory ships.
+        await healTripZones()
         // With statuses fresh, heal any connection that arrived as two trips.
         await mergeConnectedTrips()
+    }
+
+    private func healTripZones() async {
+        var healedAny = false
+        for trip in state.trips where trip.status == .upcoming || trip.status == .active {
+            guard let healed = ZoneHealer.healed(trip, airports: deps.airports),
+                  let index = state.trips.firstIndex(where: { $0.id == trip.id })
+            else { continue }
+            state.trips[index] = healed
+            healedAny = true
+            await regeneratePlan(for: healed, trigger: "zones_healed")
+        }
+        if healedAny { await persist() }
     }
 
     // MARK: - Actions on actions

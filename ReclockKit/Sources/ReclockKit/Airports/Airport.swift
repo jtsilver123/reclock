@@ -79,7 +79,8 @@ public struct AirportDirectory: Sendable {
 
     public init(airports: [Airport]) {
         self.airports = airports
-        self.byIATA = Dictionary(uniqueKeysWithValues: airports.map { ($0.iata, $0) })
+        // First entry wins on a duplicate IATA — bad data must degrade, never trap.
+        self.byIATA = Dictionary(airports.map { ($0.iata, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     public func airport(iata: String) -> Airport? {

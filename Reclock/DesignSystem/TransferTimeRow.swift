@@ -71,7 +71,7 @@ struct TransferTimeRow: View {
         if let note {
             Label(note.text, systemImage: note.isWarning ? "exclamationmark.triangle" : "checkmark.circle")
                 .font(.caption)
-                .foregroundStyle(note.isWarning ? AnyShapeStyle(.orange) : AnyShapeStyle(Theme.textSecondary))
+                .foregroundStyle(note.isWarning ? AnyShapeStyle(Theme.warning) : AnyShapeStyle(Theme.textSecondary))
                 .transition(.opacity)
                 .animation(Theme.Anim.gentle, value: note)
         }
