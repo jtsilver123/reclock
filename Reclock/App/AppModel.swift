@@ -294,6 +294,9 @@ final class AppModel {
     @discardableResult
     func addTrip(_ trip: Trip) async -> Bool {
         guard let profile = state.profile else { return false }
+        // A flight that chains airport-to-airport with a live trip inside a layover
+        // window is that journey's missing leg, not a new trip — fold it in.
+        if await absorbIntoConnectedTrip(trip, profile: profile) { return true }
         do {
             var stamped = trip
             stamped.createdAt = deps.now()
@@ -333,6 +336,76 @@ final class AppModel {
             )
             return false
         }
+    }
+
+    /// Folds a just-added flight into the live trip it continues — same-airport
+    /// handoff within the layover window — when the combined itinerary still makes
+    /// a valid plan. Returns false to let the normal separate-trip path run.
+    private func absorbIntoConnectedTrip(_ trip: Trip, profile: UserProfile) async -> Bool {
+        for host in state.trips where host.status == .upcoming || host.status == .active {
+            guard let merged = TripAssembler.merging(host, absorbing: trip, airports: deps.airports),
+                  planBuilds(merged, profile: profile),
+                  let index = state.trips.firstIndex(where: { $0.id == host.id })
+            else { continue }
+            state.trips[index] = merged
+            await persist()
+            await regeneratePlan(for: merged, trigger: "connection_merged")
+            // The reveal shows the whole journey; the Plan banner tells the merge story.
+            lastChangeMessages = [
+                "Two flights, one journey — this leg joined your \(merged.origin) → \(merged.destination) trip."
+            ]
+            planReveal = merged
+            return true
+        }
+        return false
+    }
+
+    /// Dry-run: does this trip produce a valid plan? Checked before committing a
+    /// merge so a bad combination quietly stays two trips instead of alerting.
+    private func planBuilds(_ trip: Trip, profile: UserProfile) -> Bool {
+        guard let plan = try? deps.engine.generatePlan(trip: trip, profile: profile, currentState: nil)
+        else { return false }
+        return deps.validator.validate(plan: plan, trip: trip, profile: profile).isValid
+    }
+
+    /// Trips created one flight at a time (or restored from an older backup) can be
+    /// twins of one journey. Fold every chaining pair into a single trip; a shared
+    /// trip keeps its identity so its buddy code stays valid.
+    private func mergeConnectedTrips() async {
+        while let (host, absorbed) = connectedTripPair() {
+            guard let profile = state.profile,
+                  let merged = TripAssembler.merging(host, absorbing: absorbed, airports: deps.airports),
+                  planBuilds(merged, profile: profile),
+                  let index = state.trips.firstIndex(where: { $0.id == host.id })
+            else { return }
+            state.trips[index] = merged
+            await deleteTrip(absorbed)
+            await regeneratePlan(for: merged, trigger: "connection_merged")
+            lastChangeMessages = [
+                "Two flights were one journey — merged them into your \(merged.origin) → \(merged.destination) plan."
+            ]
+        }
+    }
+
+    /// The first pair of live trips that chain into one journey. The trip that keeps
+    /// its identity comes first: the shared one if exactly one is shared, otherwise
+    /// the earlier one. Two shared trips never merge — each code names its own board.
+    private func connectedTripPair() -> (host: Trip, absorbed: Trip)? {
+        let live = state.trips.filter { $0.status == .upcoming || $0.status == .active }
+        guard live.count >= 2 else { return nil }
+        for i in 0..<(live.count - 1) {
+            for j in (i + 1)..<live.count {
+                let a = live[i], b = live[j]
+                if a.sharedPlanCode != nil && b.sharedPlanCode != nil { continue }
+                guard TripMerger.mergedSegments(a, b) != nil else { continue }
+                if b.sharedPlanCode != nil { return (b, a) }
+                if a.sharedPlanCode != nil { return (a, b) }
+                let aStarts = a.firstDeparture ?? .distantFuture
+                let bStarts = b.firstDeparture ?? .distantFuture
+                return aStarts <= bStarts ? (a, b) : (b, a)
+            }
+        }
+        return nil
     }
 
     func deleteTrip(_ trip: Trip) async {
@@ -435,6 +508,8 @@ final class AppModel {
             return t
         }
         if changed { await persist() }
+        // With statuses fresh, heal any connection that arrived as two trips.
+        await mergeConnectedTrips()
     }
 
     // MARK: - Actions on actions
