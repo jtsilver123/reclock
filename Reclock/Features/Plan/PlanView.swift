@@ -147,6 +147,12 @@ private struct PlanContent: View {
 
     @State private var notificationsPending = false
     @AppStorage("planPrimerDismissed") private var planPrimerDismissed = false
+    // Back-to-now: shown only when today is ON this plan and scrolled out of view.
+    @State private var showBackToNow = false
+    @State private var todayIsAbove = true
+    @State private var viewportHeight: CGFloat = 0
+    /// Suppresses the button during the launch auto-scroll, which starts at day 0.
+    @State private var backToNowArmed = false
 
     var body: some View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
@@ -218,6 +224,20 @@ private struct PlanContent: View {
                                             now: now
                                         )
                                         .id(entry.day.id)
+                                        .background {
+                                            // Today's block reports its frame so the
+                                            // back-to-now button knows when it left view.
+                                            // A lazily-unrealized block reports nothing,
+                                            // which reads (correctly) as "far away".
+                                            if entry.day.id == PlanDays.currentDayID(plan: plan, now: now) {
+                                                GeometryReader { geo in
+                                                    Color.clear.preference(
+                                                        key: TodayFrameKey.self,
+                                                        value: geo.frame(in: .named("planScroll"))
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 } header: {
                                     PlanPhaseHeader(phase: group.phase)
@@ -230,10 +250,52 @@ private struct PlanContent: View {
                         // new spots instead of teleporting.
                         .animation(Theme.Anim.spring, value: plan.revision)
                     }
+                    .coordinateSpace(name: "planScroll")
+                    .background {
+                        GeometryReader { geo in
+                            Color.clear
+                                .onAppear { viewportHeight = geo.size.height }
+                                .onChange(of: geo.size.height) { _, height in
+                                    viewportHeight = height
+                                }
+                        }
+                    }
+                    .onPreferenceChange(TodayFrameKey.self) { frame in
+                        // "Near now" = today's block intersects the viewport (with
+                        // slack so the button never flickers at the edge).
+                        let slack: CGFloat = 60
+                        var nearNow = false
+                        if let frame, viewportHeight > 0 {
+                            nearNow = frame.maxY > -slack && frame.minY < viewportHeight + slack
+                            todayIsAbove = frame.midY < viewportHeight / 2
+                        }
+                        let show = !nearNow && backToNowArmed
+                        guard show != showBackToNow else { return }
+                        withAnimation(Theme.Anim.spring) { showBackToNow = show }
+                    }
+                    .overlay(alignment: .bottom) {
+                        // Scrolled off into another day? One tap brings the reader
+                        // home. Exists only while today is actually on this plan.
+                        if showBackToNow,
+                           PlanDays.currentDayID(plan: plan, now: now) != nil,
+                           !ProcessInfo.isUITest {
+                            BackToNowButton(pointsUp: todayIsAbove) {
+                                Haptics.soft()
+                                guard let today = PlanDays.currentDayID(plan: plan, now: model.deps.now())
+                                else { return }
+                                withAnimation(Theme.Anim.spring) {
+                                    proxy.scrollTo(today, anchor: .top)
+                                }
+                            }
+                            .padding(.bottom, Theme.Space.m)
+                            .transition(.scale(scale: 0.8, anchor: .bottom).combined(with: .opacity))
+                        }
+                    }
                     .task {
                         // Mid-trip, the reader's day is what matters — not day 0 last
                         // week. Lazy rows realize progressively, and a single early
                         // scrollTo can land short on long plans — try a few times.
+                        defer { backToNowArmed = true }
                         guard let today = PlanDays.currentDayID(plan: plan, now: model.deps.now()) else { return }
                         for delay in [200_000_000, 400_000_000, 600_000_000] {
                             try? await Task.sleep(nanoseconds: UInt64(delay))
@@ -270,6 +332,45 @@ private struct PlanContent: View {
             bySettingHour: clock.hour, minute: clock.minute, second: 0, of: Date()
         ) ?? Date()
         return date.formatted(date: .omitted, time: .shortened)
+    }
+}
+
+// MARK: - Back to now
+
+/// Today's block, reporting its frame in the plan's scroll space. No report at all
+/// means the lazy list hasn't even built it — the reader is far away.
+private struct TodayFrameKey: PreferenceKey {
+    static let defaultValue: CGRect? = nil
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
+    }
+}
+
+/// The floating way home: appears once today scrolls out of view, points back
+/// toward it, and one tap lands the reader on the current moment.
+private struct BackToNowButton: View {
+    let pointsUp: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: pointsUp ? "arrow.up" : "arrow.down")
+                    .font(.caption.weight(.bold))
+                Text("Now")
+                    .font(.subheadline.weight(.bold))
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, Theme.Space.m)
+            .padding(.vertical, 9)
+            .background(
+                Capsule()
+                    .fill(Theme.accent)
+                    .shadow(color: Theme.accent.opacity(0.45), radius: 10, y: 4)
+            )
+        }
+        .buttonStyle(PressableCardStyle())
+        .accessibilityLabel("Scroll back to now")
     }
 }
 
