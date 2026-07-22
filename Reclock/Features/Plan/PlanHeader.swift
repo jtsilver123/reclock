@@ -39,12 +39,11 @@ struct PlanPinnedHeader: View {
                 }
                 .layoutPriority(1)
                 Spacer(minLength: Theme.Space.s)
-                ClockChip(
-                    title: TimeFormat.zoneCity(trip.destinationZone.resolved),
-                    zone: trip.destinationZone.resolved,
-                    now: now
-                )
             }
+
+            // What time it is for the traveler, right now — the device's zone travels
+            // with them — plus the destination clock until the two agree.
+            NowBar(now: now, destinationZone: trip.destinationZone.resolved)
 
             // The body clock's journey between the two cities, plane included.
             ShiftProgressLine(progress: context.progress, label: shiftLabel)
@@ -90,6 +89,65 @@ struct PlanPinnedHeader: View {
         let doneText = done == done.rounded()
             ? String(Int(done)) : String(format: "%.1f", done)
         return "\(doneText) of \(Int(total.rounded()))h shifted"
+    }
+}
+
+/// The now bar: the time where the traveler is standing (the device's zone follows
+/// them — Tromsø before the flight, Chicago after landing), live to the half-minute,
+/// with the destination's clock alongside until the two read the same.
+private struct NowBar: View {
+    let now: Date
+    let destinationZone: TimeZone
+
+    private var hereZone: TimeZone { .current }
+    private var clocksAgree: Bool {
+        hereZone.secondsFromGMT(for: now) == destinationZone.secondsFromGMT(for: now)
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Space.s) {
+            // The same "the sun marks now" dot the timeline uses.
+            Circle()
+                .fill(Theme.accent)
+                .frame(width: 7, height: 7)
+                .accessibilityHidden(true)
+            Text(TimeFormat.time(now, zone: hereZone))
+                .font(.subheadline.weight(.bold).monospacedDigit())
+                .fontDesign(.rounded)
+                .foregroundStyle(Theme.textPrimary)
+                .contentTransition(.numericText())
+            Text(clocksAgree ? "in \(TimeFormat.zoneCity(destinationZone)) — where you are" : "where you are")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: Theme.Space.s)
+            if !clocksAgree {
+                Text(TimeFormat.time(now, zone: destinationZone))
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .fontDesign(.rounded)
+                    .foregroundStyle(Theme.accentDeep)
+                    .contentTransition(.numericText())
+                Text("in \(TimeFormat.zoneCity(destinationZone))")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, 7)
+        .background(Theme.surfaceSecondary.opacity(0.7), in: Capsule())
+        .animation(Theme.Anim.gentle, value: clocksAgree)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        let here = "It's \(TimeFormat.time(now, zone: hereZone)) where you are"
+        return clocksAgree
+            ? "\(here), in \(TimeFormat.zoneCity(destinationZone))."
+            : "\(here). \(TimeFormat.time(now, zone: destinationZone)) in \(TimeFormat.zoneCity(destinationZone))."
     }
 }
 
