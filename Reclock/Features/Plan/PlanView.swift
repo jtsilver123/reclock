@@ -158,6 +158,7 @@ private struct PlanContent: View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
             let now = timeline.date
             let context = model.nowContext(trip: trip)
+            let todayID = PlanDays.currentDayID(plan: plan, now: now)
             VStack(spacing: 0) {
                 // Frozen: which trip, where your body clock stands, what to do now.
                 PlanPinnedHeader(trip: trip, plan: plan, context: context, now: now)
@@ -229,7 +230,10 @@ private struct PlanContent: View {
                                             // back-to-now button knows when it left view.
                                             // A lazily-unrealized block reports nothing,
                                             // which reads (correctly) as "far away".
-                                            if entry.day.id == PlanDays.currentDayID(plan: plan, now: now) {
+                                            // Fully inert under XCUITest — continuous
+                                            // preference traffic during re-layout can
+                                            // starve the harness's idle-wait.
+                                            if !ProcessInfo.isUITest, entry.day.id == todayID {
                                                 GeometryReader { geo in
                                                     Color.clear.preference(
                                                         key: TodayFrameKey.self,
@@ -261,9 +265,10 @@ private struct PlanContent: View {
                         }
                     }
                     .onPreferenceChange(TodayFrameKey.self) { frame in
-                        // "Near now" = today's block intersects the viewport (with
-                        // slack so the button never flickers at the edge).
-                        let slack: CGFloat = 60
+                        // Hysteresis: appear only once today is clearly beyond the
+                        // viewport, hide only once it's genuinely back on screen —
+                        // the flag can't oscillate at the boundary mid-animation.
+                        let slack: CGFloat = showBackToNow ? 0 : 60
                         var nearNow = false
                         if let frame, viewportHeight > 0 {
                             nearNow = frame.maxY > -slack && frame.minY < viewportHeight + slack
@@ -271,26 +276,23 @@ private struct PlanContent: View {
                         }
                         let show = !nearNow && backToNowArmed
                         guard show != showBackToNow else { return }
-                        withAnimation(Theme.Anim.spring) { showBackToNow = show }
+                        showBackToNow = show
                     }
                     .overlay(alignment: .bottom) {
                         // Scrolled off into another day? One tap brings the reader
                         // home. Exists only while today is actually on this plan.
-                        if showBackToNow,
-                           PlanDays.currentDayID(plan: plan, now: now) != nil,
-                           !ProcessInfo.isUITest {
+                        if showBackToNow, let todayID, !ProcessInfo.isUITest {
                             BackToNowButton(pointsUp: todayIsAbove) {
                                 Haptics.soft()
-                                guard let today = PlanDays.currentDayID(plan: plan, now: model.deps.now())
-                                else { return }
                                 withAnimation(Theme.Anim.spring) {
-                                    proxy.scrollTo(today, anchor: .top)
+                                    proxy.scrollTo(todayID, anchor: .top)
                                 }
                             }
                             .padding(.bottom, Theme.Space.m)
                             .transition(.scale(scale: 0.8, anchor: .bottom).combined(with: .opacity))
                         }
                     }
+                    .animation(Theme.Anim.spring, value: showBackToNow)
                     .task {
                         // Mid-trip, the reader's day is what matters — not day 0 last
                         // week. Lazy rows realize progressively, and a single early
