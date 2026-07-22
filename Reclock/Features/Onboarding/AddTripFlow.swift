@@ -234,7 +234,10 @@ struct CalendarImportView: View {
                         .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
                     Spacer()
-                    Button("Allow calendar access") {
+                    // Guideline 5.1.1(iv): the button before a system permission prompt
+                    // must be neutral ("Continue"), never permission-granting language —
+                    // the decision belongs to the system dialog that follows.
+                    Button("Continue") {
                         Task { await requestAndScan() }
                     }
                     .buttonStyle(PrimaryButtonStyle())
