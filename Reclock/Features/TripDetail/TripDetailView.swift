@@ -32,6 +32,13 @@ struct TripDetailView: View {
         model.state.trips.first { $0.id == trip.id } ?? trip
     }
 
+    /// Steps still ahead of the traveler, previewed on the calendar row so the
+    /// button says what it will actually do.
+    private var pendingCalendarSteps: Int {
+        guard let plan = model.plan(for: currentTrip) else { return 0 }
+        return PlanCalendarEvents.requests(trip: currentTrip, plan: plan, now: model.deps.now()).count
+    }
+
     var body: some View {
         List {
             Section {
@@ -132,7 +139,12 @@ struct TripDetailView: View {
                     Haptics.soft()
                     showCalendarSheet = true
                 } label: {
-                    Label("My calendar — add or remove this plan", systemImage: "calendar.badge.plus")
+                    Label(
+                        pendingCalendarSteps > 0
+                            ? "My calendar — \(pendingCalendarSteps) step\(pendingCalendarSteps == 1 ? "" : "s") ready to add"
+                            : "My calendar — add or remove this plan",
+                        systemImage: "calendar.badge.plus"
+                    )
                 }
                 if let shareText = model.shareText(for: currentTrip) {
                     ShareLink(item: shareText) {

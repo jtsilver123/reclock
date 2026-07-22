@@ -10,6 +10,8 @@ struct PlanPinnedHeader: View {
     let plan: JetLagPlan
     let context: AppModel.NowContext
     let now: Date
+    /// When today is on this plan, tapping the now bar rides back to it.
+    var onTapNow: (() -> Void)? = nil
 
     private var heroTransition: AnyTransition {
         reduceMotion
@@ -42,8 +44,20 @@ struct PlanPinnedHeader: View {
             }
 
             // What time it is for the traveler, right now — the device's zone travels
-            // with them — plus the destination clock until the two agree.
-            NowBar(now: now, destinationZone: trip.destinationZone.resolved)
+            // with them — plus the destination clock until the two agree. When today
+            // is on the plan, the bar doubles as the way back to it.
+            if let onTapNow {
+                Button {
+                    Haptics.soft()
+                    onTapNow()
+                } label: {
+                    NowBar(now: now, destinationZone: trip.destinationZone.resolved)
+                }
+                .buttonStyle(PressableCardStyle())
+                .accessibilityHint("Scrolls the plan to now")
+            } else {
+                NowBar(now: now, destinationZone: trip.destinationZone.resolved)
+            }
 
             // The body clock's journey between the two cities, plane included.
             ShiftProgressLine(progress: context.progress, label: shiftLabel)

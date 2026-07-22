@@ -153,6 +153,8 @@ private struct PlanContent: View {
     @State private var viewportHeight: CGFloat = 0
     /// Suppresses the button during the launch auto-scroll, which starts at day 0.
     @State private var backToNowArmed = false
+    /// Bumped by the pinned header's now bar; the scroll reader answers it.
+    @State private var scrollToNowRequest = 0
 
     var body: some View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
@@ -161,7 +163,10 @@ private struct PlanContent: View {
             let todayID = PlanDays.currentDayID(plan: plan, now: now)
             VStack(spacing: 0) {
                 // Frozen: which trip, where your body clock stands, what to do now.
-                PlanPinnedHeader(trip: trip, plan: plan, context: context, now: now)
+                PlanPinnedHeader(
+                    trip: trip, plan: plan, context: context, now: now,
+                    onTapNow: todayID == nil ? nil : { scrollToNowRequest += 1 }
+                )
 
                 // Scrolls: transient banners, then every day of the plan.
                 ScrollViewReader { proxy in
@@ -284,15 +289,18 @@ private struct PlanContent: View {
                         if showBackToNow, let todayID, !ProcessInfo.isUITest {
                             BackToNowButton(pointsUp: todayIsAbove) {
                                 Haptics.soft()
-                                withAnimation(Theme.Anim.spring) {
-                                    proxy.scrollTo(todayID, anchor: .top)
-                                }
+                                scrollToNow(proxy, todayID: todayID)
                             }
                             .padding(.bottom, Theme.Space.m)
                             .transition(.scale(scale: 0.8, anchor: .bottom).combined(with: .opacity))
                         }
                     }
                     .animation(Theme.Anim.spring, value: showBackToNow)
+                    .onChange(of: scrollToNowRequest) { _, _ in
+                        guard let todayID = PlanDays.currentDayID(plan: plan, now: model.deps.now())
+                        else { return }
+                        scrollToNow(proxy, todayID: todayID)
+                    }
                     .task {
                         // Mid-trip, the reader's day is what matters — not day 0 last
                         // week. Lazy rows realize progressively, and a single early
@@ -318,6 +326,22 @@ private struct PlanContent: View {
                 notificationsPending = !(await model.deps.notifications.permissionGranted())
             }
             await model.checkForKudos(trip: trip)
+        }
+    }
+
+    /// One tap home. Lazy rows realize as the scroll travels, so a single pass can
+    /// land short of today on long plans — the launch auto-scroll learned this the
+    /// hard way. Settle over a few passes, and hide the button optimistically; the
+    /// frame preference brings it straight back if we still landed short.
+    private func scrollToNow(_ proxy: ScrollViewProxy, todayID: UUID) {
+        showBackToNow = false
+        Task {
+            for delay in [0, 250_000_000, 500_000_000] {
+                if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay)) }
+                withAnimation(Theme.Anim.spring) {
+                    proxy.scrollTo(todayID, anchor: .top)
+                }
+            }
         }
     }
 

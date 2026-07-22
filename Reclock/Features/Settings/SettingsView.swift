@@ -328,6 +328,9 @@ struct SettingsView: View {
             Link(destination: URL(string: "https://jtsilver123.github.io/reclock/")!) {
                 Label("Support", systemImage: "lifepreserver")
             }
+            ShareLink(item: URL(string: "https://jtsilver123.github.io/reclock/")!) {
+                Label("Share Reclock with a traveler", systemImage: "square.and.arrow.up")
+            }
             LabeledContent("Version", value: appVersion)
             LabeledContent("Plan protocol", value: "v\(ProtocolVersion.current.description)")
             Text("Reclock offers general wellness guidance for travel, not medical advice. If you have a sleep disorder or health condition, talk to a clinician.")

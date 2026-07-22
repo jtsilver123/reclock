@@ -250,8 +250,8 @@ private struct TripListRow: View {
                     .minimumScaleFactor(0.8)
                 SwiftUI.TimelineView(.everyMinute) { timeline in
                     Text(trip.status == .completed
-                         ? dateRange
-                         : "\(dateRange) · \(TimeFormat.time(timeline.date, zone: trip.destinationZone.resolved)) there")
+                         ? dateRange(now: timeline.date)
+                         : "\(dateRange(now: timeline.date)) · \(TimeFormat.time(timeline.date, zone: trip.destinationZone.resolved)) there")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
@@ -315,12 +315,24 @@ private struct TripListRow: View {
         }
     }
 
-    private var dateRange: String {
+    private func dateRange(now: Date) -> String {
         guard let dep = trip.firstDeparture else { return "" }
         let zone = trip.homeZone.resolved
-        let start = TimeFormat.dayDate(dep, zone: zone)
-        if let arr = trip.finalArrival, let nights = trip.destinationNights, nights > 0 {
-            _ = arr
+        var start = TimeFormat.dayDate(dep, zone: zone)
+        // Upcoming trips answer the first question — "how soon?" — up front.
+        if trip.status == .upcoming, dep > now {
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = zone
+            let days = cal.dateComponents(
+                [.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: dep)
+            ).day ?? 0
+            switch days {
+            case 0: start = "Today · \(start)"
+            case 1: start = "Tomorrow · \(start)"
+            default: start = "In \(days) days · \(start)"
+            }
+        }
+        if let nights = trip.destinationNights, nights > 0 {
             return "\(start) · \(nights) night\(nights == 1 ? "" : "s")"
         }
         return start
