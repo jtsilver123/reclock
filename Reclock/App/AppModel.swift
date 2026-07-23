@@ -323,6 +323,43 @@ final class AppModel {
         }
     }
 
+    // MARK: - Apple Health
+
+    /// Outcome of connecting Apple Health, so Settings can say exactly what happened.
+    enum HealthSleepOutcome: Equatable {
+        case applied(bedtime: LocalClockTime, wakeTime: LocalClockTime, nights: Int)
+        case connectedNoData
+        case denied
+        case unsupported
+    }
+
+    /// Whether the device can offer Apple Health at all — drives whether Settings
+    /// shows the connect button or an "isn't available here" note.
+    func healthSleepAvailability() async -> SleepDataAvailability {
+        await deps.sleepProvider.availability()
+    }
+
+    /// Reads recent sleep from Apple Health (prompting for read access if needed) and
+    /// sets the profile's typical bed/wake times from the median of those nights. The
+    /// data never leaves the device; only the two resulting clock times are stored.
+    func connectHealthSleep() async -> HealthSleepOutcome {
+        if await deps.sleepProvider.availability() == .unsupported { return .unsupported }
+        guard await deps.sleepProvider.requestAccess() else { return .denied }
+        let nights = await deps.sleepProvider.recentNights(limit: 21)
+        let zone = state.profile?.homeZone.resolved ?? .current
+        guard let suggestion = SleepPatternAnalyzer.suggestTypicalSleep(nights: nights, zone: zone),
+              var profile = state.profile
+        else { return .connectedNoData }
+        profile.typicalBedtime = suggestion.bedtime
+        profile.typicalWakeTime = suggestion.wakeTime
+        await updateProfile(profile)
+        return .applied(
+            bedtime: suggestion.bedtime,
+            wakeTime: suggestion.wakeTime,
+            nights: suggestion.sampleCount
+        )
+    }
+
     // MARK: - Trips
 
     @discardableResult

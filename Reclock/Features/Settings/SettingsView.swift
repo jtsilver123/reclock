@@ -461,6 +461,24 @@ struct ProfileEditorView: View {
                 SettingsHeader(title: "Normal sleep", symbol: "bed.double.fill")
             }
             Section {
+                HealthSleepRow { bed, wake in
+                    // Health set the times: mirror them into the pickers above so the
+                    // whole screen agrees, and persist through the same profile path.
+                    bedtime = Calendar.current.date(
+                        bySettingHour: bed.hour, minute: bed.minute, second: 0, of: Date()
+                    ) ?? bedtime
+                    wakeTime = Calendar.current.date(
+                        bySettingHour: wake.hour, minute: wake.minute, second: 0, of: Date()
+                    ) ?? wakeTime
+                    profile.typicalBedtime = bed
+                    profile.typicalWakeTime = wake
+                }
+            } header: {
+                SettingsHeader(title: "Apple Health", symbol: "heart.fill")
+            } footer: {
+                Text("Optional. Reclock reads your recent sleep from Apple Health to set the bed and wake times above. Your Health data stays on this device — only the two resulting times are saved.")
+            }
+            Section {
                 Picker("Sleep on planes", selection: $profile.planeSleepAbility) {
                     ForEach(PlaneSleepAbility.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
@@ -544,6 +562,91 @@ struct ProfileEditorView: View {
             guard updated != model.profile else { return }
             Task { await model.updateProfile(updated) }
         }
+    }
+}
+
+// MARK: - Apple Health
+
+/// The one place Apple Health is identified and used: reads recent sleep to set the
+/// traveler's typical bed and wake times. Fully optional — the app never needs it,
+/// and the row states plainly where the data goes.
+private struct HealthSleepRow: View {
+    @Environment(AppModel.self) private var model
+    /// Called with the derived clock times so the editor can mirror them into its pickers.
+    let onApplied: (LocalClockTime, LocalClockTime) -> Void
+
+    @State private var availability: SleepDataAvailability?
+    @State private var working = false
+    @State private var note: Note?
+
+    private struct Note: Equatable {
+        var text: String
+        var isWarning: Bool
+    }
+
+    var body: some View {
+        Group {
+            if availability == .unsupported {
+                Label("Apple Health isn't available on this device.", systemImage: "heart.slash")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            } else {
+                Button {
+                    Task { await connect() }
+                } label: {
+                    if working {
+                        HStack(spacing: Theme.Space.s) {
+                            ProgressView()
+                            Text("Reading your sleep…")
+                        }
+                    } else {
+                        Label("Set my times from Apple Health", systemImage: "heart.text.square")
+                    }
+                }
+                .disabled(working)
+            }
+            if let note {
+                Label(note.text, systemImage: note.isWarning ? "exclamationmark.triangle" : "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(note.isWarning ? AnyShapeStyle(Theme.warning) : AnyShapeStyle(Theme.success))
+                    .transition(.opacity)
+            }
+        }
+        .task { availability = await model.healthSleepAvailability() }
+    }
+
+    private func connect() async {
+        working = true
+        defer { working = false }
+        switch await model.connectHealthSleep() {
+        case let .applied(bedtime, wakeTime, nights):
+            Haptics.success()
+            onApplied(bedtime, wakeTime)
+            let bed = clockText(bedtime)
+            let wake = clockText(wakeTime)
+            withAnimation(Theme.Anim.gentle) {
+                note = Note(text: "Set to \(bed)–\(wake) from your last \(nights) nights.", isWarning: false)
+            }
+        case .connectedNoData:
+            withAnimation(Theme.Anim.gentle) {
+                note = Note(text: "Connected, but there wasn't enough recent sleep to set your times. They're unchanged.", isWarning: true)
+            }
+        case .denied:
+            withAnimation(Theme.Anim.gentle) {
+                note = Note(text: "Health access is off. You can allow it in iOS Settings → Health → Data Access, or just set your times by hand above.", isWarning: true)
+            }
+        case .unsupported:
+            withAnimation(Theme.Anim.gentle) {
+                availability = .unsupported
+            }
+        }
+    }
+
+    private func clockText(_ clock: LocalClockTime) -> String {
+        let date = Calendar.current.date(
+            bySettingHour: clock.hour, minute: clock.minute, second: 0, of: Date()
+        ) ?? Date()
+        return date.formatted(date: .omitted, time: .shortened)
     }
 }
 
