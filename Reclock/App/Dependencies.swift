@@ -13,7 +13,11 @@ struct Dependencies {
     let calendarExporter: CalendarExporting
     let sleepProvider: SleepDataProvider
     let analytics: AnalyticsClient
-    let airports: AirportDirectory
+    /// Lazy on purpose: decoding ~8k bundled airports costs real milliseconds, and
+    /// paying them during dependency construction taxes every cold launch. First
+    /// access decodes once (thread-safe static); AppModel warms it off-main after
+    /// launch so interactive paths find it ready.
+    var airports: AirportDirectory { .bundled }
     /// Flight-number schedule lookup. Unconfigured (and invisible in UI) without a key.
     let scheduleProvider: FlightScheduleProvider
     /// One-shot drive-time-to-airport estimation (MapKit). Mocked in tests/previews.
@@ -47,7 +51,6 @@ struct Dependencies {
             calendarExporter: ProcessInfo.isUITest ? MockCalendarExporter() : EventKitCalendarExporter(),
             sleepProvider: sleepProvider,
             analytics: NoOpAnalyticsClient(),
-            airports: .bundled,
             scheduleProvider: ProcessInfo.isUITest ? mockScheduleProvider() : liveScheduleProvider(),
             transitEstimator: ProcessInfo.isUITest ? MockTransitEstimator() : MapKitTransitEstimator(),
             now: { Date() }
@@ -95,7 +98,6 @@ struct Dependencies {
             calendarExporter: MockCalendarExporter(),
             sleepProvider: UnavailableSleepDataProvider(),
             analytics: NoOpAnalyticsClient(),
-            airports: .bundled,
             scheduleProvider: mockScheduleProvider(),
             transitEstimator: MockTransitEstimator(),
             now: { Date() }

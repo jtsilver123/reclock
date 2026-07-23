@@ -88,7 +88,7 @@ struct TripDetailView: View {
                     Button {
                         editingSegment = segment
                     } label: {
-                        SegmentRow(segment: segment)
+                        SegmentRow(segment: segment, leaveBy: leaveBy(for: segment))
                     }
                     .buttonStyle(.plain)
                 }
@@ -265,6 +265,22 @@ struct TripDetailView: View {
         }
     }
 
+    /// The engine's leave-for-airport moment ahead of this flight — commitments
+    /// and transfer time already folded in — surfaced on the row itself while the
+    /// flight is still ahead.
+    private func leaveBy(for segment: FlightSegment) -> Date? {
+        guard segment.departure > model.deps.now(),
+              let plan = model.plan(for: currentTrip) else { return nil }
+        return plan.actions
+            .filter {
+                $0.type == .leaveForAirport
+                    && $0.window.start < segment.departure
+                    && segment.departure.timeIntervalSince($0.window.start) < 24 * 3600
+            }
+            .map(\.window.start)
+            .max()
+    }
+
 }
 
 // MARK: - Rows
@@ -301,6 +317,7 @@ private struct CommitmentRow: View {
 
 private struct SegmentRow: View {
     let segment: FlightSegment
+    var leaveBy: Date? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -340,6 +357,14 @@ private struct SegmentRow: View {
                 Text(blockText)
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(Theme.textSecondary)
+            }
+            if let leaveBy {
+                Label(
+                    "Leave by \(TimeFormat.time(leaveBy, zone: segment.departureZone.resolved))",
+                    systemImage: "car.fill"
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.accentDeep)
             }
         }
         .padding(.vertical, 2)

@@ -328,6 +328,12 @@ struct SettingsView: View {
             Link(destination: URL(string: "https://jtsilver123.github.io/reclock/")!) {
                 Label("Support", systemImage: "lifepreserver")
             }
+            // Shows itself the moment the App Store ID below is filled in.
+            if let rateURL = Self.rateURL {
+                Link(destination: rateURL) {
+                    Label("Rate Reclock", systemImage: "star")
+                }
+            }
             ShareLink(item: URL(string: "https://jtsilver123.github.io/reclock/")!) {
                 Label("Share Reclock with a traveler", systemImage: "square.and.arrow.up")
             }
@@ -339,6 +345,15 @@ struct SettingsView: View {
         } header: {
             SettingsHeader(title: "About", symbol: "info.circle.fill")
         }
+    }
+
+    /// Numeric App Store ID — the "Apple ID" on the app's App Information page in
+    /// App Store Connect. Empty until the app is live; the Rate row hides meanwhile.
+    private static let appStoreID = ""
+
+    private static var rateURL: URL? {
+        guard !appStoreID.isEmpty else { return nil }
+        return URL(string: "https://apps.apple.com/app/id\(appStoreID)?action=write-review")
     }
 
     private var appVersion: String {

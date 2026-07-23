@@ -54,17 +54,18 @@ public enum TripAssembler {
         )
     }
 
-    /// One trip from two, when they're really one journey (a connection entered
-    /// flight-by-flight). Keeps `host`'s identity and levers — id, intensity,
-    /// overrides, share state — pools segments and commitments, and re-derives the
-    /// route fields the same way `makeTrip` would. Returns nil when the trips
-    /// don't chain as a connection.
+    /// One trip from two, when they're really one journey — a connection entered
+    /// flight-by-flight, or an outbound and its separately-added return. Keeps
+    /// `host`'s identity and levers — id, intensity, overrides, share state —
+    /// pools segments and commitments, and re-derives the route fields the same
+    /// way `makeTrip` would. Returns nil when the trips are genuinely separate.
     public static func merging(
         _ host: Trip,
         absorbing other: Trip,
         airports: AirportDirectory
     ) -> Trip? {
-        guard let segments = TripMerger.mergedSegments(host, other),
+        guard let segments = TripMerger.mergedSegments(host, other)
+                ?? TripMerger.roundTripSegments(host, other),
               let first = segments.first, let last = segments.last
         else { return nil }
         var merged = host

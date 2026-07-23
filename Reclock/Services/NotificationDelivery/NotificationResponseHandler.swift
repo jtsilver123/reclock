@@ -60,7 +60,8 @@ final class NotificationResponseHandler: NSObject, UNUserNotificationCenterDeleg
         case "RECLOCK_COULDNT":
             await model.setCompletion(.notPossible, for: action, in: trip)
         default:
-            break // default tap opens the app; the Plan tab already shows the action
+            // A body tap means "show me": open the exact step the reminder named.
+            model.openActionDetail(actionID: action.id)
         }
     }
 

@@ -211,10 +211,13 @@ private struct PlanContent: View {
                                 .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             }
 
+                            // Group once per render — this body re-evaluates every 30s
+                            // tick, and grouping walks every day and action.
+                            let groups = PlanDays.groupedPhases(plan: plan)
                             let zoneChanges = PlanDays.zoneChangeDayIDs(plan: plan)
-                            let firstDayID = PlanDays.groupedPhases(plan: plan).first?.days.first?.id
+                            let firstDayID = groups.first?.days.first?.id
 
-                            ForEach(PlanDays.groupedPhases(plan: plan)) { group in
+                            ForEach(groups) { group in
                                 Section {
                                     ForEach(group.days) { entry in
                                         if zoneChanges.contains(entry.day.id) {

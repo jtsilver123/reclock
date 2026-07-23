@@ -185,9 +185,17 @@ struct TripsListView: View {
 
     private func refreshBuddyCounts() async {
         guard model.auth.isSignedIn else { return }
-        for trip in currentTrips where trip.sharedPlanCode != nil {
-            if let board = await model.fetchBuddyBoard(for: trip) {
-                buddyCounts[trip.id] = board.members.count
+        // Boards load concurrently — three shared trips took three round trips.
+        let shared = currentTrips.filter { $0.sharedPlanCode != nil }
+        await withTaskGroup(of: (UUID, Int)?.self) { group in
+            for trip in shared {
+                group.addTask { @MainActor in
+                    guard let board = await model.fetchBuddyBoard(for: trip) else { return nil }
+                    return (trip.id, board.members.count)
+                }
+            }
+            for await result in group {
+                if let (id, count) = result { buddyCounts[id] = count }
             }
         }
     }

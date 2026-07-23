@@ -21,6 +21,31 @@ public enum TripMerger {
         return gap > 0 && gap <= maxConnectionGap
     }
 
+    /// The longest stay after which a homebound flight no longer reads as the same
+    /// trip's return. Two months covers long stays; a return booked further out is
+    /// its own journey until proven otherwise.
+    public static let maxReturnStayGap: TimeInterval = .hours(24 * 60)
+
+    /// The combined segments when `b` is `a`'s return journey (or vice versa):
+    /// it leaves from where the other trip ended, lands back where it began, and
+    /// departs after a stay-length gap — longer than a layover, shorter than the
+    /// return-stay cap. Connections stay `mergedSegments`' job.
+    public static func roundTripSegments(_ a: Trip, _ b: Trip) -> [FlightSegment]? {
+        guard !a.segments.isEmpty, !b.segments.isEmpty else { return nil }
+        let aFirst = a.segments.first!
+        let bFirst = b.segments.first!
+        let (out, back) = aFirst.departure <= bFirst.departure ? (a, b) : (b, a)
+        guard
+            let outFirst = out.segments.first, let outLast = out.segments.last,
+            let backFirst = back.segments.first, let backLast = back.segments.last,
+            backFirst.departureAirport == outLast.arrivalAirport,
+            backLast.arrivalAirport == outFirst.departureAirport
+        else { return nil }
+        let gap = backFirst.departure.timeIntervalSince(outLast.arrival)
+        guard gap > maxConnectionGap, gap <= maxReturnStayGap else { return nil }
+        return out.segments + back.segments
+    }
+
     /// The pooled, departure-ordered segments if the two trips are one journey;
     /// nil otherwise. Trips merge when every adjacent pair drawn from DIFFERENT
     /// trips chains as a connection. Pairs from the same trip keep whatever

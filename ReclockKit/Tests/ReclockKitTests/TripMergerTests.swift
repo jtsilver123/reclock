@@ -89,13 +89,54 @@ struct TripMergerTests {
         #expect(TripMerger.mergedSegments(trip([jfkFra]), trip([overlapping])) == nil)
     }
 
-    @Test("A return a week later is out of scope for auto-merge")
-    func returnLegNoMerge() {
+    @Test("A return a week later stitches into a round trip — but not via the connection path")
+    func returnLegStitches() {
         let lhrOut = segment("JFK", "LHR", departure: TestSupport.utcDate(2026, 10, 1, 23, 0), blockHours: 7,
                              depZone: "America/New_York", arrZone: "Europe/London")
         let lhrBack = segment("LHR", "JFK", departure: TestSupport.utcDate(2026, 10, 8, 11, 0), blockHours: 8,
                               depZone: "Europe/London", arrZone: "America/New_York")
+        // Never a connection...
         #expect(TripMerger.mergedSegments(trip([lhrOut]), trip([lhrBack])) == nil)
+        // ...but exactly a round trip, whichever order the flights were added.
+        #expect(TripMerger.roundTripSegments(trip([lhrOut]), trip([lhrBack]))?.count == 2)
+        #expect(TripMerger.roundTripSegments(trip([lhrBack]), trip([lhrOut]))?.first?.departureAirport == "JFK")
+    }
+
+    @Test("Round-trip stitching refuses non-returns and far-out returns")
+    func roundTripRefusals() {
+        let lhrOut = segment("JFK", "LHR", departure: TestSupport.utcDate(2026, 10, 1, 23, 0), blockHours: 7,
+                             depZone: "America/New_York", arrZone: "Europe/London")
+        // Lands somewhere that isn't home: not this trip's return.
+        let toBoston = segment("LHR", "BOS", departure: TestSupport.utcDate(2026, 10, 8, 11, 0), blockHours: 8,
+                               depZone: "Europe/London", arrZone: "America/New_York")
+        #expect(TripMerger.roundTripSegments(trip([lhrOut]), trip([toBoston])) == nil)
+        // Leaves from the wrong city: also not the return.
+        let fromParis = segment("CDG", "JFK", departure: TestSupport.utcDate(2026, 10, 8, 11, 0), blockHours: 8,
+                                depZone: "Europe/Paris", arrZone: "America/New_York")
+        #expect(TripMerger.roundTripSegments(trip([lhrOut]), trip([fromParis])) == nil)
+        // A return three months out is its own journey.
+        let farReturn = segment("LHR", "JFK", departure: TestSupport.utcDate(2027, 1, 10, 11, 0), blockHours: 8,
+                                depZone: "Europe/London", arrZone: "America/New_York")
+        #expect(TripMerger.roundTripSegments(trip([lhrOut]), trip([farReturn])) == nil)
+        // A layover-length gap belongs to the connection path, not this one.
+        let immediate = segment("LHR", "JFK", departure: TestSupport.utcDate(2026, 10, 2, 8, 0), blockHours: 8,
+                                depZone: "Europe/London", arrZone: "America/New_York")
+        #expect(TripMerger.roundTripSegments(trip([lhrOut]), trip([immediate])) == nil)
+    }
+
+    @Test("A stitched round trip keeps the stay city as its destination")
+    func stitchedRoundTripFields() throws {
+        let lhrOut = segment("JFK", "LHR", departure: TestSupport.utcDate(2026, 10, 1, 23, 0), blockHours: 7,
+                             depZone: "America/New_York", arrZone: "Europe/London")
+        let lhrBack = segment("LHR", "JFK", departure: TestSupport.utcDate(2026, 10, 8, 11, 0), blockHours: 8,
+                              depZone: "Europe/London", arrZone: "America/New_York")
+        let merged = try #require(TripAssembler.merging(
+            trip([lhrOut], name: "London"), absorbing: trip([lhrBack]), airports: airports
+        ))
+        #expect(merged.destination == "London")
+        #expect(merged.origin == "JFK")
+        #expect(merged.destinationNights ?? 0 > 0)
+        #expect(merged.returnSegments.count == 1)
     }
 
     @Test("A new leg chains onto the end of an existing multi-leg trip")

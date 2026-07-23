@@ -65,6 +65,29 @@ final class AppModel {
         Task { await persist() }
     }
 
+    /// A reminder's body tap, landing on the exact step it announced.
+    struct ActionDetailRequest: Identifiable {
+        let id = UUID()
+        let trip: Trip
+        let action: PlanAction
+    }
+
+    /// Set when a notification tap should open a step's detail; MainTabs presents it.
+    var actionDetailRequest: ActionDetailRequest?
+
+    /// Tapping a reminder means "show me" — focus the trip, then open the step
+    /// itself instead of leaving the reader to hunt for it on the timeline.
+    func openActionDetail(actionID: UUID) {
+        for trip in state.trips {
+            guard let action = plan(for: trip)?.actions.first(where: { $0.id == actionID })
+            else { continue }
+            state.settings.selectedTripID = trip.id
+            planTabRequest += 1
+            actionDetailRequest = ActionDetailRequest(trip: trip, action: action)
+            return
+        }
+    }
+
     // MARK: - Lifecycle
 
     func start() async {
@@ -78,6 +101,9 @@ final class AppModel {
             await seedDemoData()
         }
         isLoaded = true
+        // Warm the airport directory off-main now that the first frame is up:
+        // the ~8k-entry decode happens once, here, instead of on an interactive path.
+        Task.detached(priority: .utility) { _ = AirportDirectory.bundled }
         deps.analytics.track(.appOpened)
         await refreshTripStatuses()
         // Fresh install with a backup waiting (new phone): restore silently.

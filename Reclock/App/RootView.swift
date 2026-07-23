@@ -47,6 +47,7 @@ struct MainTabs: View {
     @State private var selection: Tab = .plan
 
     var body: some View {
+        @Bindable var model = model
         TabView(selection: $selection) {
             PlanView()
                 .tabItem { Label("Plan", systemImage: "sun.horizon.fill") }
@@ -110,6 +111,13 @@ struct MainTabs: View {
         .onChange(of: model.planTabRequest) { _, _ in
             // A calendar event's deep link: land on the plan it points at.
             selection = .plan
+        }
+        // A reminder's body tap opens the very step it announced.
+        .sheet(item: $model.actionDetailRequest) { request in
+            NavigationStack {
+                ActionDetailView(action: request.action, trip: request.trip)
+            }
+            .tint(Theme.accentDeep)
         }
         .onChange(of: model.reviewRequestToken) { _, token in
             guard token > 0 else { return }
