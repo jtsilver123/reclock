@@ -66,10 +66,12 @@ extension AppModel {
         guard !state.settings.localOnlyMode else { return .unreachable }
         guard let session = try? await auth.validSession() else { return .unreachable }
         do {
-            let plan = try await shareClient.fetchSharedPlan(
+            // The client returns nil for a code that simply doesn't exist and
+            // throws for transport failures — keep those two stories separate.
+            guard let plan = try await shareClient.fetchSharedPlan(
                 code: code.trimmingCharacters(in: .whitespaces).uppercased(),
                 session: session
-            )
+            ) else { return .notFound }
             return .found(plan)
         } catch is URLError {
             return .unreachable
