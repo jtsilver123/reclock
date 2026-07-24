@@ -333,7 +333,11 @@ struct TrackCapsule: View {
         }
         .frame(width: width, height: height)
         .animation(Theme.Anim.gentle, value: cap.action.completion)
-        .accessibilityLabel("\(cap.action.title), \(TimeFormat.range(cap.window, zone: cap.action.displayZone.resolved))")
+        .accessibilityLabel(
+            "\(cap.action.title), \(TimeFormat.range(cap.window, zone: cap.action.displayZone.resolved))"
+            + (cap.action.completion == .done ? ", done"
+               : cap.action.completion == .pending ? "" : ", skipped")
+        )
     }
 
     private var durationText: String {

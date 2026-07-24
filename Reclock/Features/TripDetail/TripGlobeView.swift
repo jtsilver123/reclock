@@ -281,6 +281,9 @@ struct TripGlobeHero: View {
                     clock(code: trip.destination, city: destination.city,
                           zone: destination.zone.resolved, now: now, active: destActive)
                 }
+                // The marigold "Active now" hands over as a fade at the arrival
+                // instant, never an unanimated swap on a tick.
+                .animation(Theme.Anim.gentle, value: destActive)
 
                 if let shiftText {
                     HStack(spacing: Theme.Space.s) {
@@ -330,6 +333,7 @@ struct TripGlobeHero: View {
                 .font(.system(size: 26, weight: .bold, design: .rounded).monospacedDigit())
                 .foregroundStyle(active ? Theme.accent : Color.white)
                 .contentTransition(.numericText())
+                .animation(Theme.Anim.gentle, value: TimeFormat.time(now, zone: zone))
             Text(code)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color.white.opacity(0.6))
@@ -429,6 +433,7 @@ struct TripGlobeView: View {
                 .font(.system(size: 24, weight: .bold, design: .rounded).monospacedDigit())
                 .foregroundStyle(Color.white)
                 .contentTransition(.numericText())
+                .animation(Theme.Anim.gentle, value: TimeFormat.time(now, zone: zone))
             Text(code)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color.white.opacity(0.6))

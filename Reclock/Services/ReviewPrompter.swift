@@ -34,14 +34,18 @@ final class ReviewPrompter {
         state = s
     }
 
-    /// True when the caller should trigger the native prompt now. When it returns true
-    /// it also records the ask, so a burst of completions never asks more than once.
-    func shouldRequest(_ trigger: ReviewPolicy.Trigger, now: Date) -> Bool {
-        guard ReviewPolicy.shouldRequest(trigger, state: state, now: now) else { return false }
+    /// Pure check — records nothing. The 3-lifetime/90-day budget is charged only
+    /// when the prompt actually fires (`recordPrompted`), never when a takeover
+    /// suppresses it.
+    func shouldAsk(_ trigger: ReviewPolicy.Trigger, now: Date) -> Bool {
+        ReviewPolicy.shouldRequest(trigger, state: state, now: now)
+    }
+
+    /// The prompt was really shown: spend one ask from the budget.
+    func recordPrompted(now: Date) {
         var s = state
         s.lastPromptedAt = now
         s.promptCount += 1
         state = s
-        return true
     }
 }

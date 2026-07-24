@@ -4,7 +4,9 @@ import ReclockKit
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var colorScheme
 
+    @State private var backupNote: String?
     @State private var showDeleteAllConfirm = false
     @State private var calendarSweepResult: Int??  // nil = idle, .some(nil) = denied, .some(n) = removed
     @State private var showDeleteAccountConfirm = false
@@ -149,8 +151,15 @@ struct SettingsView: View {
                 }
                 Button {
                     Task {
-                        await model.backUpNow()
-                        Haptics.success()
+                        // The haptic and the note must match what actually happened —
+                        // a confident buzz over a failed backup is a lie.
+                        let landed = await model.backUpNow()
+                        if landed { Haptics.success() }
+                        withAnimation(Theme.Anim.gentle) {
+                            backupNote = landed
+                                ? nil
+                                : "That backup didn't go through — check your connection and try again."
+                        }
                     }
                 } label: {
                     Label(
@@ -158,6 +167,11 @@ struct SettingsView: View {
                         systemImage: "icloud.and.arrow.up"
                     )
                     .animation(Theme.Anim.gentle, value: model.sync.lastBackupDescription)
+                }
+                if let backupNote {
+                    Label(backupNote, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(Theme.warning)
                 }
                 Button("Sign out") {
                     Task { await model.auth.signOut() }
@@ -178,7 +192,7 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .signInWithAppleButtonStyle(.black)
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .frame(height: 44)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())

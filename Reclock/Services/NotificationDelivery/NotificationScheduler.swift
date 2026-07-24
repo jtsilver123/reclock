@@ -33,8 +33,15 @@ final class LocalNotificationScheduler: NotificationScheduling {
             || settings.authorizationStatus == .provisional
     }
 
+    /// Bumped per schedule pass. A pass that has been superseded (a newer replan
+    /// started rescheduling) stops adding — otherwise its tail lands AFTER the
+    /// newer pass's cancel sweep and stale reminders fire alongside fresh ones.
+    private var scheduleGeneration = 0
+
     func schedule(_ notifications: [PlannedNotification]) async {
         guard await permissionGranted() else { return }
+        scheduleGeneration += 1
+        let myGeneration = scheduleGeneration
         let center = UNUserNotificationCenter.current()
         registerCategories(center)
 
@@ -44,6 +51,7 @@ final class LocalNotificationScheduler: NotificationScheduling {
         let pendingIDs = Set(pending.map(\.identifier))
 
         for planned in limited where !pendingIDs.contains(planned.id) {
+            guard scheduleGeneration == myGeneration else { return }
             let content = UNMutableNotificationContent()
             content.title = planned.title
             content.body = planned.body

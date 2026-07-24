@@ -7,6 +7,7 @@ import ReclockKit
 /// take one pick, then build. Connections belong to "Type it in" or email paste.
 struct FlightLookupView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var onFinished: () -> Void
 
     @State private var flightNumber = ""
@@ -37,6 +38,13 @@ struct FlightLookupView: View {
         .navigationTitle("Flight number")
         .tint(Theme.accentDeep)
         .navigationBarTitleDisplayMode(.inline)
+        // Editing the query retires the old answers — stale rows must not stay tappable.
+        .onChange(of: flightNumber) { _, _ in
+            withAnimation(Theme.Anim.gentle) { results = []; searchError = nil; buildError = nil }
+        }
+        .onChange(of: date) { _, _ in
+            withAnimation(Theme.Anim.gentle) { results = []; searchError = nil; buildError = nil }
+        }
     }
 
     // MARK: Sections
@@ -46,6 +54,12 @@ struct FlightLookupView: View {
             TextField("Flight number (e.g. AY 16)", text: $flightNumber)
                 .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()
+                .submitLabel(.search)
+                .onSubmit {
+                    guard flightNumber.trimmingCharacters(in: .whitespaces).count >= 3, !isBusy
+                    else { return }
+                    Task { await search() }
+                }
             DatePicker("Departure date", selection: $date, displayedComponents: .date)
             Button {
                 Task { await search() }
@@ -113,7 +127,7 @@ struct FlightLookupView: View {
                     Image(systemName: "sun.max.fill")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(Theme.accentDeep)
-                        .symbolEffect(.variableColor.iterative, options: .repeat(5))
+                        .symbolEffect(.variableColor.iterative, options: .repeat(5), isActive: !reduceMotion)
                 }
                 .frame(width: 40, height: 40)
                 .accessibilityHidden(true)
@@ -134,7 +148,7 @@ struct FlightLookupView: View {
             NavigationLink {
                 ManualTripEntryView(onFinished: onFinished)
             } label: {
-                Label("Enter the flight manually instead", systemImage: "keyboard")
+                Label("Type it in instead", systemImage: "keyboard")
             }
         } footer: {
             Text("Manual entry takes under a minute, and arrival times are pre-estimated from the route.")
@@ -197,16 +211,20 @@ struct FlightLookupView: View {
             airportTransferMinutes: 60,
             importSource: .flightNumber
         ) else {
-            withAnimation(Theme.Anim.spring) { buildingFlight = nil }
-            buildError = "That flight couldn't become a trip — try entering it manually."
+            withAnimation(Theme.Anim.spring) {
+                buildingFlight = nil
+                buildError = "That flight couldn't become a trip — try entering it manually."
+            }
             return
         }
         if await model.addTrip(trip) {
             // The plan-reveal takes it from here.
             onFinished()
         } else {
-            withAnimation(Theme.Anim.spring) { buildingFlight = nil }
-            buildError = "Couldn't build the plan for that flight. Try manual entry."
+            withAnimation(Theme.Anim.spring) {
+                buildingFlight = nil
+                buildError = "Couldn't build the plan for that flight. Try manual entry."
+            }
         }
     }
 }

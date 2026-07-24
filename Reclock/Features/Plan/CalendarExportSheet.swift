@@ -26,7 +26,9 @@ struct CalendarExportSheet: View {
             Form {
                 if accessDenied {
                     Section {
-                        Label("Calendar access is off", systemImage: "exclamationmark.triangle")
+                        // Also covers the granted-but-nothing-writable case (all
+                        // calendars read-only) — the copy must not lie about why.
+                        Label("Calendar access is off, or no calendar here accepts new events", systemImage: "exclamationmark.triangle")
                             .foregroundStyle(Theme.warning)
                         Button("Open iOS Settings") {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -70,13 +72,17 @@ struct CalendarExportSheet: View {
                         Button {
                             addToCalendar()
                         } label: {
-                            Label(
-                                pendingCount == 0
-                                    ? "Nothing left to add"
-                                    : "Add \(pendingCount) step\(pendingCount == 1 ? "" : "s") to my calendar",
-                                systemImage: "calendar.badge.plus"
-                            )
-                            .frame(maxWidth: .infinity)
+                            if working {
+                                ProgressView().frame(maxWidth: .infinity)
+                            } else {
+                                Label(
+                                    pendingCount == 0
+                                        ? "Nothing left to add"
+                                        : "Add \(pendingCount) step\(pendingCount == 1 ? "" : "s") to my calendar",
+                                    systemImage: "calendar.badge.plus"
+                                )
+                                .frame(maxWidth: .infinity)
+                            }
                         }
                         .buttonStyle(PrimaryButtonStyle())
                         .disabled(working || pendingCount == 0 || selectedID == nil)
@@ -145,7 +151,9 @@ struct CalendarExportSheet: View {
                 if calendars.isEmpty {
                     accessDenied = true
                 } else {
-                    errorLine = "That didn't save — try again in a moment."
+                    withAnimation(Theme.Anim.gentle) {
+                        errorLine = "That didn't save — try again in a moment."
+                    }
                 }
                 return
             }
@@ -175,7 +183,9 @@ struct CalendarExportSheet: View {
                 if calendars.isEmpty {
                     accessDenied = true
                 } else {
-                    errorLine = "That didn't work — try again in a moment."
+                    withAnimation(Theme.Anim.gentle) {
+                        errorLine = "That didn't work — try again in a moment."
+                    }
                 }
                 return
             }

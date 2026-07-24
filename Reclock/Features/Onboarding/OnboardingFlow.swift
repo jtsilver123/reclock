@@ -9,6 +9,8 @@ import ReclockKit
 /// assumption, and the Adjust sheet is the real "step 2".
 struct OnboardingFlow: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var syncMinHeight: CGFloat = 0
 
     @State private var step = 0
     @State private var finishing = false
@@ -40,9 +42,12 @@ struct OnboardingFlow: View {
     private var welcome: some View {
         welcomeScreen
             .background(alignment: .top) {
-                AmbientHorizon(zone: .current, now: Date())
-                    .frame(height: 280)
-                    .ignoresSafeArea(edges: .top)
+                // Ticking: a welcome screen left open across dusk keeps a live sky.
+                SwiftUI.TimelineView(.everyMinute) { timeline in
+                    AmbientHorizon(zone: .current, now: timeline.date)
+                        .frame(height: 280)
+                }
+                .ignoresSafeArea(edges: .top)
             }
     }
 
@@ -108,10 +113,9 @@ struct OnboardingFlow: View {
                         }
                     }
                 }
-                .signInWithAppleButtonStyle(.black)
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .frame(height: 50)
                 .frame(maxWidth: 360)
-                .animation(Theme.Anim.gentle, value: model.auth.lastError)
 
                 if let error = model.auth.lastError {
                     Label(error, systemImage: "exclamationmark.triangle")
@@ -134,6 +138,18 @@ struct OnboardingFlow: View {
             .padding(Theme.Space.l)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
+            .frame(minHeight: syncMinHeight)
+            // On the container, where the error label's insertion can actually animate.
+            .animation(Theme.Anim.gentle, value: model.auth.lastError)
+        }
+        .background {
+            // Spacers collapse inside a ScrollView; measuring the viewport restores
+            // real vertical centering on tall phones and iPad.
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { syncMinHeight = geo.size.height }
+                    .onChange(of: geo.size.height) { _, h in syncMinHeight = h }
+            }
         }
     }
 
@@ -166,6 +182,7 @@ private struct OnboardingScreen<Content: View>: View {
     var secondaryLabel: String?
     var secondaryAction: (() -> Void)?
     @ViewBuilder var content: Content
+    @State private var viewportHeight: CGFloat = 0
 
     init(
         title: String? = nil,
@@ -229,6 +246,16 @@ private struct OnboardingScreen<Content: View>: View {
             .padding(Theme.Space.l)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
+            // Spacers collapse inside a ScrollView; matching the viewport height
+            // restores real centering on tall phones and iPad.
+            .frame(minHeight: viewportHeight)
+        }
+        .background {
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { viewportHeight = geo.size.height }
+                    .onChange(of: geo.size.height) { _, h in viewportHeight = h }
+            }
         }
     }
 }

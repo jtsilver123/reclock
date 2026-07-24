@@ -35,7 +35,7 @@ struct TransferTimeRow: View {
                 ForEach(Self.presets, id: \.self) { preset in
                     Button("\(preset) min") {
                         minutes = preset
-                        note = nil
+                        withAnimation(Theme.Anim.gentle) { note = nil }
                         Haptics.selection()
                     }
                 }
@@ -87,20 +87,20 @@ struct TransferTimeRow: View {
         case .minutes(let total, let drive):
             minutes = total
             Haptics.soft()
-            note = Note(
+            withAnimation(Theme.Anim.gentle) { note = Note(
                 text: "≈ \(drive) min drive to \(airport.iata) from where you are now, plus parking and walking. Your location isn't stored.",
                 isWarning: false
-            )
+            ) }
         case .permissionDenied:
-            note = Note(
+            withAnimation(Theme.Anim.gentle) { note = Note(
                 text: "Location is off for Reclock — no problem, just pick a value. (Enable later in iOS Settings → Privacy → Location.)",
                 isWarning: true
-            )
+            ) }
         case .unavailable:
-            note = Note(
+            withAnimation(Theme.Anim.gentle) { note = Note(
                 text: "Couldn't estimate right now. Pick the value that matches your usual ride.",
                 isWarning: true
-            )
+            ) }
         }
     }
 }

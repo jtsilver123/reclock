@@ -87,9 +87,16 @@ struct PlanRevealView: View {
         "Sleep, light, and caffeine — timed to \(trip.destination)."
     }
 
+    /// Sleeps one beat; false once the show was skipped or torn down — a cancelled
+    /// sleep must never fall through and fire haptics into a dismissed view.
+    private func beat(_ nanoseconds: UInt64) async -> Bool {
+        do { try await Task.sleep(nanoseconds: nanoseconds) } catch { return false }
+        return !finished
+    }
+
     private func run() async {
         // Let the add-trip sheet finish dismissing before the show starts.
-        try? await Task.sleep(nanoseconds: 300_000_000)
+        guard await beat(300_000_000) else { return }
         Haptics.soft()
         withAnimation(Theme.Anim.spring) { stage = 1 }
 
@@ -97,19 +104,19 @@ struct PlanRevealView: View {
             flight = 1
             Haptics.success()
             withAnimation(.easeInOut(duration: 0.3)) { stage = 2 }
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            guard await beat(1_800_000_000) else { return }
             finish()
             return
         }
 
-        try? await Task.sleep(nanoseconds: 350_000_000)
+        guard await beat(350_000_000) else { return }
         withAnimation(.easeInOut(duration: 1.05)) { flight = 1 }
-        try? await Task.sleep(nanoseconds: 850_000_000)
+        guard await beat(850_000_000) else { return }
         Haptics.success()
         withAnimation(Theme.Anim.spring) { stage = 2 }
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        guard await beat(120_000_000) else { return }
         withAnimation { stage = 3 }
-        try? await Task.sleep(nanoseconds: 2_200_000_000)
+        guard await beat(2_200_000_000) else { return }
         finish()
     }
 

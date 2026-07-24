@@ -52,14 +52,30 @@ extension AppModel {
 
     // MARK: Join
 
+    /// Why a shared-plan lookup came back empty — a wrong code and a dead
+    /// connection deserve different words.
+    enum SharedPlanFetch {
+        case found(FetchedSharedPlan)
+        case notFound
+        case unreachable
+    }
+
     /// Fetches a friend's shared plan by code. The caller shows a preview and then
     /// calls `acceptSharedPlan`.
-    func fetchSharedPlan(code: String) async -> FetchedSharedPlan? {
-        guard let session = try? await auth.validSession() else { return nil }
-        return try? await shareClient.fetchSharedPlan(
-            code: code.trimmingCharacters(in: .whitespaces).uppercased(),
-            session: session
-        )
+    func fetchSharedPlan(code: String) async -> SharedPlanFetch {
+        guard !state.settings.localOnlyMode else { return .unreachable }
+        guard let session = try? await auth.validSession() else { return .unreachable }
+        do {
+            let plan = try await shareClient.fetchSharedPlan(
+                code: code.trimmingCharacters(in: .whitespaces).uppercased(),
+                session: session
+            )
+            return .found(plan)
+        } catch is URLError {
+            return .unreachable
+        } catch {
+            return .notFound
+        }
     }
 
     /// Adds the friend's trip + plan to this device and registers membership.
@@ -173,6 +189,9 @@ extension AppModel {
         guard let received = try? await shareClient.fetchKudos(
             code: code, since: since, session: session
         ), let newest = received.first else { return }
+        // Show only when the stage is free — and advance the marker WITH the show,
+        // so a kudos displaced by another toast surfaces again next time.
+        guard celebration == nil else { return }
         UserDefaults.standard.set(newest.createdAt, forKey: key)
         celebration = .kudos(from: newest.fromName, emoji: newest.emoji)
     }

@@ -13,6 +13,9 @@ struct PlanUpdateView: View {
     @State private var stage = 0        // 0 recomputing · 1 settled · 2 card
     @State private var spin = false
     @State private var finished = false
+    /// Rows cascade only after the card is on stage — keyed to stage, they'd be
+    /// born already settled and the designed stagger would never play.
+    @State private var rowsShown = false
 
     var body: some View {
         ZStack {
@@ -127,15 +130,16 @@ struct PlanUpdateView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
-                .opacity(stage >= 2 ? 1 : 0)
-                .offset(y: stage >= 2 ? 0 : 8)
-                .animation(Theme.Anim.spring.delay(0.06 * Double(index)), value: stage)
+                .opacity(rowsShown ? 1 : 0)
+                .offset(y: rowsShown ? 0 : 8)
+                .animation(reduceMotion ? nil : Theme.Anim.spring.delay(0.06 * Double(index)), value: rowsShown)
             }
 
             Text("Your reminders were rescheduled to match.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
         }
+        .onAppear { rowsShown = true }
         .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
@@ -162,9 +166,14 @@ struct PlanUpdateView: View {
 
     // MARK: Choreography
 
+    private func beat(_ nanoseconds: UInt64) async -> Bool {
+        do { try await Task.sleep(nanoseconds: nanoseconds) } catch { return false }
+        return !finished
+    }
+
     private func run() async {
         // Let the delay sheet finish dismissing before the show takes the screen.
-        try? await Task.sleep(nanoseconds: 300_000_000)
+        guard await beat(300_000_000) else { return }
 
         if reduceMotion {
             Haptics.success()
@@ -178,10 +187,10 @@ struct PlanUpdateView: View {
         // and then settles, letting the app go idle.
         Haptics.soft()
         withAnimation(.easeInOut(duration: 1.15)) { spin = true }
-        try? await Task.sleep(nanoseconds: 1_150_000_000)
+        guard await beat(1_150_000_000) else { return }
         Haptics.success()
         withAnimation(Theme.Anim.spring) { stage = 1 }
-        try? await Task.sleep(nanoseconds: 420_000_000)
+        guard await beat(420_000_000) else { return }
         withAnimation(Theme.Anim.spring) { stage = 2 }
     }
 

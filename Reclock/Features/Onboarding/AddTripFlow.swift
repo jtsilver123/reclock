@@ -198,6 +198,7 @@ private struct ImportOptionCard: View {
 
 struct CalendarImportView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var onFinished: () -> Void
 
     enum Phase {
@@ -248,7 +249,7 @@ struct CalendarImportView: View {
                     Image(systemName: "calendar.badge.checkmark")
                         .font(.system(size: 34, weight: .semibold))
                         .foregroundStyle(Theme.accentDeep)
-                        .symbolEffect(.variableColor.iterative, options: .repeat(5))
+                        .symbolEffect(.variableColor.iterative, options: .repeat(5), isActive: !reduceMotion)
                         .accessibilityHidden(true)
                     ProgressView("Looking for flights…")
                         .tint(Theme.accentDeep)
@@ -379,6 +380,15 @@ struct CalendarImportView: View {
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(selectedIDs.isEmpty || isCreating)
+                    // Nothing selectable (all detections incomplete)? The promised
+                    // fallback lives right here, not a back-navigation away.
+                    if selectedIDs.isEmpty {
+                        NavigationLink {
+                            ManualTripEntryView(onFinished: onFinished)
+                        } label: {
+                            Label("Type it in instead", systemImage: "keyboard")
+                        }
+                    }
                 }
             }
         }

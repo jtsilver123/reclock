@@ -13,6 +13,7 @@ struct PostTripSurveyView: View {
     @State private var unrealistic: Set<ActionType> = []
     @State private var daysUntilNormal = 3
     @State private var wouldUseAgain = true
+    @State private var isSubmitting = false
 
     private let candidateTypes: [ActionType] = [
         .seekLight, .avoidLight, .sleep, .stayAwake, .caffeineCutoff, .melatoninOptional, .nap,
@@ -60,6 +61,7 @@ struct PostTripSurveyView: View {
                                 }
                             }
                         }
+                        .accessibilityAddTraits(unrealistic.contains(type) ? .isSelected : [])
                     }
                 }
                 Section("Days until you felt normal") {
@@ -71,6 +73,8 @@ struct PostTripSurveyView: View {
                 }
                 Section {
                     Button("Submit") {
+                        guard !isSubmitting else { return }
+                        isSubmitting = true
                         Haptics.success()
                         Task {
                             let survey = PostTripSurvey(
@@ -89,6 +93,7 @@ struct PostTripSurveyView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .buttonStyle(PrimaryButtonStyle())
+                    .disabled(isSubmitting)
                 } footer: {
                     Text("Stored on your device. If you've enabled anonymous analytics, only the ratings — never trip details — are shared to improve default plans.")
                 }

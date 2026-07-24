@@ -131,8 +131,10 @@ private struct EmptyPlanState: View {
             .padding(Theme.Space.m)
         }
         .background(alignment: .top) {
-            AmbientHorizon(zone: .current, now: Date())
-                .frame(height: 280)
+            SwiftUI.TimelineView(.everyMinute) { timeline in
+                AmbientHorizon(zone: .current, now: timeline.date)
+                    .frame(height: 280)
+            }
         }
     }
 }
@@ -160,11 +162,14 @@ private struct PlanContent: View {
     @State private var settlingToNow = false
     /// Strict "today intersects the viewport right now", from the frame handler.
     @State private var todayIsNear = false
+    /// The launch auto-scroll runs once — a tab return must not yank the reader back.
+    @State private var didAutoScroll = false
+    @State private var didCheckKudos = false
 
     var body: some View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
             let now = timeline.date
-            let context = model.nowContext(trip: trip)
+            let context = model.nowContext(trip: trip, now: now)
             let todayID = PlanDays.currentDayID(plan: plan, now: now)
             VStack(spacing: 0) {
                 // Frozen: which trip, where your body clock stands, what to do now.
@@ -201,6 +206,7 @@ private struct PlanContent: View {
                             if trip.status == .completed && !model.hasSurvey(for: trip) {
                                 SurveyPromptCard(trip: trip)
                                     .padding(.horizontal, Theme.Space.m)
+                                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             }
 
                             if !planPrimerDismissed && !ProcessInfo.isUITest {
@@ -315,11 +321,16 @@ private struct PlanContent: View {
                     .task {
                         // Mid-trip, the reader's day is what matters — not day 0 last
                         // week. Lazy rows realize progressively, and a single early
-                        // scrollTo can land short on long plans — try a few times.
+                        // scrollTo can land short on long plans — try a few times,
+                        // but only until it lands, and only ONCE per tab session:
+                        // returning from Trips must not yank the reader off their spot.
                         defer { backToNowArmed = true }
+                        guard !didAutoScroll else { return }
+                        didAutoScroll = true
                         guard let today = PlanDays.currentDayID(plan: plan, now: model.deps.now()) else { return }
                         for delay in [200_000_000, 400_000_000, 600_000_000] {
                             try? await Task.sleep(nanoseconds: UInt64(delay))
+                            if todayIsNear { break }
                             proxy.scrollTo(today, anchor: .top)
                         }
                     }
@@ -334,8 +345,14 @@ private struct PlanContent: View {
         }
         .task {
             if let profile = model.profile, profile.notifications.enabled {
-                notificationsPending = !(await model.deps.notifications.permissionGranted())
+                let granted = await model.deps.notifications.permissionGranted()
+                // Animated: this card materializes a beat after first render and
+                // must not shove the whole plan down with a pop.
+                withAnimation(Theme.Anim.spring) { notificationsPending = !granted }
             }
+            // Once per appearance of this trip's plan, not on every tab return.
+            guard !didCheckKudos else { return }
+            didCheckKudos = true
             await model.checkForKudos(trip: trip)
         }
     }
@@ -452,7 +469,7 @@ private struct PlanPrimerCard: View {
                             .foregroundStyle(Theme.tint(for: .caffeineCutoff))
                     )
             }
-            primerRow(text: "We assumed your usual sleep is \(sleepText). The sliders up top adjust that — plus intensity and your head start.") {
+            primerRow(text: "We assumed your usual sleep is \(sleepText). Adjust plan changes that — plus intensity and your head start.") {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Theme.accentDeep)

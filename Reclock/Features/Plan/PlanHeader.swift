@@ -130,6 +130,7 @@ private struct NowBar: View {
                 .fontDesign(.rounded)
                 .foregroundStyle(Theme.textPrimary)
                 .contentTransition(.numericText())
+                .animation(Theme.Anim.gentle, value: TimeFormat.time(now, zone: hereZone))
             Text(clocksAgree ? "in \(TimeFormat.zoneCity(destinationZone)) — where you are" : "where you are")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
@@ -142,6 +143,7 @@ private struct NowBar: View {
                     .fontDesign(.rounded)
                     .foregroundStyle(Theme.accentDeep)
                     .contentTransition(.numericText())
+                    .animation(Theme.Anim.gentle, value: TimeFormat.time(now, zone: destinationZone))
                 Text("in \(TimeFormat.zoneCity(destinationZone))")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
@@ -186,8 +188,9 @@ private struct ShiftProgressLine: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.accentDeep)
                         .offset(x: x)
-                        .animation(Theme.Anim.spring, value: x)
                 }
+                // One spring for plane AND fill — they must never desync.
+                .animation(Theme.Anim.spring, value: progress)
             }
             .frame(height: 16)
             Text(label)
@@ -304,10 +307,13 @@ struct CompactQuietCard: View {
         }
     }
 
+    private var isSoon: Bool {
+        next.map { $0.window.start.timeIntervalSince(now) < 24 * 3600 } ?? false
+    }
+
     private func quietBody(next: PlanAction?) -> some View {
         // A ticking countdown only earns its width inside a day; beyond that the
         // subtitle carries the when and the title keeps the whole line.
-        let isSoon = next.map { $0.window.start.timeIntervalSince(now) < 24 * 3600 } ?? false
         return HStack(spacing: Theme.Space.m) {
             HeroGlyph(systemName: next == nil ? "checkmark.seal.fill" : "moon.stars.fill", size: 44)
             VStack(alignment: .leading, spacing: 2) {
@@ -355,6 +361,8 @@ struct CompactQuietCard: View {
         )
         .grain()
         .livingSky()
+        // The countdown block appears/leaves on a tick boundary — fade, don't pop.
+        .animation(Theme.Anim.gentle, value: isSoon)
         .accessibilityElement(children: .combine)
     }
 }

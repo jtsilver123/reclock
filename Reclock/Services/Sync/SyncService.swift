@@ -44,16 +44,23 @@ final class SyncService {
         }
     }
 
-    /// Immediate push (Settings "Back up now", right after sign-in).
-    func push(state: AppState, auth: AuthManager) async {
-        guard !state.settings.localOnlyMode else { return }
-        guard let session = try? await auth.validSession() else { return }
-        guard let payload = Self.encode(state) else { return }
+    /// Immediate push (Settings "Back up now", right after sign-in). Returns whether
+    /// the snapshot actually landed, so the UI can be honest about it.
+    @discardableResult
+    func push(state: AppState, auth: AuthManager) async -> Bool {
+        // A debounced upload still in flight carries an older snapshot; if it
+        // finished after this one, the server would end on stale data.
+        pushTask?.cancel()
+        guard !state.settings.localOnlyMode else { return false }
+        guard let session = try? await auth.validSession() else { return false }
+        guard let payload = Self.encode(state) else { return false }
         do {
             try await client.pushSnapshot(state: payload, schemaVersion: schemaVersion, session: session)
             lastBackupAt = Date()
+            return true
         } catch {
             // Backup is best-effort; the next save retries. Local data is never at risk.
+            return false
         }
     }
 

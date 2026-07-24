@@ -14,6 +14,7 @@ struct TripDetailView: View {
     @State private var showSurvey = false
     @State private var editingSegment: FlightSegment?
     @State private var showAddCommitment = false
+    @State private var isRecalculating = false
     @State private var editingCommitment: FixedCommitment?
 
     /// Both endpoints with real coordinates — the globe needs them to place cities.
@@ -70,11 +71,17 @@ struct TripDetailView: View {
                     Label("Adjust plan (intensity, timing, transfer)", systemImage: "slider.horizontal.3")
                 }
                 Button {
+                    guard !isRecalculating else { return }
+                    isRecalculating = true
                     Haptics.soft()
-                    Task { await model.recalculate(trip: currentTrip, trigger: "manual", presentation: .announce) }
+                    Task {
+                        await model.recalculate(trip: currentTrip, trigger: "manual", presentation: .announce)
+                        isRecalculating = false
+                    }
                 } label: {
                     Label("Recalculate plan", systemImage: "arrow.triangle.2.circlepath")
                 }
+                .disabled(isRecalculating)
             } header: {
                 Text("Plan")
             } footer: {
@@ -153,7 +160,9 @@ struct TripDetailView: View {
                 }
             }
 
-            if currentTrip.status == .active || currentTrip.status == .completed {
+            // Post-trip questions belong after the trip — mid-trip they ask about
+            // a recovery that hasn't happened yet.
+            if currentTrip.status == .completed {
                 Section {
                     Button {
                         showSurvey = true
@@ -207,6 +216,7 @@ struct TripDetailView: View {
         }
         .sheet(item: $editingCommitment) { commitment in
             CommitmentFormView(trip: currentTrip, existing: commitment)
+                .presentationDetents([.medium, .large])
         }
         .confirmationDialog(
             "Delete this trip?",
@@ -388,6 +398,7 @@ struct ReportDelayView: View {
     @State private var selectedSegmentID: UUID?
     @State private var newDeparture = Date()
     @State private var newArrival = Date()
+    @State private var isUpdating = false
 
     var body: some View {
         NavigationStack {
@@ -433,7 +444,8 @@ struct ReportDelayView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Update plan") {
-                        guard let segment = selectedSegment else { return }
+                        guard let segment = selectedSegment, !isUpdating else { return }
+                        isUpdating = true
                         Haptics.success()
                         Task {
                             await model.reportDelay(
@@ -445,7 +457,7 @@ struct ReportDelayView: View {
                             dismiss()
                         }
                     }
-                    .disabled(!timesAreValid)
+                    .disabled(!timesAreValid || isUpdating)
                 }
             }
             .onAppear {

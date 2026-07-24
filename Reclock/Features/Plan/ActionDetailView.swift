@@ -8,11 +8,18 @@ struct ActionDetailView: View {
     let action: PlanAction
     let trip: Trip
 
+    @State private var completing = false
     @State private var checkingDrive = false
     @State private var driveNote: String?
     @State private var driveSuggestion: Int?
 
-    private var zone: TimeZone { action.displayZone.resolved }
+    private var zone: TimeZone { live.displayZone.resolved }
+
+    /// The live copy of this step: after a replan (a drive-time apply, a delay),
+    /// the hero must show the new window — not the snapshot from presentation time.
+    private var live: PlanAction {
+        model.plan(for: trip)?.actions.first { $0.id == action.id } ?? action
+    }
 
     var body: some View {
         ScrollView {
@@ -31,10 +38,10 @@ struct ActionDetailView: View {
                                 .background(Color.white.opacity(0.22), in: Capsule())
                         }
                     }
-                    Text(action.title)
+                    Text(live.title)
                         .font(Theme.display(30))
                         .foregroundStyle(Color.white)
-                    Text("\(TimeFormat.range(action.window, zone: zone)) · \(TimeFormat.zoneCity(zone)) time")
+                    Text("\(TimeFormat.range(live.window, zone: zone)) · \(TimeFormat.zoneCity(zone)) time")
                         .font(.subheadline.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Color.white.opacity(0.85))
                 }
@@ -49,7 +56,7 @@ struct ActionDetailView: View {
                 .grain()
                 .livingSky()
 
-                Text(action.instruction)
+                Text(live.instruction)
                     .font(Theme.display(21, black: false))
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -58,16 +65,16 @@ struct ActionDetailView: View {
 
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     SectionHeader(title: "Why this helps")
-                    Text(action.explanation)
+                    Text(live.explanation)
                         .font(.callout)
                         .foregroundStyle(Theme.textSecondary)
-                    if let alternative = action.alternative {
+                    if let alternative = live.alternative {
                         SectionHeader(title: "If it's not practical")
                         Text(alternative)
                             .font(.callout)
                             .foregroundStyle(Theme.textSecondary)
                     }
-                    if let note = action.adjustmentNote {
+                    if let note = live.adjustmentNote {
                         Label(note, systemImage: "info.circle")
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
@@ -75,7 +82,7 @@ struct ActionDetailView: View {
                     HStack {
                         Image(systemName: "checkmark.shield")
                             .accessibilityHidden(true)
-                        Text("Evidence: \(action.confidence.displayName)")
+                        Text("Evidence: \(live.confidence.displayName)")
                     }
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
@@ -84,39 +91,57 @@ struct ActionDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .card()
 
-                if action.completion == .pending {
+                if live.completion == .pending {
                     Button {
+                        guard !completing else { return }
+                        completing = true
                         Haptics.success()
                         Task {
-                            await model.setCompletion(.done, for: action, in: trip)
+                            await model.setCompletion(.done, for: live, in: trip)
                             dismiss()
                         }
                     } label: {
                         Label("Mark done", systemImage: "checkmark")
                     }
                     .buttonStyle(PrimaryButtonStyle())
+                    .disabled(completing)
 
                     Button("Couldn't do it") {
+                        guard !completing else { return }
+                        completing = true
                         Haptics.soft()
                         Task {
-                            await model.setCompletion(.notPossible, for: action, in: trip)
+                            await model.setCompletion(.notPossible, for: live, in: trip)
+                            dismiss()
+                        }
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .disabled(completing)
+
+                    // Snooze lived only in an unadvertised long-press menu; the step's
+                    // own page is where people look for it.
+                    Button("Remind me in 30 minutes") {
+                        guard !completing else { return }
+                        Haptics.soft()
+                        Task {
+                            await model.snooze(action: live, in: trip)
                             dismiss()
                         }
                     }
                     .buttonStyle(SecondaryButtonStyle())
                 } else {
                     Label(
-                        action.completion == .done ? "Completed" : "Marked as \(completionText)",
-                        systemImage: action.completion == .done ? "checkmark.circle.fill" : "slash.circle"
+                        live.completion == .done ? "Completed" : "Marked as \(completionText)",
+                        systemImage: live.completion == .done ? "checkmark.circle.fill" : "slash.circle"
                     )
                     .font(.headline)
-                    .foregroundStyle(action.completion == .done ? Theme.success : Theme.textSecondary)
+                    .foregroundStyle(live.completion == .done ? Theme.success : Theme.textSecondary)
 
-                    if action.completion != .expired {
+                    if live.completion != .expired {
                         Button("Undo — mark as not done yet") {
                             Haptics.soft()
                             Task {
-                                await model.setCompletion(.pending, for: action, in: trip)
+                                await model.setCompletion(.pending, for: live, in: trip)
                                 dismiss()
                             }
                         }
@@ -132,12 +157,12 @@ struct ActionDetailView: View {
     }
 
     private var completionText: String {
-        switch action.completion {
+        switch live.completion {
         case .notPossible: "couldn't do it"
         case .skipped: "skipped"
         case .sleptInstead: "slept instead"
         case .expired: "missed"
-        default: action.completion.rawValue
+        default: live.completion.rawValue
         }
     }
 
@@ -161,7 +186,7 @@ struct ActionDetailView: View {
     /// the leave-by time when reality disagrees by ten minutes or more.
     @ViewBuilder
     private var driveTimeCheck: some View {
-        if action.type == .leaveForAirport, action.completion == .pending,
+        if live.type == .leaveForAirport, live.completion == .pending,
            let airport = driveTargetAirport,
            let latitude = airport.latitude, let longitude = airport.longitude,
            !model.state.settings.localOnlyMode {
@@ -194,15 +219,18 @@ struct ActionDetailView: View {
                         Haptics.success()
                         driveSuggestion = nil
                         Task {
-                            guard var updated = model.state.trips.first(where: { $0.id == trip.id }) else { return }
-                            updated.airportTransferMinutes = suggestion
-                            await model.updateTrip(updated)
+                            await model.updateTrip(id: trip.id) { $0.airportTransferMinutes = suggestion }
+                            withAnimation(Theme.Anim.gentle) {
+                                driveNote = "Done — your leave-by time moved to match."
+                            }
                         }
                     } label: {
                         Text("Plan around \(suggestion) min instead")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PrimaryButtonStyle())
+                    // The hero above re-reads the live plan, so the window moves in
+                    // place; this note confirms the change in words too.
                 }
             }
             .padding(Theme.Space.m)

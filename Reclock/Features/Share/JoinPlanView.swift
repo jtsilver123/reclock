@@ -7,8 +7,11 @@ import ReclockKit
 struct JoinPlanView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     var prefilledCode: String = ""
     var onFinished: (() -> Void)?
+
+    private var localOnly: Bool { model.state.settings.localOnlyMode }
 
     @State private var code = ""
     @State private var isFetching = false
@@ -18,7 +21,17 @@ struct JoinPlanView: View {
 
     var body: some View {
         Form {
-            if !model.auth.isSignedIn {
+            if localOnly {
+                // The same honest gate the lookup screens use — never a code field
+                // that looks up the trip and then refuses to join it.
+                Section {
+                    Label(
+                        "Joining a shared trip is off while Local-only mode is on (Settings → Privacy).",
+                        systemImage: "wifi.slash"
+                    )
+                    .font(.subheadline)
+                }
+            } else if !model.auth.isSignedIn {
                 Section {
                     Text("Sign in first — that's how your buddies see your checkmarks (and you see theirs).")
                         .font(.footnote)
@@ -33,7 +46,7 @@ struct JoinPlanView: View {
                             }
                         }
                     }
-                    .signInWithAppleButtonStyle(.black)
+                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                     .frame(height: 44)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -56,6 +69,12 @@ struct JoinPlanView: View {
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .font(.title3.monospaced())
+                        .submitLabel(.search)
+                        .onSubmit {
+                            guard code.trimmingCharacters(in: .whitespaces).count >= 4, !isFetching
+                            else { return }
+                            Task { await find() }
+                        }
                     Button {
                         Task { await find() }
                     } label: {
@@ -124,16 +143,25 @@ struct JoinPlanView: View {
     }
 
     private func find() async {
+        guard !localOnly else { return }
         isFetching = true
-        errorText = nil
-        fetched = nil
+        withAnimation(Theme.Anim.gentle) {
+            errorText = nil
+            fetched = nil
+        }
         defer { isFetching = false }
-        if let plan = await model.fetchSharedPlan(code: code) {
+        switch await model.fetchSharedPlan(code: code) {
+        case .found(let plan):
             withAnimation(Theme.Anim.spring) { fetched = plan }
             Haptics.success()
-        } else {
+        case .notFound:
             withAnimation(Theme.Anim.spring) {
                 errorText = "No trip found for that code. Double-check it with your buddy."
+            }
+        case .unreachable:
+            // Never blame the code for a dead connection.
+            withAnimation(Theme.Anim.spring) {
+                errorText = "Couldn't reach the server. Check your connection and try again."
             }
         }
     }

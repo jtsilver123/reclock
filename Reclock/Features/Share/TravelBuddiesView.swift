@@ -6,26 +6,34 @@ import ReclockKit
 /// Each member gets a row of checkmarks for today's actions — done lights up green.
 struct TravelBuddiesSection: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var colorScheme
     let trip: Trip
 
     @State private var board: AppModel.BuddyBoard?
     @State private var loadFailed = false
     @State private var isCreating = false
+    @State private var createFailed = false
     @State private var kudosSentTo: Set<String> = []
+
+    /// Live copy — the swipe-opened Buddies sheet passes a snapshot, and the invite
+    /// code must appear the moment it's created, not on the next visit.
+    private var currentTrip: Trip {
+        model.state.trips.first { $0.id == trip.id } ?? trip
+    }
 
     var body: some View {
         Section {
-            if let code = trip.sharedPlanCode {
+            if let code = currentTrip.sharedPlanCode {
                 sharedContent(code: code)
-                    .animation(Theme.Anim.gentle, value: trip.sharedPlanCode)
             } else if model.auth.isSignedIn {
                 Button {
                     Task {
                         isCreating = true
+                        createFailed = false
                         defer { isCreating = false }
-                        if await model.createSharedPlan(for: trip) != nil {
-                            Haptics.success()
-                        }
+                        let created = await model.createSharedPlan(for: currentTrip) != nil
+                        withAnimation(Theme.Anim.gentle) { createFailed = !created }
+                        if created { Haptics.success() }
                     }
                 } label: {
                     if isCreating {
@@ -35,6 +43,11 @@ struct TravelBuddiesSection: View {
                     }
                 }
                 .disabled(isCreating)
+                if createFailed {
+                    Label("Couldn't create the invite. Try again in a moment.", systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(Theme.warning)
+                }
             } else {
                 Text("Traveling with someone? Sign in and you can share this plan — you'll see each other's progress and send kudos.")
                     .font(.footnote)
@@ -49,7 +62,7 @@ struct TravelBuddiesSection: View {
                         }
                     }
                 }
-                .signInWithAppleButtonStyle(.black)
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .frame(height: 44)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -69,13 +82,17 @@ struct TravelBuddiesSection: View {
         } header: {
             Text("Travel buddies")
         } footer: {
-            if trip.sharedPlanCode == nil && model.auth.isSignedIn {
+            if currentTrip.sharedPlanCode == nil && model.auth.isSignedIn {
                 Text("Creates an invite code for this trip. Buddies get the same plan and you all see each other's checkmarks.")
             }
         }
-        .task(id: trip.sharedPlanCode) {
-            if trip.sharedPlanCode != nil {
-                board = await model.fetchBuddyBoard(for: trip)
+        // On the Section, where it can actually animate the branch swaps: invite
+        // button → share row, and loading → member rows.
+        .animation(Theme.Anim.gentle, value: currentTrip.sharedPlanCode)
+        .animation(Theme.Anim.gentle, value: board == nil)
+        .task(id: currentTrip.sharedPlanCode) {
+            if currentTrip.sharedPlanCode != nil {
+                board = await model.fetchBuddyBoard(for: currentTrip)
                 loadFailed = board == nil
             }
         }
@@ -83,7 +100,7 @@ struct TravelBuddiesSection: View {
 
     @ViewBuilder
     private func sharedContent(code: String) -> some View {
-        ShareLink(item: AppLinks.inviteMessage(code: code, route: "\(trip.origin) → \(trip.destination)")) {
+        ShareLink(item: AppLinks.inviteMessage(code: code, route: "\(currentTrip.origin) → \(currentTrip.destination)")) {
             HStack {
                 Label("Invite with code", systemImage: "square.and.arrow.up")
                 Spacer()

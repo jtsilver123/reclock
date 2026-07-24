@@ -473,7 +473,8 @@ struct TripChip: View {
             )
         }
         .buttonStyle(.plain)
-        .animation(Theme.Anim.springQuick, value: isFocused)
+        // Color-only change: a spring's overshoot reads as a brightness flash.
+        .animation(Theme.Anim.gentle, value: isFocused)
         .accessibilityLabel("\(trip.origin) to \(trip.destination), \(statusText)\(isFocused ? ", focused" : "")")
     }
 }

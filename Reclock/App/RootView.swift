@@ -126,8 +126,13 @@ struct MainTabs: View {
                 // top of a full-screen moment.
                 try? await Task.sleep(nanoseconds: 1_400_000_000)
                 guard model.planReveal == nil, model.planUpdate == nil,
-                      model.pendingJoinCode == nil else { return }
+                      model.pendingJoinCode == nil else {
+                    // Suppressed by a takeover: the ask stays unspent for next time.
+                    model.cancelReviewAsk()
+                    return
+                }
                 requestReview()
+                model.confirmReviewPrompted()
             }
         }
         .task(id: model.celebration?.id) {

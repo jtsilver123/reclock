@@ -25,6 +25,7 @@ struct EmailPasteImportView: View {
     @State private var hasExtracted = false
     @State private var transferMinutes = 60
     @State private var isCreating = false
+    @State private var clipboardNote: String?
     @State private var wasTruncated = false
     @State private var buildError: String?
 
@@ -85,8 +86,14 @@ struct EmailPasteImportView: View {
                 Button {
                     Haptics.soft()
                     if let clip = UIPasteboard.general.string, !clip.isEmpty {
+                        withAnimation(Theme.Anim.gentle) { clipboardNote = nil }
                         pastedText = clip
                         extractAndVerify()
+                    } else {
+                        // A silent no-op reads as broken; say why nothing happened.
+                        withAnimation(Theme.Anim.gentle) {
+                            clipboardNote = "Nothing on the clipboard — copy the confirmation email first."
+                        }
                     }
                 } label: {
                     Label("Paste copied email", systemImage: "doc.on.clipboard")
@@ -94,6 +101,12 @@ struct EmailPasteImportView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(PrimaryButtonStyle())
+                if let clipboardNote {
+                    Label(clipboardNote, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(Theme.warning)
+                        .transition(.opacity)
+                }
 
                 TextField("…or paste / type the text here", text: $pastedText, axis: .vertical)
                     .lineLimit(4...10)
@@ -122,6 +135,17 @@ struct EmailPasteImportView: View {
                       systemImage: "questionmark.circle")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
+                // Every dead end carries its own way out.
+                NavigationLink {
+                    FlightLookupView(onFinished: onFinished)
+                } label: {
+                    Label("Add by flight number instead", systemImage: "magnifyingglass")
+                }
+                NavigationLink {
+                    ManualTripEntryView(onFinished: onFinished)
+                } label: {
+                    Label("Type it in instead", systemImage: "keyboard")
+                }
             }
             ForEach(legs) { leg in
                 legRow(leg)

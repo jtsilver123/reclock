@@ -149,7 +149,8 @@ final class AppModel {
         await sync.push(state: state, auth: auth)
     }
 
-    func backUpNow() async {
+    @discardableResult
+    func backUpNow() async -> Bool {
         await sync.push(state: state, auth: auth)
     }
 
@@ -223,9 +224,9 @@ final class AppModel {
         var dayLabel: String = ""
     }
 
-    func nowContext(trip: Trip) -> NowContext {
+    func nowContext(trip: Trip, now: Date? = nil) -> NowContext {
         guard let plan = plan(for: trip) else { return NowContext() }
-        let now = deps.now()
+        let now = now ?? deps.now()
         var context = NowContext()
 
         let pending = plan.actions
@@ -485,6 +486,24 @@ final class AppModel {
         return nil
     }
 
+    /// Removing many trips at once: one persist and one notification rebuild — the
+    /// per-trip path would rebuild the whole schedule N times back to back.
+    func deleteTrips(_ trips: [Trip]) async {
+        guard !trips.isEmpty else { return }
+        let ids = Set(trips.map(\.id))
+        state.trips.removeAll { ids.contains($0.id) }
+        state.plans.removeAll { ids.contains($0.tripID) }
+        for trip in trips {
+            state.setTravelerState(nil, forTrip: trip.id)
+            _ = await deps.calendarExporter.removeAll(tripID: trip.id)
+        }
+        if let selected = state.settings.selectedTripID, ids.contains(selected) {
+            state.settings.selectedTripID = nil
+        }
+        await persist()
+        await rescheduleAllNotifications()
+    }
+
     func deleteTrip(_ trip: Trip) async {
         state.trips.removeAll { $0.id == trip.id }
         state.plans.removeAll { $0.tripID == trip.id }
@@ -503,24 +522,25 @@ final class AppModel {
     // MARK: - Commitments
 
     func addCommitment(_ commitment: FixedCommitment, to trip: Trip) async {
-        var updated = trip
-        updated.commitments.append(commitment)
-        updated.commitments.sort { $0.start < $1.start }
-        await updateTrip(updated)
+        // Field-level on the LIVE trip — the sheet's snapshot may be minutes old.
+        await updateTrip(id: trip.id) { live in
+            live.commitments.append(commitment)
+            live.commitments.sort { $0.start < $1.start }
+        }
     }
 
     func updateCommitment(_ commitment: FixedCommitment, in trip: Trip) async {
-        var updated = trip
-        guard let index = updated.commitments.firstIndex(where: { $0.id == commitment.id }) else { return }
-        updated.commitments[index] = commitment
-        updated.commitments.sort { $0.start < $1.start }
-        await updateTrip(updated)
+        await updateTrip(id: trip.id) { live in
+            guard let index = live.commitments.firstIndex(where: { $0.id == commitment.id }) else { return }
+            live.commitments[index] = commitment
+            live.commitments.sort { $0.start < $1.start }
+        }
     }
 
     func removeCommitment(id: UUID, from trip: Trip) async {
-        var updated = trip
-        updated.commitments.removeAll { $0.id == id }
-        await updateTrip(updated)
+        await updateTrip(id: trip.id) { live in
+            live.commitments.removeAll { $0.id == id }
+        }
     }
 
     // MARK: - Segment edits
@@ -528,8 +548,8 @@ final class AppModel {
     /// Corrects a segment's times (typo fixes, schedule changes known in advance).
     /// Unlike `reportDelay`, this does not mark the flight as delayed.
     func editSegmentTimes(trip: Trip, segmentID: UUID, newDeparture: Date, newArrival: Date) async {
-        var updated = trip
-        updated.segments = trip.segments.map { segment in
+        var updated = state.trips.first { $0.id == trip.id } ?? trip
+        updated.segments = updated.segments.map { segment in
             guard segment.id == segmentID else { return segment }
             var s = segment
             s.departure = newDeparture
@@ -554,6 +574,18 @@ final class AppModel {
             message: "The new times overlap another flight in this trip — often a connection the delay just broke. Update the connecting flight too, or double-check the times. Nothing has been changed yet."
         )
         return false
+    }
+
+    /// Field-level trip edit: re-fetches the live trip by ID and applies the change
+    /// to THAT, so a stale snapshot captured when a sheet opened can never revert
+    /// concurrent changes (a foreground heal, a merge, another lever).
+    func updateTrip(id: UUID, mutate: (inout Trip) -> Void) async {
+        guard let index = state.trips.firstIndex(where: { $0.id == id }) else { return }
+        var live = state.trips[index]
+        mutate(&live)
+        state.trips[index] = live
+        await persist()
+        await regeneratePlan(for: live, trigger: "trip_edited")
     }
 
     func updateTrip(_ trip: Trip, regenerate: Bool = true) async {
@@ -658,8 +690,9 @@ final class AppModel {
     enum ReplanPresentation { case announce, quiet }
 
     func reportDelay(trip: Trip, segmentID: UUID, newDeparture: Date, newArrival: Date) async {
+        let live = state.trips.first { $0.id == trip.id } ?? trip
         let updated = deps.coordinator.applyingDelay(
-            to: trip, segmentID: segmentID, newDeparture: newDeparture, newArrival: newArrival
+            to: live, segmentID: segmentID, newDeparture: newDeparture, newArrival: newArrival
         )
         guard validateEditedTimes(updated) else { return }
         guard let index = state.trips.firstIndex(where: { $0.id == trip.id }) else { return }
@@ -789,12 +822,27 @@ final class AppModel {
     }
 
     /// Asks StoreKit for a rating when ReviewPolicy allows. Never during UI tests, and
-    /// the actual prompt is fired by MainTabs once it observes the token.
+    /// the actual prompt is fired by MainTabs once it observes the token. The budget
+    /// is charged in `confirmReviewPrompted`, only when the prompt really appears.
+    private var reviewAskInFlight = false
+
     private func maybeRequestReview(_ trigger: ReviewPolicy.Trigger) {
-        guard !ProcessInfo.isUITest else { return }
-        guard review.shouldRequest(trigger, now: deps.now()) else { return }
+        guard !ProcessInfo.isUITest, !reviewAskInFlight else { return }
+        guard review.shouldAsk(trigger, now: deps.now()) else { return }
+        reviewAskInFlight = true
         reviewRequestToken += 1
+    }
+
+    /// MainTabs fired the prompt: spend the ask.
+    func confirmReviewPrompted() {
+        reviewAskInFlight = false
+        review.recordPrompted(now: deps.now())
         deps.analytics.track(.reviewPromptShown)
+    }
+
+    /// A takeover suppressed the prompt: the ask stays unspent for next time.
+    func cancelReviewAsk() {
+        reviewAskInFlight = false
     }
 
     func exportData() async -> Data? {

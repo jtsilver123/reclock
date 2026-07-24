@@ -219,7 +219,7 @@ private struct AdjustedDayRow: View {
             } else {
                 Image(systemName: "sparkles")
                     .foregroundStyle(Theme.tint(for: .seekLight))
-                    .symbolEffect(.variableColor.iterative.reversing)
+                    .symbolEffect(.variableColor.iterative.reversing, options: .repeat(3))
             }
             Text("Fully adjusted — nothing scheduled. Enjoy the day.")
                 .font(.footnote)

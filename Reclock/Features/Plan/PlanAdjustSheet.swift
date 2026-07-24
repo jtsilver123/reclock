@@ -13,6 +13,13 @@ struct PlanAdjustSheet: View {
     @State private var savedDefaults = false
     /// Any plan-affecting edit arms the "plan rebuilt" moment shown on close.
     @State private var touched = false
+    /// Debounce for the bed/wake wheels: one replan for the settled value, not one
+    /// per detent — a spin from 23:00 to 21:30 is one edit, not six.
+    @State private var profileWriteTask: Task<Void, Never>?
+    /// Local echo while the debounced write is in flight, so the wheel never
+    /// snaps back to the old stored value on a re-render.
+    @State private var pendingBed: LocalClockTime?
+    @State private var pendingWake: LocalClockTime?
 
     /// Every edit re-arms both the close celebration and Save-as-defaults —
     /// otherwise the save button latches "Saved" and can't take a second value.
@@ -113,9 +120,22 @@ struct PlanAdjustSheet: View {
                 }
             }
             .onDisappear {
+                // A pending debounced write must not die with the sheet.
+                if profileWriteTask != nil {
+                    profileWriteTask = nil
+                    Task {
+                        guard var profile = model.profile else { return }
+                        if let bed = pendingBed { profile.typicalBedtime = bed }
+                        if let wake = pendingWake { profile.typicalWakeTime = wake }
+                        if pendingBed != nil || pendingWake != nil {
+                            await model.updateProfile(profile)
+                        }
+                    }
+                }
                 // The plan already rebuilt live with each change; this is the moment
                 // that SAYS so — toast up top, pills springing to their new spots.
-                if touched {
+                // Not when the same action just raised an error alert.
+                if touched && model.activeAlert == nil {
                     Haptics.success()
                     withAnimation(Theme.Anim.spring) {
                         model.celebration = .planTuned()
@@ -146,30 +166,40 @@ struct PlanAdjustSheet: View {
 
     private var bedtimeBinding: Binding<Date> {
         Binding(
-            get: { clockDate(model.profile?.typicalBedtime ?? LocalClockTime(hour: 23)) },
+            get: { clockDate(pendingBed ?? model.profile?.typicalBedtime ?? LocalClockTime(hour: 23)) },
             set: { newValue in
                 markEdited()
-                Task {
-                    guard var profile = model.profile else { return }
-                    profile.typicalBedtime = clock(from: newValue)
-                    await model.updateProfile(profile)
-                }
+                pendingBed = clock(from: newValue)
+                scheduleProfileWrite()
             }
         )
     }
 
     private var wakeBinding: Binding<Date> {
         Binding(
-            get: { clockDate(model.profile?.typicalWakeTime ?? LocalClockTime(hour: 7)) },
+            get: { clockDate(pendingWake ?? model.profile?.typicalWakeTime ?? LocalClockTime(hour: 7)) },
             set: { newValue in
                 markEdited()
-                Task {
-                    guard var profile = model.profile else { return }
-                    profile.typicalWakeTime = clock(from: newValue)
-                    await model.updateProfile(profile)
-                }
+                pendingWake = clock(from: newValue)
+                scheduleProfileWrite()
             }
         )
+    }
+
+    /// Coalesces wheel spins into one profile write ~0.4s after the last detent.
+    /// Every write replans all live trips and reschedules notifications — per-detent
+    /// that's a burst of full rebuilds fighting each other.
+    private func scheduleProfileWrite() {
+        profileWriteTask?.cancel()
+        profileWriteTask = Task {
+            do { try await Task.sleep(nanoseconds: 400_000_000) } catch { return }
+            guard var profile = model.profile else { return }
+            if let bed = pendingBed { profile.typicalBedtime = bed }
+            if let wake = pendingWake { profile.typicalWakeTime = wake }
+            await model.updateProfile(profile)
+            pendingBed = nil
+            pendingWake = nil
+        }
     }
 
     private var intensityBinding: Binding<PlanIntensity> {
@@ -178,9 +208,7 @@ struct PlanAdjustSheet: View {
             set: { newValue in
                 Haptics.selection()
                 markEdited()
-                var updated = currentTrip
-                updated.intensity = newValue
-                Task { await model.updateTrip(updated) }
+                Task { await model.updateTrip(id: currentTrip.id) { $0.intensity = newValue } }
             }
         )
     }
@@ -191,9 +219,7 @@ struct PlanAdjustSheet: View {
             set: { newValue in
                 Haptics.selection()
                 markEdited()
-                var updated = currentTrip
-                updated.preTripDaysOverride = newValue < 0 ? nil : newValue
-                Task { await model.updateTrip(updated) }
+                Task { await model.updateTrip(id: currentTrip.id) { $0.preTripDaysOverride = newValue < 0 ? nil : newValue } }
             }
         )
     }
@@ -204,9 +230,7 @@ struct PlanAdjustSheet: View {
             set: { newValue in
                 Haptics.selection()
                 markEdited()
-                var updated = currentTrip
-                updated.recoveryDaysOverride = newValue < 0 ? nil : newValue
-                Task { await model.updateTrip(updated) }
+                Task { await model.updateTrip(id: currentTrip.id) { $0.recoveryDaysOverride = newValue < 0 ? nil : newValue } }
             }
         )
     }
@@ -237,9 +261,7 @@ struct PlanAdjustSheet: View {
             set: { newValue in
                 Haptics.selection()
                 markEdited()
-                var updated = currentTrip
-                updated.adaptationStrategy = newValue
-                Task { await model.updateTrip(updated) }
+                Task { await model.updateTrip(id: currentTrip.id) { $0.adaptationStrategy = newValue } }
             }
         )
     }
@@ -249,9 +271,7 @@ struct PlanAdjustSheet: View {
             get: { currentTrip.airportTransferMinutes ?? 60 },
             set: { newValue in
                 markEdited()
-                var updated = currentTrip
-                updated.airportTransferMinutes = newValue
-                Task { await model.updateTrip(updated) }
+                Task { await model.updateTrip(id: currentTrip.id) { $0.airportTransferMinutes = newValue } }
             }
         )
     }

@@ -62,6 +62,18 @@ struct ManualTripEntryView: View {
                 }
                 Toggle("Add return flight", isOn: $includeReturn.animation(Theme.Anim.spring))
                     .tint(Theme.accent)
+                    .onChange(of: includeReturn) { _, on in
+                        // Seed a plausible return (airports swapped, a few days later,
+                        // same block time) so an untouched draft never surfaces later
+                        // as "Flights overlap in time".
+                        guard on, let last = segments.last,
+                              returnSegment.departureAirport == nil else { return }
+                        returnSegment.departureAirport = last.arrivalAirport
+                        returnSegment.arrivalAirport = segments.first?.departureAirport
+                        let block = last.arrivalDate.timeIntervalSince(last.departureDate)
+                        returnSegment.departureDate = last.arrivalDate.addingTimeInterval(5 * 86_400)
+                        returnSegment.arrivalDate = last.arrivalDate.addingTimeInterval(5 * 86_400 + max(block, 3600))
+                    }
                 if includeReturn {
                     SegmentEditor(draft: $returnSegment)
                 }
@@ -138,7 +150,7 @@ struct ManualTripEntryView: View {
                 Text("Times are entered in each airport's local time — exactly as they appear on your ticket.")
             }
         }
-        .navigationTitle("Enter trip")
+        .navigationTitle("Type it in")
         .tint(Theme.accentDeep)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -467,7 +479,6 @@ struct AirportField: View {
                     }
                 } else {
                     TextField("City or code", text: $query)
-                        .textInputAutocapitalization(.never)
                         .multilineTextAlignment(.trailing)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()

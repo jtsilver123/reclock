@@ -6,6 +6,7 @@ import ReclockKit
 struct CommitmentFormView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @State private var isSaving = false
     let trip: Trip
     /// nil = creating a new commitment.
     var existing: FixedCommitment?
@@ -72,10 +73,12 @@ struct CommitmentFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        guard !isSaving else { return }
+                        isSaving = true
                         Haptics.success()
                         Task { await save() }
                     }
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || end <= start)
+                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || end <= start || isSaving)
                 }
             }
             .onAppear { seed() }
@@ -123,6 +126,7 @@ struct CommitmentFormView: View {
 struct SegmentEditSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @State private var isSaving = false
     let trip: Trip
     let segment: FlightSegment
 
@@ -158,6 +162,8 @@ struct SegmentEditSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        guard !isSaving else { return }
+                        isSaving = true
                         Task {
                             await model.editSegmentTimes(
                                 trip: trip,
@@ -168,7 +174,7 @@ struct SegmentEditSheet: View {
                             dismiss()
                         }
                     }
-                    .disabled(arrivalInstant <= departureInstant)
+                    .disabled(arrivalInstant <= departureInstant || isSaving)
                 }
             }
             .onAppear {

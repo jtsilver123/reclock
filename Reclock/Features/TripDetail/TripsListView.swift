@@ -11,6 +11,7 @@ struct TripsListView: View {
     @State private var showClearPast = false
     @State private var buddiesTrip: Trip?
     @State private var buddyCounts: [UUID: Int] = [:]
+    @State private var lastBuddyRefresh: Date?
 
     var body: some View {
         NavigationStack {
@@ -142,11 +143,8 @@ struct TripsListView: View {
                 titleVisibility: .visible
             ) {
                 Button("Clear past trips", role: .destructive) {
-                    Task {
-                        for trip in pastTrips {
-                            await model.deleteTrip(trip)
-                        }
-                    }
+                    // One persist and one notification rebuild — not one per trip.
+                    Task { await model.deleteTrips(pastTrips) }
                 }
             } message: {
                 Text("Removes finished trips, their plans, and any leftover reminders. There's no undo.")
@@ -185,6 +183,9 @@ struct TripsListView: View {
 
     private func refreshBuddyCounts() async {
         guard model.auth.isSignedIn else { return }
+        // Fresh enough: a tab flip within a minute must not refetch every board.
+        if let last = lastBuddyRefresh, Date().timeIntervalSince(last) < 60 { return }
+        lastBuddyRefresh = Date()
         // Boards load concurrently — three shared trips took three round trips.
         let shared = currentTrips.filter { $0.sharedPlanCode != nil }
         await withTaskGroup(of: (UUID, Int)?.self) { group in
@@ -264,6 +265,9 @@ private struct TripListRow: View {
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
+                        .contentTransition(.numericText())
+                        .animation(Theme.Anim.gentle,
+                                   value: TimeFormat.time(timeline.date, zone: trip.destinationZone.resolved))
                 }
             }
             Spacer(minLength: Theme.Space.s)

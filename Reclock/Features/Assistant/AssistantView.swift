@@ -57,7 +57,6 @@ struct AssistantView: View {
                             }
                         }
                         .padding(Theme.Space.m)
-                        .animation(Theme.Anim.gentle, value: isThinking)
                     }
                     .onChange(of: messages) { _, newValue in
                         guard let last = newValue.last else { return }
@@ -164,6 +163,7 @@ struct AssistantView: View {
         HStack(spacing: Theme.Space.s) {
             TextField("Ask about your plan…", text: $input, axis: .vertical)
                 .lineLimit(1...3)
+                .submitLabel(.send)
                 .padding(.horizontal, Theme.Space.m)
                 .padding(.vertical, 10)
                 .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -189,8 +189,10 @@ struct AssistantView: View {
         input = ""
         Haptics.soft()
         withAnimation(Theme.Anim.spring) { messages.append(Message(kind: .user, text: text)) }
-        isThinking = true
-        defer { isThinking = false }
+        // Scoped: the thinking row fades on its own beat and never hijacks the
+        // user bubble's spring (a container animation keyed to isThinking would).
+        withAnimation(Theme.Anim.gentle) { isThinking = true }
+        defer { withAnimation(Theme.Anim.gentle) { isThinking = false } }
         do {
             var assistantIndex: Int?
             let stream = session.streamResponse(to: text)

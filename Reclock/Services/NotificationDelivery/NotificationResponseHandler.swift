@@ -9,16 +9,20 @@ import ReclockKit
 final class NotificationResponseHandler: NSObject, UNUserNotificationCenterDelegate {
     weak var model: AppModel? {
         didSet {
-            // A tap that cold-launched the app arrived before RootView could hand
-            // us the model — replay it now instead of silently dropping it.
-            if model != nil, let queued = pending {
-                pending = nil
-                Task { await handle(actionID: queued.actionID, actionIdentifier: queued.identifier) }
+            // Taps that cold-launched the app arrived before RootView could hand
+            // us the model — replay every one instead of silently dropping them.
+            guard model != nil, !pending.isEmpty else { return }
+            let queued = pending
+            pending = []
+            Task {
+                for tap in queued {
+                    await handle(actionID: tap.actionID, actionIdentifier: tap.identifier)
+                }
             }
         }
     }
 
-    private var pending: (actionID: UUID, identifier: String)?
+    private var pending: [(actionID: UUID, identifier: String)] = []
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -36,7 +40,7 @@ final class NotificationResponseHandler: NSObject, UNUserNotificationCenterDeleg
             let actionID = UUID(uuidString: actionIDString)
         else { return }
         guard model != nil else {
-            pending = (actionID, response.actionIdentifier)
+            pending.append((actionID, response.actionIdentifier))
             return
         }
         await handle(actionID: actionID, actionIdentifier: response.actionIdentifier)
@@ -45,7 +49,8 @@ final class NotificationResponseHandler: NSObject, UNUserNotificationCenterDeleg
     private func handle(actionID: UUID, actionIdentifier: String) async {
         guard let model else { return }
         // Wait out a cold launch: the store may still be loading when the tap lands.
-        for _ in 0..<50 where !model.isLoaded {
+        // 15s covers a big state file plus a backup restore on a slow connection.
+        for _ in 0..<150 where !model.isLoaded {
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
         // The notification names its action, not a trip — search every plan, not just
