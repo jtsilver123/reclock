@@ -150,6 +150,10 @@ struct PlanDayBlock: View {
             }
         }
         .opacity(isPast ? 0.55 : 1)
+        // The dim and the "Past" chip arrive together as a calm fade the moment a
+        // day's 24 hours end — never a pop on a clock tick, and never grabbed by
+        // whatever spring transaction happens to be in flight while scrolling.
+        .animation(Theme.Anim.gentle, value: isPast)
     }
 
     /// The zone the traveler actually occupies this day — no mode to pick.

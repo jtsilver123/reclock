@@ -155,6 +155,11 @@ private struct PlanContent: View {
     @State private var backToNowArmed = false
     /// Bumped by the pinned header's now bar; the scroll reader answers it.
     @State private var scrollToNowRequest = 0
+    /// True while a go-to-now scroll is in flight — the frame handler must not
+    /// flash the button back on while today is merely still en route.
+    @State private var settlingToNow = false
+    /// Strict "today intersects the viewport right now", from the frame handler.
+    @State private var todayIsNear = false
 
     var body: some View {
         SwiftUI.TimelineView(.periodic(from: .now, by: 30)) { timeline in
@@ -280,9 +285,12 @@ private struct PlanContent: View {
                         var nearNow = false
                         if let frame, viewportHeight > 0 {
                             nearNow = frame.maxY > -slack && frame.minY < viewportHeight + slack
+                            todayIsNear = frame.maxY > 0 && frame.minY < viewportHeight
                             todayIsAbove = frame.midY < viewportHeight / 2
+                        } else {
+                            todayIsNear = false
                         }
-                        let show = !nearNow && backToNowArmed
+                        let show = !nearNow && backToNowArmed && !settlingToNow
                         guard show != showBackToNow else { return }
                         showBackToNow = show
                     }
@@ -334,17 +342,28 @@ private struct PlanContent: View {
 
     /// One tap home. Lazy rows realize as the scroll travels, so a single pass can
     /// land short of today on long plans — the launch auto-scroll learned this the
-    /// hard way. Settle over a few passes, and hide the button optimistically; the
-    /// frame preference brings it straight back if we still landed short.
+    /// hard way. The button hides for the whole ride (the still-far frame must not
+    /// flash it back mid-flight), and correction passes fire only while the landing
+    /// is actually short — a clean first landing gets no second spring.
     private func scrollToNow(_ proxy: ScrollViewProxy, todayID: UUID) {
+        settlingToNow = true
         showBackToNow = false
         Task {
-            for delay in [0, 250_000_000, 500_000_000] {
-                if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay)) }
+            withAnimation(Theme.Anim.spring) {
+                proxy.scrollTo(todayID, anchor: .top)
+            }
+            for _ in 0..<2 {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                if todayIsNear { break }
                 withAnimation(Theme.Anim.spring) {
                     proxy.scrollTo(todayID, anchor: .top)
                 }
             }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            settlingToNow = false
+            // A landing that still missed re-offers the way home instead of
+            // leaving the reader stranded with no button until the next scroll.
+            if !todayIsNear { showBackToNow = true }
         }
     }
 
