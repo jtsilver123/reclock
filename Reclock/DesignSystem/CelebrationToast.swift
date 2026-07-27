@@ -26,6 +26,10 @@ struct CelebrationEvent: Equatable, Identifiable {
         CelebrationEvent(type: .checkIn, customLine: "You're in — fly it together.", symbol: "person.2.fill")
     }
 
+    static func tripWrapped(destination: String) -> CelebrationEvent {
+        CelebrationEvent(type: .checkIn, customLine: "\(destination), wrapped. Filed under Past trips.", symbol: "checkmark.seal.fill")
+    }
+
     static func planTuned() -> CelebrationEvent {
         CelebrationEvent(type: .checkIn, customLine: "Plan rebuilt around you.", symbol: "slider.horizontal.3")
     }

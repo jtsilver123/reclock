@@ -203,8 +203,8 @@ private struct PlanContent: View {
                                 .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             }
 
-                            if trip.status == .completed && !model.hasSurvey(for: trip) {
-                                SurveyPromptCard(trip: trip)
+                            if trip.status == .completed {
+                                PlanCompletionCard(trip: trip, plan: plan)
                                     .padding(.horizontal, Theme.Space.m)
                                     .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             }
@@ -606,38 +606,95 @@ private struct NotificationNudge: View {
 
 // MARK: - Post-trip check-in prompt
 
-private struct SurveyPromptCard: View {
+/// The plan's bookend, replacing the timeline's top card once the trip completes:
+/// what the journey added up to, the 90-second check-in, and the two honest exits —
+/// wrap it into Past trips (the Plan tab moves on) or delete it entirely.
+private struct PlanCompletionCard: View {
     @Environment(AppModel.self) private var model
     let trip: Trip
+    let plan: JetLagPlan
+
     @State private var showSurvey = false
+    @State private var confirmDelete = false
+    @State private var wrapping = false
+
+    private var doneCount: Int { plan.actions.filter { $0.completion == .done }.count }
+
+    private var summaryLine: String {
+        let hours = abs(Int(plan.requiredShiftHours.rounded()))
+        let shift = hours == 0 ? "no shift needed" : "\(hours)h shifted"
+        return "\(doneCount) of \(plan.actions.count) steps · \(shift)"
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
             HStack(spacing: Theme.Space.m) {
                 ZStack {
                     Circle().fill(Theme.accent.opacity(0.15))
-                    Image(systemName: "checklist")
-                        .font(.system(size: 17, weight: .semibold))
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 19, weight: .semibold))
                         .foregroundStyle(Theme.accentDeep)
                 }
-                .frame(width: 40, height: 40)
+                .frame(width: 44, height: 44)
                 .accessibilityHidden(true)
-                Text("Back from \(trip.destination)?")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Trip complete")
+                        .font(Theme.display(20))
+                        .foregroundStyle(Theme.textPrimary)
+                    Text(summaryLine)
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
-            Text("90 seconds: how rough was jet lag, and what was unrealistic? Your answers tune future plans.")
+
+            Text("This plan's work is done. Wrap it up and it files under Past trips for reference — the Plan tab moves on to what's next.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
-            Button("Quick check-in") { showSurvey = true }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.accentDeep)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !model.hasSurvey(for: trip) {
+                Button("Quick check-in") { showSurvey = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accentDeep)
+            }
+
+            Button {
+                guard !wrapping else { return }
+                wrapping = true
+                Haptics.success()
+                Task { await model.wrapUpTrip(trip) }
+            } label: {
+                Label("Wrap up this trip", systemImage: "archivebox")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(wrapping)
+
+            Button(role: .destructive) {
+                confirmDelete = true
+            } label: {
+                Text("Delete trip and plan")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
+        .animation(Theme.Anim.gentle, value: model.hasSurvey(for: trip))
         .sheet(isPresented: $showSurvey) {
             PostTripSurveyView(trip: trip)
+        }
+        .confirmationDialog(
+            "Delete this trip?",
+            isPresented: $confirmDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete trip and plan", role: .destructive) {
+                Task { await model.deleteTrip(trip) }
+            }
+        } message: {
+            Text("This removes the trip, its plan, and its reminders. There's no undo.")
         }
     }
 }

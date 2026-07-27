@@ -486,6 +486,20 @@ final class AppModel {
         return nil
     }
 
+    /// The plan's ending: the trip files itself under Past trips (archived), the
+    /// Plan tab moves on to the next journey or the empty state, and a toast
+    /// closes the loop. The plan is kept for reference until the trip is deleted.
+    func wrapUpTrip(_ trip: Trip) async {
+        guard let index = state.trips.firstIndex(where: { $0.id == trip.id }) else { return }
+        state.trips[index].status = .archived
+        if state.settings.selectedTripID == trip.id {
+            state.settings.selectedTripID = nil
+        }
+        await persist()
+        await rescheduleAllNotifications()
+        celebration = .tripWrapped(destination: trip.destination)
+    }
+
     /// Removing many trips at once: one persist and one notification rebuild — the
     /// per-trip path would rebuild the whole schedule N times back to back.
     func deleteTrips(_ trips: [Trip]) async {
@@ -610,6 +624,9 @@ final class AppModel {
             } else {
                 newStatus = trip.status
             }
+            // A wrapped-up trip stays wrapped — the date sweep must never
+            // resurrect it onto the Plan tab.
+            if t.status == .archived { return t }
             // A trip marked completed (post-trip survey done, or a prior pass past
             // the window) must not bounce back to active on the next launch.
             if t.status == .completed && newStatus == .active { return t }

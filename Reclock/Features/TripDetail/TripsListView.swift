@@ -173,8 +173,12 @@ struct TripsListView: View {
         }
     }
 
-    private var currentTrips: [Trip] { sortedTrips.filter { $0.status != .completed } }
-    private var pastTrips: [Trip] { sortedTrips.filter { $0.status == .completed } }
+    private var currentTrips: [Trip] {
+        sortedTrips.filter { $0.status != .completed && $0.status != .archived }
+    }
+    private var pastTrips: [Trip] {
+        sortedTrips.filter { $0.status == .completed || $0.status == .archived }
+    }
 
     /// Re-fetch buddy counts when trips or share states change.
     private var taskKey: String {
@@ -240,14 +244,16 @@ private struct TripListRow: View {
     let isOnPlanTab: Bool
     let buddyCount: Int?
 
+    private var isPast: Bool { trip.status == .completed || trip.status == .archived }
+
     var body: some View {
         HStack(spacing: Theme.Space.m) {
             ZStack {
                 Circle()
-                    .fill((trip.status == .completed ? Theme.textSecondary : Theme.accent).opacity(0.15))
+                    .fill((isPast ? Theme.textSecondary : Theme.accent).opacity(0.15))
                 Image(systemName: isOnPlanTab ? "sun.horizon.fill" : "airplane")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(trip.status == .completed ? Theme.textSecondary : Theme.accentDeep)
+                    .foregroundStyle(isPast ? Theme.textSecondary : Theme.accentDeep)
             }
             .frame(width: 40, height: 40)
             .accessibilityHidden(true)
@@ -258,7 +264,7 @@ private struct TripListRow: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 SwiftUI.TimelineView(.everyMinute) { timeline in
-                    Text(trip.status == .completed
+                    Text(isPast
                          ? dateRange(now: timeline.date)
                          : "\(dateRange(now: timeline.date)) · \(TimeFormat.time(timeline.date, zone: trip.destinationZone.resolved)) there")
                         .font(.caption.monospacedDigit())
@@ -275,7 +281,7 @@ private struct TripListRow: View {
             // Who's on this plan, at a glance. Display only — interactive views
             // nested in a NavigationLink row hijack row taps (it broke navigation
             // in two UI tests). Buddies open via leading swipe or inside the trip.
-            if trip.status != .completed {
+            if !isPast {
                 HStack(spacing: 3) {
                     Image(systemName: trip.sharedPlanCode == nil ? "person.badge.plus" : "person.2.fill")
                         .font(.footnote.weight(.semibold))
