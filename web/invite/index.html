@@ -21,6 +21,7 @@
     background:#fff;border-radius:14px;padding:12px 18px;display:inline-block;margin-bottom:26px;color:var(--night);}
   .cta{display:block;text-decoration:none;font-weight:700;font-size:16px;padding:15px 24px;border-radius:999px;margin:12px auto;max-width:320px;}
   .primary{background:var(--marigold);color:var(--ink);box-shadow:0 10px 26px rgba(252,184,18,.35);}
+  .secondary{background:#fff;color:var(--night);border:1px solid rgba(0,0,0,.08);}
   .note{font-size:12.5px;color:var(--gray);margin-top:20px;line-height:1.6;}
 </style>
 </head>
@@ -30,16 +31,17 @@
   <h1>Beat jet lag together</h1>
   <p class="lede">A friend invited you to fly their plan on Reclock — same schedule for sleep, light, and caffeine, with everyone's progress in one place.</p>
   <div class="code" id="code">······</div>
-  <!-- One smart CTA (the Cini pattern): its href is the store/TestFlight page so the
+  <!-- One smart CTA (the Cini pattern): its href is the App Store page so the
        button works with no JavaScript and no app; the JS click handler first tries the
        deep link and lets the timer fall back if the app never takes foreground. -->
-  <a class="cta primary" id="openBtn" href="#">Open Reclock</a>
-  <p class="note">Have Reclock? This opens the app straight into the invite.<br>
-    New here? Install Reclock from TestFlight, choose “Join a friend's trip”, and enter the code above.</p>
+  <a class="cta primary" id="openBtn" href="https://apps.apple.com/app/id6790334639">Open Reclock</a>
+  <a class="cta secondary" href="https://apps.apple.com/app/id6790334639">Get Reclock free on the App Store</a>
+  <p class="note">Have Reclock? The button above opens the app straight into this invite.<br>
+    New here? Install Reclock, then choose “Join a friend's trip” and enter the code above.</p>
 </div>
 <script>
-  // Set once a public TestFlight/App Store link exists.
-  var STORE = '';
+  // Live on the App Store — storefront-neutral so every reader lands in their own.
+  var STORE = 'https://apps.apple.com/app/id6790334639';
   // textContent only — the code rides in from the URL.
   var c = (new URLSearchParams(location.search).get('c') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 8).toUpperCase();
   if (c) document.getElementById('code').textContent = c;

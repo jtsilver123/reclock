@@ -4,6 +4,10 @@ import Foundation
 /// asleep") — no permissions, no attachments, just words a travel partner can read.
 public enum PlanShareFormatter {
 
+    /// Storefront-neutral App Store link, so a shared plan is also a way in.
+    public static let appStoreLink = "https://apps.apple.com/app/id6790334639"
+
+
     /// Essentials-only summary: must-do and helpful actions, grouped by day, times in
     /// each action's display zone. Optional items are omitted on purpose — a share
     /// should fit on one screen.
@@ -41,6 +45,7 @@ public enum PlanShareFormatter {
             lines.append("")
         }
         lines.append("Made with Reclock — free jet lag plans that adapt to your trip.")
+        lines.append(appStoreLink)
         return lines.joined(separator: "\n")
     }
 }

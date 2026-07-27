@@ -217,6 +217,9 @@ enum AppLinks {
     /// The hosted smart page: tries the app, shows the code + instructions otherwise.
     static let inviteBase: String? = "https://jtsilver123.github.io/reclock/invite/?c="
     static let scheme = "reclock"
+    /// Storefront-neutral App Store link — Apple redirects each reader to their own
+    /// country's store, so one link works for everyone you send it to.
+    static let appStore = "https://apps.apple.com/app/id6790334639"
 
     /// Deep link stamped on exported calendar events: tapping it reopens the plan.
     static func tripURL(_ id: UUID) -> URL {
@@ -234,8 +237,9 @@ enum AppLinks {
         """
         Fly \(route) with me on Reclock — we'll beat jet lag together and see each other's progress.
 
-        Have Reclock? Tap: \(inviteLink(code: code))
-        New? Get Reclock on TestFlight, then choose "Join a friend's trip" and enter code \(code).
+        Tap to join: \(inviteLink(code: code))
+
+        (Opens Reclock if you have it, or the App Store if you don't. Your code: \(code))
         """
     }
 }
